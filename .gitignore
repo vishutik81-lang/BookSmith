@@ -1,0 +1,21 @@
+# Переменные окружения (секреты)
+.env
+.env.local
+.env.production
+
+# Зависимости
+node_modules/
+
+# Сборка
+dist/
+
+# Логи
+*.log
+
+# OS файлы
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
