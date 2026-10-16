@@ -1,145 +1,139 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+
+// Временные данные для демонстрации структуры
+const mockStructure = [
+  { id: 1, title: 'Глава 1: Начало пути', scenes: [{ id: 101, title: 'Сцена 1: Порт' }, { id: 102, title: 'Сцена 2: Таверна' }] },
+  { id: 2, title: 'Глава 2: Тёмный рыцарь', scenes: [{ id: 201, title: 'Сцена 1: Встреча' }] },
+]
 
 function App() {
-  // --- Состояния для теста Базы Данных ---
-  const [dbMessage, setDbMessage] = useState('')
+  const [activeScene, setActiveScene] = useState(101)
+  const [text, setText] = useState('')
+  const [rightPanelTab, setRightPanelTab] = useState<'context' | 'ai'>('context')
 
-  const testDatabase = async () => {
-    setDbMessage('Подключение к базе...')
-    try {
-      const res = await fetch('/api/projects', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'Тестовая Книга', description: 'Проверка связи с Supabase' }),
-      })
-      const data = await res.json()
-      setDbMessage(JSON.stringify(data, null, 2))
-    } catch (e: any) {
-      setDbMessage('Ошибка: ' + e.message)
-    }
-  }
-
-  // --- Состояния для Генератора ИИ ---
-  const [prompt, setPrompt] = useState('')
-  const [result, setResult] = useState('')
-  const [usedModel, setUsedModel] = useState('')
-  const [loading, setLoading] = useState(false)
-  const [models, setModels] = useState<any[]>([])
-  const [selectedModelId, setSelectedModelId] = useState('')
-
-  useEffect(() => {
-    fetch('/api/models')
-      .then(res => res.json())
-      .then(data => {
-        setModels(data)
-        if (data.length > 0) setSelectedModelId(data[0].id)
-      })
-      .catch(err => console.error("Не удалось загрузить модели", err))
-  }, [])
-
-  const handleGenerate = async () => {
-    if (!prompt || !selectedModelId) return
-    setLoading(true)
-    setResult('')
-    setUsedModel('')
-    
-    try {
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, modelId: selectedModelId }),
-      })
-      const data = await res.json()
-      setResult(data.text)
-      setUsedModel(data.model || selectedModelId)
-    } catch (e) {
-      setResult('Ошибка соединения с сервером')
-    }
-    setLoading(false)
-  }
-
-  const currentModelDesc = models.find(m => m.id === selectedModelId)?.description || ''
+  const currentSceneTitle = mockStructure
+    .flatMap(g => g.scenes)
+    .find(s => s.id === activeScene)?.title || 'Новая сцена'
 
   return (
-    <div style={{ padding: '2rem', maxWidth: '700px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1e293b' }}>
       
-      {/* --- Блок теста Базы Данных --- */}
-      <div style={{ marginBottom: '30px', padding: '20px', background: '#e0f2fe', borderRadius: '12px', border: '1px solid #7dd3fc' }}>
-        <h2 style={{ marginTop: 0, color: '#0369a1' }}>🗄️ Проверка Supabase</h2>
-        <button 
-          onClick={testDatabase}
-          style={{ padding: '10px 20px', fontSize: '16px', background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
-        >
-          🧪 Создать тестовый проект в БД
-        </button>
-        {dbMessage && (
-          <pre style={{ marginTop: '15px', padding: '10px', background: '#fff', borderRadius: '6px', fontSize: '12px', overflowX: 'auto', color: '#333' }}>
-            {dbMessage}
-          </pre>
-        )}
-      </div>
-
-      <hr style={{ border: 'none', borderTop: '2px solid #e2e8f0', marginBottom: '30px' }} />
-
-      {/* --- Блок Генератора ИИ --- */}
-      <h1 style={{ color: '#2563eb', marginBottom: '20px' }}>📚 BookSmith - Генератор</h1>
-      
-      <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Выберите модель:</label>
-        <select 
-          value={selectedModelId} 
-          onChange={(e) => setSelectedModelId(e.target.value)}
-          style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid #ccc', fontSize: '1rem' }}
-        >
-          {models.map(model => (
-            <option key={model.id} value={model.id}>{model.name}</option>
-          ))}
-        </select>
-        {currentModelDesc && (
-          <p style={{ fontSize: '0.85rem', color: '#555', marginTop: '8px', fontStyle: 'italic' }}>
-             {currentModelDesc}
-          </p>
-        )}
-      </div>
-
-      <div style={{ marginBottom: '15px' }}>
-        <label style={{ display: 'block', marginBottom: '5px', fontWeight: 'bold' }}>Ваш запрос:</label>
-        <textarea
-          value={prompt}
-          onChange={(e) => setPrompt(e.target.value)}
-          placeholder="Например: Опиши старого капитана, смотрящего на шторм..."
-          style={{ width: '100%', height: '100px', padding: '10px', borderRadius: '8px', border: '1px solid #ccc', boxSizing: 'border-box', fontSize: '1rem' }}
-        />
-      </div>
-      
-      <button 
-        onClick={handleGenerate} 
-        disabled={loading || !prompt}
-        style={{ 
-          padding: '12px 24px', 
-          background: loading ? '#93c5fd' : '#2563eb', 
-          color: 'white', 
-          border: 'none', 
-          borderRadius: '8px', 
-          cursor: loading ? 'not-allowed' : 'pointer',
-          fontSize: '1rem',
-          fontWeight: 'bold'
-        }}
-      >
-        {loading ? 'Модель думает...' : 'Сгенерировать'}
-      </button>
-
-      {result && (
-        <div style={{ marginTop: '30px', padding: '20px', background: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
-          <h3 style={{ marginTop: 0, color: '#1e293b' }}>✨ Результат:</h3>
-          <p style={{ whiteSpace: 'pre-wrap', lineHeight: '1.6', color: '#334155' }}>{result}</p>
-          {usedModel && (
-            <p style={{ fontSize: '0.8rem', color: '#94a3b8', marginTop: '15px', textAlign: 'right' }}>
-              Использована модель: <code>{usedModel}</code>
-            </p>
-          )}
+      {/* Верхняя панель (Header) */}
+      <header style={{ height: '50px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#ffffff' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>📚 BookSmith: Тестовый Проект</div>
+        <div style={{ fontSize: '0.9rem', color: '#64748b' }}>
+          {currentSceneTitle} • {text.split(/\s+/).filter(w => w.length > 0).length} слов
         </div>
-      )}
+        <button style={{ padding: '6px 12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem' }}>
+          Сохранить
+        </button>
+      </header>
+
+      {/* Основная рабочая область (3 панели) */}
+      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+        
+        {/* ЛЕВАЯ ПАНЕЛЬ: Структура книги */}
+        <aside style={{ width: '250px', borderRight: '1px solid #e2e8f0', background: '#f8fafc', overflowY: 'auto', padding: '10px' }}>
+          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>Структура</h3>
+          {mockStructure.map(chapter => (
+            <div key={chapter.id} style={{ marginBottom: '15px' }}>
+              <div style={{ fontWeight: '600', fontSize: '0.9rem', marginBottom: '5px', color: '#334155' }}>{chapter.title}</div>
+              <div style={{ paddingLeft: '10px' }}>
+                {chapter.scenes.map(scene => (
+                  <div 
+                    key={scene.id}
+                    onClick={() => setActiveScene(scene.id)}
+                    style={{ 
+                      padding: '6px 8px', 
+                      fontSize: '0.85rem', 
+                      cursor: 'pointer', 
+                      borderRadius: '4px',
+                      background: activeScene === scene.id ? '#dbeafe' : 'transparent',
+                      color: activeScene === scene.id ? '#1e40af' : '#475569'
+                    }}
+                  >
+                    {scene.title}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+          <button style={{ width: '100%', padding: '8px', marginTop: '10px', border: '1px dashed #cbd5e1', background: 'transparent', color: '#64748b', borderRadius: '6px', cursor: 'pointer' }}>
+            + Новая сцена
+          </button>
+        </aside>
+
+        {/* ЦЕНТРАЛЬНАЯ ПАНЕЛЬ: Редактор текста */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+          <textarea
+            value={text}
+            onChange={(e) => setText(e.target.value)}
+            placeholder="Начните писать здесь... (Поддержка Markdown будет добавлена позже)"
+            style={{ 
+              flex: 1, 
+              border: 'none', 
+              outline: 'none', 
+              padding: '40px', 
+              fontSize: '1.1rem', 
+              lineHeight: '1.7', 
+              resize: 'none',
+              fontFamily: 'Georgia, serif'
+            }}
+          />
+        </main>
+
+        {/* ПРАВАЯ ПАНЕЛЬ: Контекст и ИИ */}
+        <aside style={{ width: '300px', borderLeft: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
+          {/* Вкладки правой панели */}
+          <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0' }}>
+            <button 
+              onClick={() => setRightPanelTab('context')}
+              style={{ flex: 1, padding: '12px', border: 'none', background: rightPanelTab === 'context' ? '#ffffff' : 'transparent', borderBottom: rightPanelTab === 'context' ? '2px solid #2563eb' : 'none', cursor: 'pointer', fontWeight: '500' }}
+            >
+              Контекст
+            </button>
+            <button 
+              onClick={() => setRightPanelTab('ai')}
+              style={{ flex: 1, padding: '12px', border: 'none', background: rightPanelTab === 'ai' ? '#ffffff' : 'transparent', borderBottom: rightPanelTab === 'ai' ? '2px solid #2563eb' : 'none', cursor: 'pointer', fontWeight: '500' }}
+            >
+              ИИ-помощник
+            </button>
+          </div>
+
+          {/* Содержимое правой панели */}
+          <div style={{ flex: 1, padding: '15px', overflowY: 'auto' }}>
+            {rightPanelTab === 'context' ? (
+              <div>
+                <h4 style={{ marginTop: 0, fontSize: '0.9rem', color: '#334155' }}>Персонажи в сцене</h4>
+                <div style={{ padding: '10px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '15px' }}>
+                  <div style={{ fontWeight: '600' }}>Энн</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Статус: Активна, POV</div>
+                </div>
+                
+                <h4 style={{ fontSize: '0.9rem', color: '#334155' }}>Локация</h4>
+                <div style={{ padding: '10px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
+                  <div style={{ fontWeight: '600' }}>Старый порт</div>
+                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Атмосфера: Шторм, запах соли</div>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '10px' }}>
+                  Здесь будет наш генератор. Выделите текст или напишите запрос, и ИИ поможет продолжить сцену.
+                </p>
+                <textarea 
+                  placeholder="Например: Опиши запах шторма..." 
+                  style={{ width: '100%', height: '80px', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '10px', boxSizing: 'border-box' }}
+                />
+                <button style={{ width: '100%', padding: '8px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
+                  Сгенерировать
+                </button>
+              </div>
+            )}
+          </div>
+        </aside>
+
+      </div>
     </div>
   )
 }
