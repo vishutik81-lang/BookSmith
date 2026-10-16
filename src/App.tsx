@@ -1,166 +1,135 @@
 import { useState } from 'react'
 
-function App() {
-  // Локальное хранилище сцен
-  const [scenes, setScenes] = useState([
-    { id: 1, title: 'Сцена 1: Порт', text: 'Шторм усиливался, и запах соли бил в нос...' },
-    { id: 2, title: 'Сцена 2: Таверна', text: '' },
-  ])
+export default function App() {
+  const [view, setView] = useState('library') // 'library' или 'editor'
+  const [hoveredBookId, setHoveredBookId] = useState(null)
   
-  const [activeSceneId, setActiveSceneId] = useState(1)
-  // Состояние для кнопки сохранения
-  const [saveStatus, setSaveStatus] = useState('idle') // 'idle', 'saving', 'saved'
+  // Локальные данные для демонстрации
+  const [books, setBooks] = useState([
+    { id: 1, title: 'Тени над портом', status: 'В работе', genre: 'Тёмное фэнтези', words: 12450 },
+    { id: 2, title: 'Хроники Арканума', status: 'Готова', genre: 'Научпоп', words: 45000 },
+  ])
 
-  const activeScene = scenes.find(s => s.id === activeSceneId)
-
-  const handleTextChange = (newText) => {
-    setScenes(scenes.map(s => s.id === activeSceneId ? { ...s, text: newText } : s))
-    // Если пользователь начал печатать после сохранения, сбрасываем статус
-    if (saveStatus === 'saved') setSaveStatus('idle')
+  const openBook = (id) => {
+    setActiveBookId(id)
+    setView('editor')
   }
 
-  const addNewScene = () => {
-    const newId = scenes.length > 0 ? Math.max(...scenes.map(s => s.id)) + 1 : 1
-    const newScene = { id: newId, title: `Новая сцена ${newId}`, text: '' }
-    setScenes([...scenes, newScene])
-    setActiveSceneId(newId)
-  }
-
-  // Логика "Тихой галочки"
-  const handleSave = () => {
-    setSaveStatus('saving')
-    
-    // Имитация задержки сети (800мс)
-    setTimeout(() => {
-      setSaveStatus('saved')
-      
-      // Возврат в исходное состояние через 2 секунды
-      setTimeout(() => {
-        setSaveStatus('idle')
-      }, 2000)
-    }, 800)
-  }
-
-  // Динамические стили и текст кнопки
-  const getButtonStyles = () => {
-    if (saveStatus === 'saved') return { background: '#5c7a5c', cursor: 'default' } // Приглушенный зеленый
-    if (saveStatus === 'saving') return { opacity: 0.7, cursor: 'wait' }
-    return { background: '#7a4b3a', cursor: 'pointer' } // Исходный коричневый
-  }
-
-  const getButtonText = () => {
-    if (saveStatus === 'saving') return 'Сохранение...'
-    if (saveStatus === 'saved') return '✓ Сохранено'
-    return 'Сохранить в БД'
-  }
+  const [activeBookId, setActiveBookId] = useState(null)
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'Georgia, "Times New Roman", serif', color: '#2c241b', background: '#fdfbf7' }}>
-      
-      {/* Верхняя панель */}
-      <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#5c3a21' }}>📚 BookSmith</div>
-        <div style={{ fontSize: '0.9rem', color: '#7a6b5d' }}>
-          {activeScene?.title} • {activeScene?.text.split(/\s+/).filter(w => w.length > 0).length} слов
-        </div>
-        <button 
-          onClick={handleSave}
-          disabled={saveStatus !== 'idle'}
-          style={{ 
-            padding: '6px 16px', 
-            border: 'none', 
-            borderRadius: '4px', 
-            color: '#fdfbf7', 
-            fontFamily: 'sans-serif', 
-            fontSize: '0.9rem',
-            transition: 'all 0.3s ease',
-            ...getButtonStyles()
-          }}
-        >
-          {getButtonText()}
-        </button>
-      </header>
+    <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
+      {/* Стили для hover-эффектов (так как inline стили не поддерживают :hover) */}
+      <style>{`
+        .book-card { transition: all 0.2s ease; cursor: pointer; }
+        .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(92, 58, 33, 0.15); }
+        .create-card { transition: all 0.2s ease; cursor: pointer; }
+        .create-card:hover { background: #ebe3d5 !important; border-color: #7a4b3a !important; }
+        .hover-info { display: none; }
+        .book-card:hover .hover-info { display: block; }
+      `}</style>
 
-      {/* Основная рабочая область */}
-      <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-        
-        {/* ЛЕВАЯ ПАНЕЛЬ: Структура */}
-        <aside style={{ width: '260px', borderRight: '1px solid #dcd3c1', background: '#f5f0e6', overflowY: 'auto', padding: '15px' }}>
-          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', marginBottom: '15px', letterSpacing: '1px' }}>Структура книги</h3>
-          
-          {scenes.map(scene => (
+      {/* === ЭКРАН БИБЛИОТЕКИ === */}
+      {view === 'library' && (
+        <div style={{ padding: '40px 10%', maxWidth: '1200px', margin: '0 auto' }}>
+          <header style={{ marginBottom: '40px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px' }}>
+            <h1 style={{ fontSize: '2.5rem', color: '#5c3a21', margin: 0 }}> Моя Библиотека</h1>
+            <p style={{ color: '#7a6b5d', marginTop: '10px' }}>Ваши проекты, черновики и готовые книги</p>
+          </header>
+
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '25px' }}>
+            
+            {/* Карточка создания новой книги (всегда первая) */}
             <div 
-              key={scene.id}
-              onClick={() => setActiveSceneId(scene.id)}
+              className="create-card"
+              onClick={() => alert('Здесь будет создание новой книги в БД!')}
               style={{ 
-                padding: '10px 12px', 
-                marginBottom: '8px',
-                cursor: 'pointer', 
-                borderRadius: '6px',
-                background: activeSceneId === scene.id ? '#ebe3d5' : 'transparent',
-                color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35',
-                borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent',
-                transition: 'all 0.2s'
+                aspectRatio: '3/4', 
+                border: '2px dashed #bfaea1', 
+                borderRadius: '8px', 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                background: '#f5f0e6'
               }}
             >
-              {scene.title}
+              <div style={{ fontSize: '3rem', color: '#7a4b3a', marginBottom: '10px' }}>+</div>
+              <div style={{ fontSize: '1.1rem', color: '#5c3a21', fontWeight: 'bold' }}>Новая книга</div>
             </div>
-          ))}
-          
-          <button 
-            onClick={addNewScene}
-            style={{ width: '100%', padding: '10px', marginTop: '15px', border: '1px dashed #bfaea1', background: 'transparent', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer', fontFamily: 'sans-serif' }}
-          >
-            + Добавить сцену
-          </button>
-        </aside>
 
-        {/* ЦЕНТРАЛЬНАЯ ПАНЕЛЬ: Редактор */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fdfbf7' }}>
-          <textarea
-            value={activeScene?.text || ''}
-            onChange={(e) => handleTextChange(e.target.value)}
-            placeholder="Начните писать вашу историю здесь..."
-            style={{ 
-              flex: 1, 
-              border: 'none', 
-              outline: 'none', 
-              padding: '50px 10%', 
-              fontSize: '1.2rem', 
-              lineHeight: '1.8', 
-              resize: 'none',
-              background: 'transparent',
-              color: '#2c241b',
-              fontFamily: 'Georgia, serif'
-            }}
-          />
-        </main>
+            {/* Карточки существующих книг */}
+            {books.map(book => (
+              <div 
+                key={book.id}
+                className="book-card"
+                onMouseEnter={() => setHoveredBookId(book.id)}
+                onMouseLeave={() => setHoveredBookId(null)}
+                onClick={() => openBook(book.id)}
+                style={{ 
+                  aspectRatio: '3/4', 
+                  background: '#ffffff', 
+                  borderRadius: '8px', 
+                  border: '1px solid #dcd3c1',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'flex-end',
+                  position: 'relative',
+                  overflow: 'hidden'
+                }}
+              >
+                {/* Название (всегда видно) */}
+                <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b', lineHeight: '1.3' }}>{book.title}</h3>
+                
+                {/* Информация при наведении */}
+                {hoveredBookId === book.id && (
+                  <div className="hover-info" style={{ 
+                    position: 'absolute', 
+                    top: 0, left: 0, right: 0, bottom: 0, 
+                    background: 'rgba(253, 251, 247, 0.95)', 
+                    padding: '20px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    justifyContent: 'center',
+                    fontSize: '0.9rem',
+                    color: '#5c4a3d'
+                  }}>
+                    <p style={{ margin: '0 0 8px 0' }}><strong>Жанр:</strong> {book.genre}</p>
+                    <p style={{ margin: '0 0 8px 0' }}><strong>Статус:</strong> {book.status}</p>
+                    <p style={{ margin: 0 }}><strong>Слов:</strong> {book.words.toLocaleString()}</p>
+                    <div style={{ marginTop: '20px', fontSize: '0.8rem', color: '#7a4b3a', textAlign: 'center', borderTop: '1px solid #dcd3c1', paddingTop: '10px' }}>
+                      Нажмите, чтобы открыть
+                    </div>
+                  </div>
+                )}
+              </div>
+            ))}
 
-        {/* ПРАВАЯ ПАНЕЛЬ: Контекст и ИИ */}
-        <aside style={{ width: '320px', borderLeft: '1px solid #dcd3c1', background: '#f5f0e6', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '20px', borderBottom: '1px solid #dcd3c1' }}>
-            <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: 0, letterSpacing: '1px' }}>ИИ-Соавтор</h3>
           </div>
-          
-          <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
-            <p style={{ fontSize: '0.9rem', color: '#5c4a3d', lineHeight: '1.5', marginTop: 0 }}>
-              Выделите текст или опишите, что должно произойти дальше. ИИ поможет продолжить сцену, не нарушая канон.
-            </p>
-            
-            <textarea 
-              placeholder="Например: Опиши, как Энн замечает Тёмного рыцаря в толпе..." 
-              style={{ width: '100%', height: '100px', padding: '12px', borderRadius: '6px', border: '1px solid #dcd3c1', marginBottom: '15px', boxSizing: 'border-box', background: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', resize: 'none' }}
-            />
-            
-            <button style={{ width: '100%', padding: '12px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontFamily: 'sans-serif', fontWeight: 'bold', fontSize: '1rem' }}>
-              ✨ Сгенерировать
+        </div>
+      )}
+
+      {/* === ЭКРАН РЕДАКТОРА (Упрощенный для теста) === */}
+      {view === 'editor' && (
+        <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+          <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', padding: '0 20px', background: '#f5f0e6' }}>
+            <button 
+              onClick={() => setView('library')}
+              style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem', marginRight: '20px' }}
+            >
+              ← В библиотеку
             </button>
-          </div>
-        </aside>
-
-      </div>
+            <div style={{ fontWeight: 'bold', color: '#5c3a21' }}>Редактор: {books.find(b => b.id === activeBookId)?.title}</div>
+          </header>
+          <main style={{ flex: 1, padding: '40px', display: 'flex', justifyContent: 'center' }}>
+            <textarea 
+              placeholder="Начните писать..." 
+              style={{ width: '100%', maxWidth: '800px', height: '100%', border: 'none', outline: 'none', background: 'transparent', fontSize: '1.2rem', lineHeight: '1.8', resize: 'none', fontFamily: 'Georgia, serif' }}
+            />
+          </main>
+        </div>
+      )}
     </div>
   )
 }
-
-export default App
