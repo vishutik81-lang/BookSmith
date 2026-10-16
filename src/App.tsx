@@ -4,22 +4,60 @@ export default function App() {
   const [view, setView] = useState('library') // 'library' или 'editor'
   const [hoveredBookId, setHoveredBookId] = useState(null)
   
-  // Локальные данные для демонстрации
+  // Локальные данные
   const [books, setBooks] = useState([
     { id: 1, title: 'Тени над портом', status: 'В работе', genre: 'Тёмное фэнтези', words: 12450 },
     { id: 2, title: 'Хроники Арканума', status: 'Готова', genre: 'Научпоп', words: 45000 },
   ])
+
+  const [activeBookId, setActiveBookId] = useState(null)
+
+  // Функция создания новой книги
+  const handleCreateBook = async () => {
+    // 1. Спрашиваем название
+    const title = window.prompt('Как назовем новую книгу?');
+    
+    // Если нажали "Отмена" или оставили пустым — выходим
+    if (!title || title.trim() === '') return; 
+
+    try {
+      // 2. Отправляем запрос на наш сервер (перенаправление)
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description: 'Новый проект' }),
+      });
+      
+      const data = await res.json();
+
+      // 3. Если сервер вернул созданную книгу, добавляем её в список
+      if (data.project) {
+        setBooks([...books, {
+          id: data.project.id, // Настоящий UUID из базы данных!
+          title: data.project.title,
+          status: 'В работе',
+          genre: 'Не указан',
+          words: 0
+        }]);
+        
+        // Сразу открываем редактор для новой книги
+        setActiveBookId(data.project.id);
+        setView('editor');
+      } else {
+        alert('Ошибка: ' + data.error);
+      }
+    } catch (error) {
+      alert('Ошибка соединения с сервером: ' + error.message);
+    }
+  }
 
   const openBook = (id) => {
     setActiveBookId(id)
     setView('editor')
   }
 
-  const [activeBookId, setActiveBookId] = useState(null)
-
   return (
     <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
-      {/* Стили для hover-эффектов (так как inline стили не поддерживают :hover) */}
       <style>{`
         .book-card { transition: all 0.2s ease; cursor: pointer; }
         .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(92, 58, 33, 0.15); }
@@ -33,16 +71,16 @@ export default function App() {
       {view === 'library' && (
         <div style={{ padding: '40px 10%', maxWidth: '1200px', margin: '0 auto' }}>
           <header style={{ marginBottom: '40px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px' }}>
-            <h1 style={{ fontSize: '2.5rem', color: '#5c3a21', margin: 0 }}> Моя Библиотека</h1>
+            <h1 style={{ fontSize: '2.5rem', color: '#5c3a21', margin: 0 }}>Моя Библиотека</h1>
             <p style={{ color: '#7a6b5d', marginTop: '10px' }}>Ваши проекты, черновики и готовые книги</p>
           </header>
 
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '25px' }}>
             
-            {/* Карточка создания новой книги (всегда первая) */}
+            {/* Карточка создания новой книги */}
             <div 
               className="create-card"
-              onClick={() => alert('Здесь будет создание новой книги в БД!')}
+              onClick={handleCreateBook}
               style={{ 
                 aspectRatio: '3/4', 
                 border: '2px dashed #bfaea1', 
@@ -79,10 +117,8 @@ export default function App() {
                   overflow: 'hidden'
                 }}
               >
-                {/* Название (всегда видно) */}
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b', lineHeight: '1.3' }}>{book.title}</h3>
                 
-                {/* Информация при наведении */}
                 {hoveredBookId === book.id && (
                   <div className="hover-info" style={{ 
                     position: 'absolute', 
@@ -110,7 +146,7 @@ export default function App() {
         </div>
       )}
 
-      {/* === ЭКРАН РЕДАКТОРА (Упрощенный для теста) === */}
+      {/* === ЭКРАН РЕДАКТОРА === */}
       {view === 'editor' && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
           <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', padding: '0 20px', background: '#f5f0e6' }}>
