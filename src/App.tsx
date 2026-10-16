@@ -1,28 +1,57 @@
 import { useState } from 'react'
 
 function App() {
-  // Локальное хранилище сцен (у каждой свой текст!)
+  // Локальное хранилище сцен
   const [scenes, setScenes] = useState([
     { id: 1, title: 'Сцена 1: Порт', text: 'Шторм усиливался, и запах соли бил в нос...' },
     { id: 2, title: 'Сцена 2: Таверна', text: '' },
   ])
   
   const [activeSceneId, setActiveSceneId] = useState(1)
+  // Состояние для кнопки сохранения
+  const [saveStatus, setSaveStatus] = useState('idle') // 'idle', 'saving', 'saved'
 
-  // Находим активную сцену
   const activeScene = scenes.find(s => s.id === activeSceneId)
 
-  // Функция обновления текста (кладет текст в карман нужной сцены)
   const handleTextChange = (newText) => {
     setScenes(scenes.map(s => s.id === activeSceneId ? { ...s, text: newText } : s))
+    // Если пользователь начал печатать после сохранения, сбрасываем статус
+    if (saveStatus === 'saved') setSaveStatus('idle')
   }
 
-  // Функция добавления новой сцены
   const addNewScene = () => {
     const newId = scenes.length > 0 ? Math.max(...scenes.map(s => s.id)) + 1 : 1
     const newScene = { id: newId, title: `Новая сцена ${newId}`, text: '' }
     setScenes([...scenes, newScene])
     setActiveSceneId(newId)
+  }
+
+  // Логика "Тихой галочки"
+  const handleSave = () => {
+    setSaveStatus('saving')
+    
+    // Имитация задержки сети (800мс)
+    setTimeout(() => {
+      setSaveStatus('saved')
+      
+      // Возврат в исходное состояние через 2 секунды
+      setTimeout(() => {
+        setSaveStatus('idle')
+      }, 2000)
+    }, 800)
+  }
+
+  // Динамические стили и текст кнопки
+  const getButtonStyles = () => {
+    if (saveStatus === 'saved') return { background: '#5c7a5c', cursor: 'default' } // Приглушенный зеленый
+    if (saveStatus === 'saving') return { opacity: 0.7, cursor: 'wait' }
+    return { background: '#7a4b3a', cursor: 'pointer' } // Исходный коричневый
+  }
+
+  const getButtonText = () => {
+    if (saveStatus === 'saving') return 'Сохранение...'
+    if (saveStatus === 'saved') return '✓ Сохранено'
+    return 'Сохранить в БД'
   }
 
   return (
@@ -34,8 +63,21 @@ function App() {
         <div style={{ fontSize: '0.9rem', color: '#7a6b5d' }}>
           {activeScene?.title} • {activeScene?.text.split(/\s+/).filter(w => w.length > 0).length} слов
         </div>
-        <button style={{ padding: '6px 16px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '4px', cursor: 'pointer', fontFamily: 'sans-serif', fontSize: '0.9rem' }}>
-          Сохранить в БД
+        <button 
+          onClick={handleSave}
+          disabled={saveStatus !== 'idle'}
+          style={{ 
+            padding: '6px 16px', 
+            border: 'none', 
+            borderRadius: '4px', 
+            color: '#fdfbf7', 
+            fontFamily: 'sans-serif', 
+            fontSize: '0.9rem',
+            transition: 'all 0.3s ease',
+            ...getButtonStyles()
+          }}
+        >
+          {getButtonText()}
         </button>
       </header>
 
