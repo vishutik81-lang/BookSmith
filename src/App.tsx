@@ -1,14 +1,32 @@
 import { useState, useEffect } from 'react'
 
 function App() {
+  // --- Состояния для теста Базы Данных ---
+  const [dbMessage, setDbMessage] = useState('')
+
+  const testDatabase = async () => {
+    setDbMessage('Подключение к базе...')
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Тестовая Книга', description: 'Проверка связи с Supabase' }),
+      })
+      const data = await res.json()
+      setDbMessage(JSON.stringify(data, null, 2))
+    } catch (e: any) {
+      setDbMessage('Ошибка: ' + e.message)
+    }
+  }
+
+  // --- Состояния для Генератора ИИ ---
   const [prompt, setPrompt] = useState('')
   const [result, setResult] = useState('')
   const [usedModel, setUsedModel] = useState('')
   const [loading, setLoading] = useState(false)
-  const [models, setModels] = useState([])
+  const [models, setModels] = useState<any[]>([])
   const [selectedModelId, setSelectedModelId] = useState('')
 
-  // Загружаем список моделей при открытии страницы
   useEffect(() => {
     fetch('/api/models')
       .then(res => res.json())
@@ -40,11 +58,30 @@ function App() {
     setLoading(false)
   }
 
-  // Находим описание выбранной модели
   const currentModelDesc = models.find(m => m.id === selectedModelId)?.description || ''
 
   return (
     <div style={{ padding: '2rem', maxWidth: '700px', margin: '0 auto', fontFamily: 'system-ui, sans-serif' }}>
+      
+      {/* --- Блок теста Базы Данных --- */}
+      <div style={{ marginBottom: '30px', padding: '20px', background: '#e0f2fe', borderRadius: '12px', border: '1px solid #7dd3fc' }}>
+        <h2 style={{ marginTop: 0, color: '#0369a1' }}>🗄️ Проверка Supabase</h2>
+        <button 
+          onClick={testDatabase}
+          style={{ padding: '10px 20px', fontSize: '16px', background: '#0284c7', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}
+        >
+          🧪 Создать тестовый проект в БД
+        </button>
+        {dbMessage && (
+          <pre style={{ marginTop: '15px', padding: '10px', background: '#fff', borderRadius: '6px', fontSize: '12px', overflowX: 'auto', color: '#333' }}>
+            {dbMessage}
+          </pre>
+        )}
+      </div>
+
+      <hr style={{ border: 'none', borderTop: '2px solid #e2e8f0', marginBottom: '30px' }} />
+
+      {/* --- Блок Генератора ИИ --- */}
       <h1 style={{ color: '#2563eb', marginBottom: '20px' }}>📚 BookSmith - Генератор</h1>
       
       <div style={{ marginBottom: '15px' }}>
