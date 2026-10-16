@@ -1,135 +1,118 @@
 import { useState } from 'react'
 
-// Временные данные для демонстрации структуры
-const mockStructure = [
-  { id: 1, title: 'Глава 1: Начало пути', scenes: [{ id: 101, title: 'Сцена 1: Порт' }, { id: 102, title: 'Сцена 2: Таверна' }] },
-  { id: 2, title: 'Глава 2: Тёмный рыцарь', scenes: [{ id: 201, title: 'Сцена 1: Встреча' }] },
-]
-
 function App() {
-  const [activeScene, setActiveScene] = useState(101)
-  const [text, setText] = useState('')
-  const [rightPanelTab, setRightPanelTab] = useState<'context' | 'ai'>('context')
+  // Локальное хранилище сцен (у каждой свой текст!)
+  const [scenes, setScenes] = useState([
+    { id: 1, title: 'Сцена 1: Порт', text: 'Шторм усиливался, и запах соли бил в нос...' },
+    { id: 2, title: 'Сцена 2: Таверна', text: '' },
+  ])
+  
+  const [activeSceneId, setActiveSceneId] = useState(1)
 
-  const currentSceneTitle = mockStructure
-    .flatMap(g => g.scenes)
-    .find(s => s.id === activeScene)?.title || 'Новая сцена'
+  // Находим активную сцену
+  const activeScene = scenes.find(s => s.id === activeSceneId)
+
+  // Функция обновления текста (кладет текст в карман нужной сцены)
+  const handleTextChange = (newText) => {
+    setScenes(scenes.map(s => s.id === activeSceneId ? { ...s, text: newText } : s))
+  }
+
+  // Функция добавления новой сцены
+  const addNewScene = () => {
+    const newId = scenes.length > 0 ? Math.max(...scenes.map(s => s.id)) + 1 : 1
+    const newScene = { id: newId, title: `Новая сцена ${newId}`, text: '' }
+    setScenes([...scenes, newScene])
+    setActiveSceneId(newId)
+  }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'system-ui, -apple-system, sans-serif', color: '#1e293b' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', fontFamily: 'Georgia, "Times New Roman", serif', color: '#2c241b', background: '#fdfbf7' }}>
       
-      {/* Верхняя панель (Header) */}
-      <header style={{ height: '50px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#ffffff' }}>
-        <div style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>📚 BookSmith: Тестовый Проект</div>
-        <div style={{ fontSize: '0.9rem', color: '#64748b' }}>
-          {currentSceneTitle} • {text.split(/\s+/).filter(w => w.length > 0).length} слов
+      {/* Верхняя панель */}
+      <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
+        <div style={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#5c3a21' }}>📚 BookSmith</div>
+        <div style={{ fontSize: '0.9rem', color: '#7a6b5d' }}>
+          {activeScene?.title} • {activeScene?.text.split(/\s+/).filter(w => w.length > 0).length} слов
         </div>
-        <button style={{ padding: '6px 12px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '0.9rem' }}>
-          Сохранить
+        <button style={{ padding: '6px 16px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '4px', cursor: 'pointer', fontFamily: 'sans-serif', fontSize: '0.9rem' }}>
+          Сохранить в БД
         </button>
       </header>
 
-      {/* Основная рабочая область (3 панели) */}
+      {/* Основная рабочая область */}
       <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
         
-        {/* ЛЕВАЯ ПАНЕЛЬ: Структура книги */}
-        <aside style={{ width: '250px', borderRight: '1px solid #e2e8f0', background: '#f8fafc', overflowY: 'auto', padding: '10px' }}>
-          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#64748b', marginBottom: '10px' }}>Структура</h3>
-          {mockStructure.map(chapter => (
-            <div key={chapter.id} style={{ marginBottom: '15px' }}>
-              <div style={{ fontWeight: '600', fontSize: '0.9rem', marginBottom: '5px', color: '#334155' }}>{chapter.title}</div>
-              <div style={{ paddingLeft: '10px' }}>
-                {chapter.scenes.map(scene => (
-                  <div 
-                    key={scene.id}
-                    onClick={() => setActiveScene(scene.id)}
-                    style={{ 
-                      padding: '6px 8px', 
-                      fontSize: '0.85rem', 
-                      cursor: 'pointer', 
-                      borderRadius: '4px',
-                      background: activeScene === scene.id ? '#dbeafe' : 'transparent',
-                      color: activeScene === scene.id ? '#1e40af' : '#475569'
-                    }}
-                  >
-                    {scene.title}
-                  </div>
-                ))}
-              </div>
+        {/* ЛЕВАЯ ПАНЕЛЬ: Структура */}
+        <aside style={{ width: '260px', borderRight: '1px solid #dcd3c1', background: '#f5f0e6', overflowY: 'auto', padding: '15px' }}>
+          <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', marginBottom: '15px', letterSpacing: '1px' }}>Структура книги</h3>
+          
+          {scenes.map(scene => (
+            <div 
+              key={scene.id}
+              onClick={() => setActiveSceneId(scene.id)}
+              style={{ 
+                padding: '10px 12px', 
+                marginBottom: '8px',
+                cursor: 'pointer', 
+                borderRadius: '6px',
+                background: activeSceneId === scene.id ? '#ebe3d5' : 'transparent',
+                color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35',
+                borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent',
+                transition: 'all 0.2s'
+              }}
+            >
+              {scene.title}
             </div>
           ))}
-          <button style={{ width: '100%', padding: '8px', marginTop: '10px', border: '1px dashed #cbd5e1', background: 'transparent', color: '#64748b', borderRadius: '6px', cursor: 'pointer' }}>
-            + Новая сцена
+          
+          <button 
+            onClick={addNewScene}
+            style={{ width: '100%', padding: '10px', marginTop: '15px', border: '1px dashed #bfaea1', background: 'transparent', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer', fontFamily: 'sans-serif' }}
+          >
+            + Добавить сцену
           </button>
         </aside>
 
-        {/* ЦЕНТРАЛЬНАЯ ПАНЕЛЬ: Редактор текста */}
-        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#ffffff' }}>
+        {/* ЦЕНТРАЛЬНАЯ ПАНЕЛЬ: Редактор */}
+        <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fdfbf7' }}>
           <textarea
-            value={text}
-            onChange={(e) => setText(e.target.value)}
-            placeholder="Начните писать здесь... (Поддержка Markdown будет добавлена позже)"
+            value={activeScene?.text || ''}
+            onChange={(e) => handleTextChange(e.target.value)}
+            placeholder="Начните писать вашу историю здесь..."
             style={{ 
               flex: 1, 
               border: 'none', 
               outline: 'none', 
-              padding: '40px', 
-              fontSize: '1.1rem', 
-              lineHeight: '1.7', 
+              padding: '50px 10%', 
+              fontSize: '1.2rem', 
+              lineHeight: '1.8', 
               resize: 'none',
+              background: 'transparent',
+              color: '#2c241b',
               fontFamily: 'Georgia, serif'
             }}
           />
         </main>
 
         {/* ПРАВАЯ ПАНЕЛЬ: Контекст и ИИ */}
-        <aside style={{ width: '300px', borderLeft: '1px solid #e2e8f0', background: '#f8fafc', display: 'flex', flexDirection: 'column' }}>
-          {/* Вкладки правой панели */}
-          <div style={{ display: 'flex', borderBottom: '1px solid #e2e8f0' }}>
-            <button 
-              onClick={() => setRightPanelTab('context')}
-              style={{ flex: 1, padding: '12px', border: 'none', background: rightPanelTab === 'context' ? '#ffffff' : 'transparent', borderBottom: rightPanelTab === 'context' ? '2px solid #2563eb' : 'none', cursor: 'pointer', fontWeight: '500' }}
-            >
-              Контекст
-            </button>
-            <button 
-              onClick={() => setRightPanelTab('ai')}
-              style={{ flex: 1, padding: '12px', border: 'none', background: rightPanelTab === 'ai' ? '#ffffff' : 'transparent', borderBottom: rightPanelTab === 'ai' ? '2px solid #2563eb' : 'none', cursor: 'pointer', fontWeight: '500' }}
-            >
-              ИИ-помощник
-            </button>
+        <aside style={{ width: '320px', borderLeft: '1px solid #dcd3c1', background: '#f5f0e6', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ padding: '20px', borderBottom: '1px solid #dcd3c1' }}>
+            <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: 0, letterSpacing: '1px' }}>ИИ-Соавтор</h3>
           </div>
-
-          {/* Содержимое правой панели */}
-          <div style={{ flex: 1, padding: '15px', overflowY: 'auto' }}>
-            {rightPanelTab === 'context' ? (
-              <div>
-                <h4 style={{ marginTop: 0, fontSize: '0.9rem', color: '#334155' }}>Персонажи в сцене</h4>
-                <div style={{ padding: '10px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0', marginBottom: '15px' }}>
-                  <div style={{ fontWeight: '600' }}>Энн</div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Статус: Активна, POV</div>
-                </div>
-                
-                <h4 style={{ fontSize: '0.9rem', color: '#334155' }}>Локация</h4>
-                <div style={{ padding: '10px', background: '#ffffff', borderRadius: '6px', border: '1px solid #e2e8f0' }}>
-                  <div style={{ fontWeight: '600' }}>Старый порт</div>
-                  <div style={{ fontSize: '0.8rem', color: '#64748b' }}>Атмосфера: Шторм, запах соли</div>
-                </div>
-              </div>
-            ) : (
-              <div>
-                <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '10px' }}>
-                  Здесь будет наш генератор. Выделите текст или напишите запрос, и ИИ поможет продолжить сцену.
-                </p>
-                <textarea 
-                  placeholder="Например: Опиши запах шторма..." 
-                  style={{ width: '100%', height: '80px', padding: '8px', borderRadius: '6px', border: '1px solid #cbd5e1', marginBottom: '10px', boxSizing: 'border-box' }}
-                />
-                <button style={{ width: '100%', padding: '8px', background: '#2563eb', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer' }}>
-                  Сгенерировать
-                </button>
-              </div>
-            )}
+          
+          <div style={{ flex: 1, padding: '20px', overflowY: 'auto' }}>
+            <p style={{ fontSize: '0.9rem', color: '#5c4a3d', lineHeight: '1.5', marginTop: 0 }}>
+              Выделите текст или опишите, что должно произойти дальше. ИИ поможет продолжить сцену, не нарушая канон.
+            </p>
+            
+            <textarea 
+              placeholder="Например: Опиши, как Энн замечает Тёмного рыцаря в толпе..." 
+              style={{ width: '100%', height: '100px', padding: '12px', borderRadius: '6px', border: '1px solid #dcd3c1', marginBottom: '15px', boxSizing: 'border-box', background: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', resize: 'none' }}
+            />
+            
+            <button style={{ width: '100%', padding: '12px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontFamily: 'sans-serif', fontWeight: 'bold', fontSize: '1rem' }}>
+              ✨ Сгенерировать
+            </button>
           </div>
         </aside>
 
