@@ -3,6 +3,7 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { generateText, AVAILABLE_MODELS } from './openrouter.js';
+   import { supabase } from './supabase.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -30,6 +31,27 @@ app.post('/api/generate', async (req, res) => {
   const result = await generateText(prompt, modelId);
   res.json(result);
 });
+   // Тестовый эндпоинт: Создание нового проекта
+   app.post('/api/projects', async (req, res) => {
+     try {
+       const { title, description } = req.body;
+       
+       const { data, error } = await supabase
+         .from('projects')
+         .insert([{ title, description }])
+         .select();
+
+       if (error) {
+         console.error('Ошибка Supabase:', error);
+         return res.status(500).json({ error: error.message });
+       }
+
+       res.json({ message: 'Проект успешно создан!', project: data[0] });
+     } catch (err) {
+       console.error('Ошибка сервера:', err);
+       res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+     }
+   });
 
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
