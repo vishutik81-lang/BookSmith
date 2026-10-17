@@ -5,24 +5,23 @@ export default function App() {
   const [hoveredBookId, setHoveredBookId] = useState(null)
   
   // Наша новая иерархическая структура данных
-  const [books, setBooks] = useState([
+   const [books, setBooks] = useState([
     {
-      id: 1,
-      title: 'Тени над портом',
+      id: 'ac4f331f-405d-4c93-8757-08e32b4d6530',
+      title: 'Тестовая книга',
       status: 'В работе',
       genre: 'Тёмное фэнтези',
       chapters: [
         {
-          id: 101,
-          title: 'Глава 1: Шторм',
+          id: 'ff61974d-a36a-45f9-bc1f-fb96572b67ad',
+          title: 'Глава 1',
           scenes: [
-            { id: 1001, title: 'Сцена 1: На берегу', text: 'Ветер бил в лицо, принося запах соли и гнили...' },
-            { id: 1002, title: 'Сцена 2: Таверна', text: '' }
+            { id: '5dc96b9e-5f1f-4f74-b1e1-a463cc18604b', title: 'Сцена 1', text: 'Старый текст...' }
           ]
         }
       ]
     }
-  ])
+  ]);
 
   const [activeBookId, setActiveBookId] = useState(null)
   const [activeChapterId, setActiveChapterId] = useState(null)
@@ -75,20 +74,20 @@ export default function App() {
   }
 
     // Функция создания новой книги с начальной структурой
-  const handleCreateBook = () => {
+    const handleCreateBook = () => {
     const title = window.prompt('Как назовем новую книгу?');
     if (title && title.trim() !== '') {
       const newBook = {
-        id: Date.now(),
+        id: 'ac4f331f-405d-4c93-8757-08e32b4d6530', 
         title: title,
         status: 'В работе',
         genre: 'Не указан',
         chapters: [
           {
-            id: Date.now() + 1,
+            id: 'ff61974d-a36a-45f9-bc1f-fb96572b67ad', 
             title: 'Глава 1',
             scenes: [
-              { id: Date.now() + 2, title: 'Сцена 1', text: '' }
+              { id: '5dc96b9e-5f1f-4f74-b1e1-a463cc18604b', title: 'Сцена 1', text: '' } 
             ]
           }
         ]
