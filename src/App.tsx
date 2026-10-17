@@ -474,34 +474,67 @@ export default function App() {
                 <button onClick={addChapter} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1.2rem' }}>+</button>
               </div>
               
-                           {activeBook.chapters.map(chapter => (
+                                         {activeBook.chapters.map(chapter => (
                 <div key={chapter.id} style={{ marginBottom: '15px' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#5c3a21', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    {editingChapterId === chapter.id ? (
+                  {editingChapterId === chapter.id ? (
+                    <div style={{ marginBottom: '5px' }}>
                       <input
                         type="text"
                         value={editingTitle}
                         onChange={(e) => setEditingTitle(e.target.value)}
-                        onBlur={() => handleUpdateChapterTitle(chapter.id, editingTitle)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleUpdateChapterTitle(chapter.id, editingTitle);
                           if (e.key === 'Escape') setEditingChapterId(null);
                         }}
                         autoFocus
                         style={{
-                          flex: 1,
-                          padding: '4px 8px',
+                          width: '100%',
+                          padding: '6px 8px',
                           border: '1px solid #7a4b3a',
                           borderRadius: '4px',
                           fontSize: '0.9rem',
                           fontFamily: 'Georgia, serif',
-                          outline: 'none'
+                          outline: 'none',
+                          fontWeight: 'bold',
+                          boxSizing: 'border-box'
                         }}
                       />
-                    ) : (
-                      <>
-                        <span style={{ flex: 1 }}>{chapter.title}</span>
-                                               <button
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                        <button
+                          onClick={() => handleUpdateChapterTitle(chapter.id, editingTitle)}
+                          style={{
+                            padding: '4px 10px',
+                            background: '#5c7a5c',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '3px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          ✓ Сохранить
+                        </button>
+                        <button
+                          onClick={() => setEditingChapterId(null)}
+                          style={{
+                            padding: '4px 10px',
+                            background: '#999',
+                            color: 'white',
+                            border: 'none',
+                            borderRadius: '3px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          ✗ Отмена
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#5c3a21', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ flex: 1 }}>{chapter.title}</span>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button
                           onClick={() => {
                             setEditingChapterId(chapter.id);
                             setEditingTitle(chapter.title);
@@ -514,7 +547,6 @@ export default function App() {
                             fontSize: '0.7rem',
                             padding: '2px 6px',
                             borderRadius: '3px',
-                            marginRight: '4px',
                             transition: 'all 0.2s'
                           }}
                           onMouseEnter={(e) => {
@@ -528,34 +560,67 @@ export default function App() {
                           ✏️ Изм.
                         </button>
                         <button onClick={() => addScene(chapter.id)} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>+</button>
-                      </>
-                    )}
-                  </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   {chapter.scenes.map(scene => (
-                    <div key={scene.id} style={{ display: 'flex', alignItems: 'center', marginLeft: '10px' }}>
+                    <div key={scene.id} style={{ marginLeft: '10px', marginBottom: '4px' }}>
                       {editingSceneId === scene.id ? (
-                        <input
-                          type="text"
-                          value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
-                          onBlur={() => handleUpdateSceneTitle(scene.id, editingTitle)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleUpdateSceneTitle(scene.id, editingTitle);
-                            if (e.key === 'Escape') setEditingSceneId(null);
-                          }}
-                          autoFocus
-                          style={{
-                            flex: 1,
-                            padding: '6px 10px',
-                            border: '1px solid #7a4b3a',
-                            borderRadius: '4px',
-                            fontSize: '0.85rem',
-                            fontFamily: 'Georgia, serif',
-                            outline: 'none'
-                          }}
-                        />
+                        <div>
+                          <input
+                            type="text"
+                            value={editingTitle}
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleUpdateSceneTitle(scene.id, editingTitle);
+                              if (e.key === 'Escape') setEditingSceneId(null);
+                            }}
+                            autoFocus
+                            style={{
+                              width: '100%',
+                              padding: '6px 10px',
+                              border: '1px solid #7a4b3a',
+                              borderRadius: '4px',
+                              fontSize: '0.85rem',
+                              fontFamily: 'Georgia, serif',
+                              outline: 'none',
+                              boxSizing: 'border-box'
+                            }}
+                          />
+                          <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
+                            <button
+                              onClick={() => handleUpdateSceneTitle(scene.id, editingTitle)}
+                              style={{
+                                padding: '3px 8px',
+                                background: '#5c7a5c',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '3px',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem'
+                              }}
+                            >
+                              ✓ Сохранить
+                            </button>
+                            <button
+                              onClick={() => setEditingSceneId(null)}
+                              style={{
+                                padding: '3px 8px',
+                                background: '#999',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '3px',
+                                cursor: 'pointer',
+                                fontSize: '0.7rem'
+                              }}
+                            >
+                              ✗ Отмена
+                            </button>
+                          </div>
+                        </div>
                       ) : (
-                        <>
+                        <div style={{ display: 'flex', alignItems: 'center' }}>
                           <div
                             className="tree-item"
                             onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id); }}
@@ -570,7 +635,7 @@ export default function App() {
                           >
                             {scene.title}
                           </div>
-                                                   <button
+                          <button
                             onClick={() => {
                               setEditingSceneId(scene.id);
                               setEditingTitle(scene.title);
@@ -595,7 +660,7 @@ export default function App() {
                           >
                             ✏️ Изм.
                           </button>
-                        </>
+                        </div>
                       )}
                     </div>
                   ))}
