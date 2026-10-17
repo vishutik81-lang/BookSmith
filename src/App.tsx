@@ -1,27 +1,48 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function App() {
   const [view, setView] = useState('library')
   const [hoveredBookId, setHoveredBookId] = useState(null)
   const [saveStatus, setSaveStatus] = useState('idle')
   
-  const [books, setBooks] = useState([
-    {
-      id: 'ac4f331f-405d-4c93-8757-08e32b4d6530',
-      title: 'Тестовая книга',
-      status: 'В работе',
-      genre: 'Тёмное фэнтези',
-      chapters: [
-        {
-          id: 'ff61974d-a36a-45f9-bc1f-fb96572b67ad',
-          title: 'Глава 1',
-          scenes: [
-            { id: '5dc96b9e-5f1f-4f74-b1e1-a463cc18604b', title: 'Сцена 1', text: 'Старый текст...' }
-          ]
+    const [books, setBooks] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+
+  // Загрузка книг из базы данных при старте
+  useEffect(() => {
+    const loadBooks = async () => {
+      try {
+        const res = await fetch('/api/projects')
+        const data = await res.json()
+        
+        if (data.projects) {
+          // Преобразуем данные из базы в формат, который понимает фронтенд
+          const loadedBooks = data.projects.map((p: any) => ({
+            id: p.id,
+            title: p.title,
+            status: 'В работе',
+            genre: p.description || 'Не указан',
+            chapters: (p.chapters || []).map((ch: any) => ({
+              id: ch.id,
+              title: ch.title,
+              scenes: (ch.scenes || []).map((s: any) => ({
+                id: s.id,
+                title: s.title,
+                text: s.body || ''
+              }))
+            }))
+          }))
+          setBooks(loadedBooks)
         }
-      ]
+      } catch (error) {
+        console.error('Ошибка загрузки книг:', error)
+      } finally {
+        setLoading(false)
+      }
     }
-  ])
+    
+    loadBooks()
+  }, [])
 
   const [activeBookId, setActiveBookId] = useState(null)
   const [activeChapterId, setActiveChapterId] = useState(null)
@@ -161,7 +182,11 @@ export default function App() {
         .tree-item { cursor: pointer; transition: background 0.2s; }
         .tree-item:hover { background: #ebe3d5; }
       `}</style>
-
+      {loading && (
+        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.2rem', color: '#7a6b5d' }}>
+          Загрузка библиотеки...
+        </div>
+      )}
       {view === 'library' && (
         <div style={{ padding: '40px 10%', maxWidth: '1200px', margin: '0 auto' }}>
           <header style={{ marginBottom: '40px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px' }}>
