@@ -107,7 +107,54 @@ app.patch('/api/scenes/:id', async (req, res) => {
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });
+// 5.5. Получение всех книг с главами и сценами
+app.get('/api/projects', async (req, res) => {
+  try {
+    // 1. Получаем все проекты
+    const { data: projects, error: projectsError } = await supabase
+      .from('projects')
+      .select('*')
+      .order('created_at', { ascending: false });
 
+    if (projectsError) throw projectsError;
+
+    // 2. Для каждого проекта загружаем главы и сцены
+    const projectsWithDetails = await Promise.all(
+      projects.map(async (project) => {
+        const { data: chapters } = await supabase
+          .from('chapters')
+          .select('*')
+          .eq('project_id', project.id)
+          .order('sort_order', { ascending: true });
+
+        const chaptersWithScenes = await Promise.all(
+          (chapters || []).map(async (chapter) => {
+            const { data: scenes } = await supabase
+              .from('scenes')
+              .select('*')
+              .eq('chapter_id', chapter.id)
+              .order('sort_order', { ascending: true });
+
+            return {
+              ...chapter,
+              scenes: scenes || []
+            };
+          })
+        );
+
+        return {
+          ...project,
+          chapters: chaptersWithScenes
+        };
+      })
+    );
+
+    res.json({ projects: projectsWithDetails });
+  } catch (err) {
+    console.error('Ошибка загрузки проектов:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // 6. Отдача фронтенда
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
