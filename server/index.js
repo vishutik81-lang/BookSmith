@@ -36,23 +36,52 @@ app.post('/api/generate', async (req, res) => {
   }
 });
 
-// 4. Создание нового проекта
+// 4. Создание нового проекта + глава + сцена (всё сразу)
 app.post('/api/projects', async (req, res) => {
   try {
     const { title, description } = req.body;
-    const { data, error } = await supabase
+    
+    // 1. Создаём проект
+    const { data: project, error: projectError } = await supabase
       .from('projects')
       .insert([{ title, description }])
-      .select();
+      .select()
+      .single();
 
-    if (error) {
-      console.error('Ошибка Supabase:', error);
-      return res.status(500).json({ error: error.message });
-    }
-    res.json({ message: 'Проект успешно создан!', project: data[0] });
+    if (projectError) throw projectError;
+
+    // 2. Создаём первую главу
+    const { data: chapter, error: chapterError } = await supabase
+      .from('chapters')
+      .insert([{ project_id: project.id, title: 'Глава 1', sort_order: 0 }])
+      .select()
+      .single();
+
+    if (chapterError) throw chapterError;
+
+    // 3. Создаём первую сцену
+    const { data: scene, error: sceneError } = await supabase
+      .from('scenes')
+      .insert([{ chapter_id: chapter.id, title: 'Сцена 1', body: '', sort_order: 0 }])
+      .select()
+      .single();
+
+    if (sceneError) throw sceneError;
+
+    // 4. Возвращаем всю структуру клиенту
+    res.json({ 
+      message: 'Проект создан!', 
+      project: {
+        ...project,
+        chapters: [{
+          ...chapter,
+          scenes: [scene]
+        }]
+      }
+    });
   } catch (err) {
-    console.error('Ошибка сервера:', err);
-    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    console.error('Ошибка создания проекта:', err);
+    res.status(500).json({ error: err.message });
   }
 });
 
