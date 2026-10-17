@@ -212,6 +212,25 @@ app.patch('/api/scenes/title/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// 5.9. Обновление названия проекта
+app.patch('/api/projects/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+
+    const { data, error } = await supabase
+      .from('projects')
+      .update({ title: title })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    res.json({ success: true, project: data[0] });
+  } catch (err) {
+    console.error('Ошибка обновления проекта:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // 6. Отдача фронтенда
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
