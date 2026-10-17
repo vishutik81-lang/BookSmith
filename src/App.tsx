@@ -78,7 +78,7 @@ export default function App() {
   };
 
   // Создание книги с отправкой на сервер
-  const handleCreateBook = async () => {
+    const handleCreateBook = async () => {
     const title = window.prompt('Как назовем новую книгу?');
     if (!title || title.trim() === '') return;
 
@@ -92,15 +92,27 @@ export default function App() {
       const data = await res.json();
       
       if (data.project) {
+        // Используем структуру, которую вернул сервер (с реальными UUID!)
         const newBook = {
           id: data.project.id,
           title: data.project.title,
           status: 'В работе',
           genre: 'Не указан',
-          chapters: []
+          chapters: data.project.chapters.map((ch: any) => ({
+            id: ch.id,
+            title: ch.title,
+            scenes: ch.scenes.map((s: any) => ({
+              id: s.id,
+              title: s.title,
+              text: s.body || ''
+            }))
+          }))
         };
+        
         setBooks([...books, newBook]);
-        setActiveBookId(data.project.id);
+        setActiveBookId(newBook.id);
+        setActiveChapterId(newBook.chapters[0].id);
+        setActiveSceneId(newBook.chapters[0].scenes[0].id);
         setView('editor');
       } else {
         alert('Ошибка создания: ' + data.error);
