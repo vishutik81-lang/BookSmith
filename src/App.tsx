@@ -5,6 +5,7 @@ export default function App() {
     const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
+    const [editingBookId, setEditingBookId] = useState<string | null>(null)
   const [hoveredBookId, setHoveredBookId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState('idle')
   
@@ -245,6 +246,29 @@ export default function App() {
       alert('Ошибка соединения: ' + error.message);
     }
   };
+        // Обновление названия книги
+  const handleUpdateBookTitle = async (bookId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    
+    try {
+      const res = await fetch(`/api/projects/${bookId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setBooks(books.map(b => b.id === bookId ? { ...b, title: newTitle } : b));
+        setEditingBookId(null);
+      } else {
+        alert('Ошибка обновления: ' + data.error);
+      }
+    } catch (error) {
+      alert('Ошибка соединения: ' + error.message);
+    }
+  };
       
       const data = await res.json();
       
@@ -354,9 +378,90 @@ export default function App() {
 
       {!loading && view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-          <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
+                    <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
             <button onClick={() => setView('library')} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>← Библиотека</button>
-            <div style={{ fontWeight: 'bold', color: '#5c3a21' }}>{activeBook.title}</div>
+            
+            {editingBookId === activeBook.id ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="text"
+                  value={editingTitle}
+                  onChange={(e) => setEditingTitle(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleUpdateBookTitle(activeBook.id, editingTitle);
+                    if (e.key === 'Escape') setEditingBookId(null);
+                  }}
+                  autoFocus
+                  style={{
+                    padding: '4px 8px',
+                    border: '1px solid #7a4b3a',
+                    borderRadius: '4px',
+                    fontSize: '1rem',
+                    fontFamily: 'Georgia, serif',
+                    outline: 'none',
+                    fontWeight: 'bold'
+                  }}
+                />
+                <button
+                  onClick={() => handleUpdateBookTitle(activeBook.id, editingTitle)}
+                  style={{
+                    padding: '4px 12px',
+                    background: '#5c7a5c',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  ✓ Сохранить
+                </button>
+                <button
+                  onClick={() => setEditingBookId(null)}
+                  style={{
+                    padding: '4px 12px',
+                    background: '#999',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '4px',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem'
+                  }}
+                >
+                  ✗ Отмена
+                </button>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontWeight: 'bold', color: '#5c3a21' }}>{activeBook.title}</div>
+                <button
+                  onClick={() => {
+                    setEditingBookId(activeBook.id);
+                    setEditingTitle(activeBook.title);
+                  }}
+                  style={{
+                    background: 'none',
+                    border: '1px solid #dcd3c1',
+                    color: '#7a4b3a',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    padding: '2px 8px',
+                    borderRadius: '4px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = '#ebe3d5';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'none';
+                  }}
+                  title="Переименовать книгу"
+                >
+                  ✏️ Изменить
+                </button>
+              </div>
+            )}
+            
             <button onClick={handleSave} disabled={saveStatus !== 'idle'} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', color: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', background: saveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', cursor: saveStatus === 'idle' ? 'pointer' : 'default', transition: 'all 0.3s ease' }}>
               {saveStatus === 'saving' ? 'Сохранение...' : saveStatus === 'saved' ? '✓ Сохранено' : 'Сохранить'}
             </button>
@@ -396,26 +501,31 @@ export default function App() {
                     ) : (
                       <>
                         <span style={{ flex: 1 }}>{chapter.title}</span>
-                        <button
+                                               <button
                           onClick={() => {
                             setEditingChapterId(chapter.id);
                             setEditingTitle(chapter.title);
                           }}
                           style={{
                             background: 'none',
-                            border: 'none',
-                            color: '#7a6b5d',
+                            border: '1px solid #dcd3c1',
+                            color: '#7a4b3a',
                             cursor: 'pointer',
-                            fontSize: '0.9rem',
+                            fontSize: '0.7rem',
                             padding: '2px 6px',
-                            opacity: 0.6,
-                            transition: 'opacity 0.2s'
+                            borderRadius: '3px',
+                            marginRight: '4px',
+                            transition: 'all 0.2s'
                           }}
-                          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = '#ebe3d5';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'none';
+                          }}
                           title="Переименовать главу"
                         >
-                          ✏️
+                          ✏️ Изм.
                         </button>
                         <button onClick={() => addScene(chapter.id)} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>+</button>
                       </>
@@ -460,26 +570,30 @@ export default function App() {
                           >
                             {scene.title}
                           </div>
-                          <button
+                                                   <button
                             onClick={() => {
                               setEditingSceneId(scene.id);
                               setEditingTitle(scene.title);
                             }}
                             style={{
                               background: 'none',
-                              border: 'none',
-                              color: '#7a6b5d',
+                              border: '1px solid #dcd3c1',
+                              color: '#7a4b3a',
                               cursor: 'pointer',
-                              fontSize: '0.8rem',
+                              fontSize: '0.7rem',
                               padding: '2px 6px',
-                              opacity: 0.6,
-                              transition: 'opacity 0.2s'
+                              borderRadius: '3px',
+                              transition: 'all 0.2s'
                             }}
-                            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
-                            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.background = '#ebe3d5';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.background = 'none';
+                            }}
                             title="Переименовать сцену"
                           >
-                            ✏️
+                            ✏️ Изм.
                           </button>
                         </>
                       )}
