@@ -155,6 +155,24 @@ app.get('/api/projects', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// 5.6. Удаление проекта (каскадно удаляет главы и сцены)
+app.delete('/api/projects/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    res.json({ success: true, message: 'Проект удалён' });
+  } catch (err) {
+    console.error('Ошибка удаления проекта:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // 6. Отдача фронтенда
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
