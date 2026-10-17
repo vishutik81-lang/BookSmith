@@ -173,6 +173,45 @@ app.delete('/api/projects/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// 5.7. Обновление названия главы
+app.patch('/api/chapters/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+
+    const { data, error } = await supabase
+      .from('chapters')
+      .update({ title: title })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    res.json({ success: true, chapter: data[0] });
+  } catch (err) {
+    console.error('Ошибка обновления главы:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5.8. Обновление названия сцены
+app.patch('/api/scenes/title/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title } = req.body;
+
+    const { data, error } = await supabase
+      .from('scenes')
+      .update({ title: title })
+      .eq('id', id)
+      .select();
+
+    if (error) throw error;
+    res.json({ success: true, scene: data[0] });
+  } catch (err) {
+    console.error('Ошибка обновления сцены:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // 6. Отдача фронтенда
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
