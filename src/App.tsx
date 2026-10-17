@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react'
 
 export default function App() {
   const [view, setView] = useState('library')
+    const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
+  const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
   const [hoveredBookId, setHoveredBookId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState('idle')
   
@@ -176,6 +179,72 @@ export default function App() {
       const res = await fetch(`/api/projects/${bookId}`, {
         method: 'DELETE',
       });
+        // Обновление названия главы
+  const handleUpdateChapterTitle = async (chapterId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    
+    try {
+      const res = await fetch(`/api/chapters/${chapterId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setBooks(books.map(book => {
+          if (book.id !== activeBookId) return book;
+          return {
+            ...book,
+            chapters: book.chapters.map(ch =>
+              ch.id === chapterId ? { ...ch, title: newTitle } : ch
+            )
+          };
+        }));
+        setEditingChapterId(null);
+      } else {
+        alert('Ошибка обновления: ' + data.error);
+      }
+    } catch (error) {
+      alert('Ошибка соединения: ' + error.message);
+    }
+  };
+
+  // Обновление названия сцены
+  const handleUpdateSceneTitle = async (sceneId: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+    
+    try {
+      const res = await fetch(`/api/scenes/title/${sceneId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setBooks(books.map(book => {
+          if (book.id !== activeBookId) return book;
+          return {
+            ...book,
+            chapters: book.chapters.map(ch => ({
+              ...ch,
+              scenes: ch.scenes.map(s =>
+                s.id === sceneId ? { ...s, title: newTitle } : s
+              )
+            }))
+          };
+        }));
+        setEditingSceneId(null);
+      } else {
+        alert('Ошибка обновления: ' + data.error);
+      }
+    } catch (error) {
+      alert('Ошибка соединения: ' + error.message);
+    }
+  };
       
       const data = await res.json();
       
@@ -300,15 +369,120 @@ export default function App() {
                 <button onClick={addChapter} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1.2rem' }}>+</button>
               </div>
               
-              {activeBook.chapters.map(chapter => (
+                           {activeBook.chapters.map(chapter => (
                 <div key={chapter.id} style={{ marginBottom: '15px' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#5c3a21', marginBottom: '5px', display: 'flex', justifyContent: 'space-between' }}>
-                    {chapter.title}
-                    <button onClick={() => addScene(chapter.id)} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>+</button>
+                  <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#5c3a21', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    {editingChapterId === chapter.id ? (
+                      <input
+                        type="text"
+                        value={editingTitle}
+                        onChange={(e) => setEditingTitle(e.target.value)}
+                        onBlur={() => handleUpdateChapterTitle(chapter.id, editingTitle)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') handleUpdateChapterTitle(chapter.id, editingTitle);
+                          if (e.key === 'Escape') setEditingChapterId(null);
+                        }}
+                        autoFocus
+                        style={{
+                          flex: 1,
+                          padding: '4px 8px',
+                          border: '1px solid #7a4b3a',
+                          borderRadius: '4px',
+                          fontSize: '0.9rem',
+                          fontFamily: 'Georgia, serif',
+                          outline: 'none'
+                        }}
+                      />
+                    ) : (
+                      <>
+                        <span style={{ flex: 1 }}>{chapter.title}</span>
+                        <button
+                          onClick={() => {
+                            setEditingChapterId(chapter.id);
+                            setEditingTitle(chapter.title);
+                          }}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#7a6b5d',
+                            cursor: 'pointer',
+                            fontSize: '0.9rem',
+                            padding: '2px 6px',
+                            opacity: 0.6,
+                            transition: 'opacity 0.2s'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                          onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                          title="Переименовать главу"
+                        >
+                          ✏️
+                        </button>
+                        <button onClick={() => addScene(chapter.id)} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>+</button>
+                      </>
+                    )}
                   </div>
                   {chapter.scenes.map(scene => (
-                    <div key={scene.id} className="tree-item" onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id); }} style={{ padding: '6px 10px', marginLeft: '10px', borderRadius: '4px', fontSize: '0.85rem', borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent', color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35' }}>
-                      {scene.title}
+                    <div key={scene.id} style={{ display: 'flex', alignItems: 'center', marginLeft: '10px' }}>
+                      {editingSceneId === scene.id ? (
+                        <input
+                          type="text"
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          onBlur={() => handleUpdateSceneTitle(scene.id, editingTitle)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleUpdateSceneTitle(scene.id, editingTitle);
+                            if (e.key === 'Escape') setEditingSceneId(null);
+                          }}
+                          autoFocus
+                          style={{
+                            flex: 1,
+                            padding: '6px 10px',
+                            border: '1px solid #7a4b3a',
+                            borderRadius: '4px',
+                            fontSize: '0.85rem',
+                            fontFamily: 'Georgia, serif',
+                            outline: 'none'
+                          }}
+                        />
+                      ) : (
+                        <>
+                          <div
+                            className="tree-item"
+                            onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id); }}
+                            style={{
+                              flex: 1,
+                              padding: '6px 10px',
+                              borderRadius: '4px',
+                              fontSize: '0.85rem',
+                              borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent',
+                              color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35'
+                            }}
+                          >
+                            {scene.title}
+                          </div>
+                          <button
+                            onClick={() => {
+                              setEditingSceneId(scene.id);
+                              setEditingTitle(scene.title);
+                            }}
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: '#7a6b5d',
+                              cursor: 'pointer',
+                              fontSize: '0.8rem',
+                              padding: '2px 6px',
+                              opacity: 0.6,
+                              transition: 'opacity 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.opacity = '1'}
+                            onMouseLeave={(e) => e.currentTarget.style.opacity = '0.6'}
+                            title="Переименовать сцену"
+                          >
+                            ✏️
+                          </button>
+                        </>
+                      )}
                     </div>
                   ))}
                 </div>
