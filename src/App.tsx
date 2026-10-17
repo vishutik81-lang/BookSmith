@@ -3,9 +3,9 @@ import { useState } from 'react'
 export default function App() {
   const [view, setView] = useState('library')
   const [hoveredBookId, setHoveredBookId] = useState(null)
+  const [saveStatus, setSaveStatus] = useState('idle')
   
-  // Наша новая иерархическая структура данных
-   const [books, setBooks] = useState([
+  const [books, setBooks] = useState([
     {
       id: 'ac4f331f-405d-4c93-8757-08e32b4d6530',
       title: 'Тестовая книга',
@@ -21,19 +21,25 @@ export default function App() {
         }
       ]
     }
-  ]);
+  ])
 
   const [activeBookId, setActiveBookId] = useState(null)
   const [activeChapterId, setActiveChapterId] = useState(null)
   const [activeSceneId, setActiveSceneId] = useState(null)
-  const [saveStatus, setSaveStatus] = useState('idle')
 
-  // Находим активные объекты
   const activeBook = books.find(b => b.id === activeBookId)
   const activeChapter = activeBook?.chapters.find(c => c.id === activeChapterId)
   const activeScene = activeChapter?.scenes.find(s => s.id === activeSceneId)
 
-  // Обновление текста сцены (глубокое обновление состояния)
+  // Генерация уникального UUID
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
   const handleTextChange = (newText) => {
     setBooks(books.map(book => {
       if (book.id !== activeBookId) return book;
@@ -51,17 +57,15 @@ export default function App() {
       };
     }));
     if (saveStatus === 'saved') setSaveStatus('idle');
-  }
+  };
 
-  // Добавление новой главы
   const addChapter = () => {
-    const newChapter = { id: Date.now(), title: `Новая глава`, scenes: [] };
+    const newChapter = { id: generateUUID(), title: 'Новая глава', scenes: [] };
     setBooks(books.map(b => b.id === activeBookId ? { ...b, chapters: [...b.chapters, newChapter] } : b));
-  }
+  };
 
-  // Добавление новой сцены в текущую главу
   const addScene = (chapterId) => {
-    const newScene = { id: Date.now(), title: `Новая сцена`, text: '' };
+    const newScene = { id: generateUUID(), title: 'Новая сцена', text: '' };
     setBooks(books.map(b => {
       if (b.id !== activeBookId) return b;
       return {
@@ -71,37 +75,67 @@ export default function App() {
     }));
     setActiveChapterId(chapterId);
     setActiveSceneId(newScene.id);
-  }
+  };
 
-    // Функция создания новой книги с начальной структурой
-    const handleCreateBook = () => {
+  // Создание книги с отправкой на сервер
+  const handleCreateBook = async () => {
     const title = window.prompt('Как назовем новую книгу?');
-    if (title && title.trim() !== '') {
-      const newBook = {
-        id: 'ac4f331f-405d-4c93-8757-08e32b4d6530', 
-        title: title,
-        status: 'В работе',
-        genre: 'Не указан',
-        chapters: [
-          {
-            id: 'ff61974d-a36a-45f9-bc1f-fb96572b67ad', 
-            title: 'Глава 1',
-            scenes: [
-              { id: '5dc96b9e-5f1f-4f74-b1e1-a463cc18604b', title: 'Сцена 1', text: '' } 
-            ]
-          }
-        ]
-      };
-      setBooks([...books, newBook]);
+    if (!title || title.trim() === '') return;
+
+    try {
+      const res = await fetch('/api/projects', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, description: 'Новый проект' }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.project) {
+        const newBook = {
+          id: data.project.id,
+          title: data.project.title,
+          status: 'В работе',
+          genre: 'Не указан',
+          chapters: []
+        };
+        setBooks([...books, newBook]);
+        setActiveBookId(data.project.id);
+        setView('editor');
+      } else {
+        alert('Ошибка создания: ' + data.error);
+      }
+    } catch (error) {
+      alert('Ошибка соединения: ' + error.message);
     }
   };
-  const handleSave = () => {
+
+  // Сохранение сцены в базу данных
+  const handleSave = async () => {
+    if (!activeScene) return;
     setSaveStatus('saving');
-    setTimeout(() => {
-      setSaveStatus('saved');
-      setTimeout(() => setSaveStatus('idle'), 2000);
-    }, 800);
-  }
+
+    try {
+      const res = await fetch(`/api/scenes/${activeScene.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ body: activeScene.text }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setSaveStatus('saved');
+        setTimeout(() => setSaveStatus('idle'), 2000);
+      } else {
+        alert('Ошибка сохранения: ' + data.error);
+        setSaveStatus('idle');
+      }
+    } catch (error) {
+      alert('Ошибка сети: ' + error.message);
+      setSaveStatus('idle');
+    }
+  };
 
   return (
     <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
@@ -116,7 +150,6 @@ export default function App() {
         .tree-item:hover { background: #ebe3d5; }
       `}</style>
 
-      {/* === ЭКРАН БИБЛИОТЕКИ === */}
       {view === 'library' && (
         <div style={{ padding: '40px 10%', maxWidth: '1200px', margin: '0 auto' }}>
           <header style={{ marginBottom: '40px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px' }}>
@@ -142,10 +175,8 @@ export default function App() {
         </div>
       )}
 
-      {/* === ЭКРАН РЕДАКТОРА === */}
       {view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-          {/* Шапка */}
           <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
             <button onClick={() => setView('library')} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>← Библиотека</button>
             <div style={{ fontWeight: 'bold', color: '#5c3a21' }}>{activeBook.title}</div>
@@ -155,7 +186,6 @@ export default function App() {
           </header>
 
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            {/* Левая панель: Дерево глав и сцен */}
             <aside style={{ width: '260px', borderRight: '1px solid #dcd3c1', background: '#f5f0e6', overflowY: 'auto', padding: '15px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: 0 }}>Структура</h3>
@@ -177,7 +207,6 @@ export default function App() {
               ))}
             </aside>
 
-            {/* Центр: Редактор */}
             <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fdfbf7' }}>
               {activeScene ? (
                 <textarea
@@ -191,7 +220,6 @@ export default function App() {
               )}
             </main>
 
-            {/* Правая панель: ИИ */}
             <aside style={{ width: '300px', borderLeft: '1px solid #dcd3c1', background: '#f5f0e6', padding: '20px' }}>
               <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: '0 0 15px 0' }}>ИИ-Соавтор</h3>
               <textarea placeholder="Запрос к ИИ..." style={{ width: '100%', height: '100px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', background: '#fdfbf7', boxSizing: 'border-box', fontFamily: 'sans-serif' }} />
@@ -201,5 +229,5 @@ export default function App() {
         </div>
       )}
     </div>
-  )
+  );
 }
