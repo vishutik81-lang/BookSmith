@@ -74,6 +74,28 @@ export default function App() {
     setActiveSceneId(newScene.id);
   }
 
+    // Функция создания новой книги с начальной структурой
+  const handleCreateBook = () => {
+    const title = window.prompt('Как назовем новую книгу?');
+    if (title && title.trim() !== '') {
+      const newBook = {
+        id: Date.now(),
+        title: title,
+        status: 'В работе',
+        genre: 'Не указан',
+        chapters: [
+          {
+            id: Date.now() + 1,
+            title: 'Глава 1',
+            scenes: [
+              { id: Date.now() + 2, title: 'Сцена 1', text: '' }
+            ]
+          }
+        ]
+      };
+      setBooks([...books, newBook]);
+    }
+  };
   const handleSave = () => {
     setSaveStatus('saving');
     setTimeout(() => {
@@ -102,7 +124,7 @@ export default function App() {
             <h1 style={{ fontSize: '2.5rem', color: '#5c3a21', margin: 0 }}>Моя Библиотека</h1>
           </header>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '25px' }}>
-            <div className="create-card" onClick={() => alert('Создание книги')} style={{ aspectRatio: '3/4', border: '2px dashed #bfaea1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f5f0e6' }}>
+            <div className="create-card" onClick={handleCreateBook} style={{ aspectRatio: '3/4', border: '2px dashed #bfaea1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f5f0e6' }}>
               <div style={{ fontSize: '3rem', color: '#7a4b3a' }}>+</div>
               <div style={{ fontSize: '1.1rem', color: '#5c3a21', fontWeight: 'bold' }}>Новая книга</div>
             </div>
