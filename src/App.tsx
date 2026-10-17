@@ -2,11 +2,15 @@ import { useState, useEffect } from 'react'
 
 export default function App() {
   const [view, setView] = useState('library')
-  const [hoveredBookId, setHoveredBookId] = useState(null)
+  const [hoveredBookId, setHoveredBookId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState('idle')
   
-    const [books, setBooks] = useState<any[]>([])
+  const [books, setBooks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+
+  const [activeBookId, setActiveBookId] = useState<string | null>(null)
+  const [activeChapterId, setActiveChapterId] = useState<string | null>(null)
+  const [activeSceneId, setActiveSceneId] = useState<string | null>(null)
 
   // Загрузка книг из базы данных при старте
   useEffect(() => {
@@ -16,7 +20,6 @@ export default function App() {
         const data = await res.json()
         
         if (data.projects) {
-          // Преобразуем данные из базы в формат, который понимает фронтенд
           const loadedBooks = data.projects.map((p: any) => ({
             id: p.id,
             title: p.title,
@@ -40,19 +43,14 @@ export default function App() {
         setLoading(false)
       }
     }
-    
     loadBooks()
   }, [])
-
-  const [activeBookId, setActiveBookId] = useState(null)
-  const [activeChapterId, setActiveChapterId] = useState(null)
-  const [activeSceneId, setActiveSceneId] = useState(null)
 
   const activeBook = books.find(b => b.id === activeBookId)
   const activeChapter = activeBook?.chapters.find(c => c.id === activeChapterId)
   const activeScene = activeChapter?.scenes.find(s => s.id === activeSceneId)
 
-  // Генерация уникального UUID
+  // Генерация уникального UUID для локальных операций
   const generateUUID = () => {
     return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
       const r = Math.random() * 16 | 0;
@@ -61,7 +59,7 @@ export default function App() {
     });
   };
 
-  const handleTextChange = (newText) => {
+  const handleTextChange = (newText: string) => {
     setBooks(books.map(book => {
       if (book.id !== activeBookId) return book;
       return {
@@ -85,7 +83,7 @@ export default function App() {
     setBooks(books.map(b => b.id === activeBookId ? { ...b, chapters: [...b.chapters, newChapter] } : b));
   };
 
-  const addScene = (chapterId) => {
+  const addScene = (chapterId: string) => {
     const newScene = { id: generateUUID(), title: 'Новая сцена', text: '' };
     setBooks(books.map(b => {
       if (b.id !== activeBookId) return b;
@@ -99,7 +97,7 @@ export default function App() {
   };
 
   // Создание книги с отправкой на сервер
-    const handleCreateBook = async () => {
+  const handleCreateBook = async () => {
     const title = window.prompt('Как назовем новую книгу?');
     if (!title || title.trim() === '') return;
 
@@ -113,7 +111,6 @@ export default function App() {
       const data = await res.json();
       
       if (data.project) {
-        // Используем структуру, которую вернул сервер (с реальными UUID!)
         const newBook = {
           id: data.project.id,
           title: data.project.title,
@@ -170,6 +167,34 @@ export default function App() {
     }
   };
 
+  // Удаление книги (проекта)
+  const handleDeleteBook = async (bookId: string, bookTitle: string) => {
+    const confirmed = window.confirm(`Вы уверены, что хотите удалить книгу "${bookTitle}"?\nЭто действие нельзя отменить, будут удалены все главы и сцены.`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/projects/${bookId}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setBooks(books.filter(b => b.id !== bookId));
+        if (activeBookId === bookId) {
+          setView('library');
+          setActiveBookId(null);
+          setActiveChapterId(null);
+          setActiveSceneId(null);
+        }
+      } else {
+        alert('Ошибка удаления: ' + data.error);
+      }
+    } catch (error) {
+      alert('Ошибка соединения: ' + error.message);
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
       <style>{`
@@ -182,28 +207,74 @@ export default function App() {
         .tree-item { cursor: pointer; transition: background 0.2s; }
         .tree-item:hover { background: #ebe3d5; }
       `}</style>
+
       {loading && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.2rem', color: '#7a6b5d' }}>
           Загрузка библиотеки...
         </div>
       )}
-      {view === 'library' && (
+
+      {!loading && view === 'library' && (
         <div style={{ padding: '40px 10%', maxWidth: '1200px', margin: '0 auto' }}>
           <header style={{ marginBottom: '40px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px' }}>
             <h1 style={{ fontSize: '2.5rem', color: '#5c3a21', margin: 0 }}>Моя Библиотека</h1>
           </header>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '25px' }}>
+            
             <div className="create-card" onClick={handleCreateBook} style={{ aspectRatio: '3/4', border: '2px dashed #bfaea1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f5f0e6' }}>
               <div style={{ fontSize: '3rem', color: '#7a4b3a' }}>+</div>
               <div style={{ fontSize: '1.1rem', color: '#5c3a21', fontWeight: 'bold' }}>Новая книга</div>
             </div>
+
             {books.map(book => (
-              <div key={book.id} className="book-card" onMouseEnter={() => setHoveredBookId(book.id)} onMouseLeave={() => setHoveredBookId(null)} onClick={() => { setActiveBookId(book.id); setActiveChapterId(book.chapters[0]?.id); setActiveSceneId(book.chapters[0]?.scenes[0]?.id); setView('editor'); }} style={{ aspectRatio: '3/4', background: '#ffffff', borderRadius: '8px', border: '1px solid #dcd3c1', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative', overflow: 'hidden' }}>
+              <div 
+                key={book.id} 
+                className="book-card" 
+                onMouseEnter={() => setHoveredBookId(book.id)} 
+                onMouseLeave={() => setHoveredBookId(null)} 
+                onClick={() => { 
+                  setActiveBookId(book.id); 
+                  setActiveChapterId(book.chapters[0]?.id || null); 
+                  setActiveSceneId(book.chapters[0]?.scenes[0]?.id || null); 
+                  setView('editor'); 
+                }} 
+                style={{ aspectRatio: '3/4', background: '#ffffff', borderRadius: '8px', border: '1px solid #dcd3c1', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative', overflow: 'hidden' }}
+              >
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b' }}>{book.title}</h3>
+                
+                {/* Кнопка удаления (появляется при наведении) */}
                 {hoveredBookId === book.id && (
-                  <div className="hover-info" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(253, 251, 247, 0.95)', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', fontSize: '0.9rem', color: '#5c4a3d' }}>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation(); // Предотвращаем открытие книги при клике на удаление
+                      handleDeleteBook(book.id, book.title);
+                    }}
+                    style={{
+                      position: 'absolute',
+                      top: '10px',
+                      right: '10px',
+                      background: '#dc2626',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '4px',
+                      padding: '6px 10px',
+                      cursor: 'pointer',
+                      fontSize: '0.8rem',
+                      fontFamily: 'sans-serif',
+                      zIndex: 10
+                    }}
+                  >
+                    🗑️ Удалить
+                  </button>
+                )}
+                
+                {hoveredBookId === book.id && (
+                  <div className="hover-info" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(253, 251, 247, 0.95)', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', fontSize: '0.9rem', color: '#5c4a3d', zIndex: 5 }}>
                     <p style={{ margin: '0 0 8px 0' }}><strong>Жанр:</strong> {book.genre}</p>
                     <p style={{ margin: 0 }}><strong>Статус:</strong> {book.status}</p>
+                    <div style={{ marginTop: '20px', fontSize: '0.8rem', color: '#7a4b3a', textAlign: 'center', borderTop: '1px solid #dcd3c1', paddingTop: '10px' }}>
+                      Нажмите, чтобы открыть
+                    </div>
                   </div>
                 )}
               </div>
@@ -212,12 +283,12 @@ export default function App() {
         </div>
       )}
 
-      {view === 'editor' && activeBook && (
+      {!loading && view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
           <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
             <button onClick={() => setView('library')} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>← Библиотека</button>
             <div style={{ fontWeight: 'bold', color: '#5c3a21' }}>{activeBook.title}</div>
-            <button onClick={handleSave} disabled={saveStatus !== 'idle'} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', color: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', background: saveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', cursor: saveStatus === 'idle' ? 'pointer' : 'default' }}>
+            <button onClick={handleSave} disabled={saveStatus !== 'idle'} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', color: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', background: saveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', cursor: saveStatus === 'idle' ? 'pointer' : 'default', transition: 'all 0.3s ease' }}>
               {saveStatus === 'saving' ? 'Сохранение...' : saveStatus === 'saved' ? '✓ Сохранено' : 'Сохранить'}
             </button>
           </header>
@@ -259,7 +330,7 @@ export default function App() {
 
             <aside style={{ width: '300px', borderLeft: '1px solid #dcd3c1', background: '#f5f0e6', padding: '20px' }}>
               <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: '0 0 15px 0' }}>ИИ-Соавтор</h3>
-              <textarea placeholder="Запрос к ИИ..." style={{ width: '100%', height: '100px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', background: '#fdfbf7', boxSizing: 'border-box', fontFamily: 'sans-serif' }} />
+              <textarea placeholder="Запрос к ИИ..." style={{ width: '100%', height: '100px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', background: '#fdfbf7', boxSizing: 'border-box', fontFamily: 'sans-serif', resize: 'none' }} />
               <button style={{ width: '100%', padding: '10px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '10px' }}>Сгенерировать</button>
             </aside>
           </div>
