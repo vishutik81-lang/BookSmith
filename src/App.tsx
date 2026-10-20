@@ -300,21 +300,38 @@ export default function App() {
     }
   }
 
-  // Загрузка списка доступных моделей
+    // Загрузка списка доступных моделей
   const loadModels = async () => {
     try {
       const res = await fetch('/api/models')
+      if (!res.ok) {
+        throw new Error(`HTTP ошибка: ${res.status}`)
+      }
       const data = await res.json()
-      if (data.models) {
+      if (data.models && data.models.length > 0) {
         setAvailableModels(data.models)
         // Если выбранная модель не найдена, используем первую доступную
         if (!data.models.find((m: any) => m.id === selectedModel) && data.models.length > 0) {
           setSelectedModel(data.models[0].id)
           localStorage.setItem('selectedAIModel', data.models[0].id)
         }
+      } else {
+        throw new Error('Список моделей пуст')
       }
     } catch (error) {
-      console.error('Ошибка загрузки моделей:', error)
+      console.warn('Не удалось загрузить модели с сервера, используем fallback-список:', error)
+      // Fallback список моделей для прототипа
+      const fallbackModels = [
+        { id: 'nvidia/llama-3.1-nemotron-70b-instruct', name: 'NVIDIA Llama 3.1 Nemotron 70B Instruct' },
+        { id: 'openai/gpt-4o', name: 'OpenAI GPT-4o' },
+        { id: 'anthropic/claude-3-5-sonnet', name: 'Anthropic Claude 3.5 Sonnet' },
+        { id: 'meta-llama/llama-3-70b-instruct', name: 'Meta Llama 3 70B Instruct' }
+      ]
+      setAvailableModels(fallbackModels)
+      if (!fallbackModels.find((m: any) => m.id === selectedModel)) {
+        setSelectedModel(fallbackModels[0].id)
+        localStorage.setItem('selectedAIModel', fallbackModels[0].id)
+      }
     }
   }
 
