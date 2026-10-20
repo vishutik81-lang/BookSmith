@@ -9,7 +9,7 @@ export default function App() {
   const [activeBookId, setActiveBookId] = useState<string | null>(null)
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null)
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null)
-  
+
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
   const [editingBookId, setEditingBookId] = useState<string | null>(null)
@@ -24,7 +24,6 @@ export default function App() {
     gender: 'not_specified', race: 'human'
   })
 
-  // === ВОССТАНОВЛЕНО: Состояния для Мира книги ===
   const [worldNotes, setWorldNotes] = useState({
     setting: '', time_period: '', rules: '',
     important_events: '', tone: '', custom_notes: ''
@@ -33,10 +32,11 @@ export default function App() {
 
   const [showContextBefore, setShowContextBefore] = useState(false)
 
-    // === CREATIVE LATITUDE & POLICY LEXICON ===
+  // === CREATIVE LATITUDE & POLICY LEXICON ===
   const [showSettings, setShowSettings] = useState(false)
-  const [creativeLatitude, setCreativeLatitude] = useState('guided') // strict | constrained | guided | open
+  const [creativeLatitude, setCreativeLatitude] = useState('guided')
   const [policies, setPolicies] = useState({ nsfw: 2, realism: 3, cruelty: 2 })
+
   const [selectedModel, setSelectedModel] = useState<string>(localStorage.getItem('selectedAIModel') || 'liquid/lfm-2.5-2.6b:free')
   const [availableModels, setAvailableModels] = useState<any[]>([])
   const [aiInstruction, setAiInstruction] = useState('')
@@ -117,7 +117,7 @@ export default function App() {
     const title = window.prompt('Как назовем новую книгу?')
     if (!title || title.trim() === '') return
     const genre = window.prompt('Жанр (например: Фэнтези, Детектив):') || 'Не указан'
-    const subgenre = window.prompt('Поджанр (необязательно, например: Киберпанк, Историческое):') || ''
+    const subgenre = window.prompt('Поджанр (необязательно):') || ''
     try {
       const res = await fetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -205,7 +205,6 @@ export default function App() {
     } catch (error) { console.error('Ошибка загрузки персонажей:', error) }
   }
 
-  // === ВОССТАНОВЛЕНО: Функции для Мира книги ===
   const loadWorldNotes = async (projectId: string) => {
     try {
       const res = await fetch(`/api/projects/${projectId}/world-notes`)
@@ -267,7 +266,7 @@ export default function App() {
         else setCharacters([...characters, data.character])
         setShowCharacterModal(false); setEditingCharacter(null); setCharacterForm({ name: '', description: '', role: 'secondary', appearance: '', personality: '', sexual_orientation: '', gender: 'not_specified', race: 'human' })
       } else { alert('Ошибка: ' + data.error) }
-    } catch (error: any) { alert('Ошибка сохранения: ' + error.message + '\nПроверьте, что вы выполнили ALTER TABLE в Supabase!') }
+    } catch (error: any) { alert('Ошибка сохранения: ' + error.message) }
   }
 
   const handleDeleteCharacter = async (characterId: string, characterName: string) => {
@@ -295,7 +294,7 @@ export default function App() {
     setShowCharacterModal(true)
   }
 
-    // === POLICY EXPANDER & CREATIVE LATITUDE ===
+  // === POLICY EXPANDER & CREATIVE LATITUDE ===
   const getLatitudeInstruction = () => {
     switch (creativeLatitude) {
       case 'strict': return 'Строго следуй инструкции автора. Не добавляй новых деталей, локаций или персонажей, не импровизируй.'
@@ -307,26 +306,26 @@ export default function App() {
   }
 
   const getPolicyInstruction = () => {
-    const nsfwText = policies.nsfw <= 1 
-      ? 'Полностью исключи откровенность и намёки.' 
-      : policies.nsfw <= 3 
-        ? 'Допустимы взрослые темы, эмоциональная интимность и намёки. Запрещена порнографическая детализация.' 
+    const nsfwText = policies.nsfw <= 1
+      ? 'Полностью исключи откровенность и намёки.'
+      : policies.nsfw <= 3
+        ? 'Допустимы взрослые темы, эмоциональная интимность и намёки. Запрещена порнографическая детализация.'
         : 'Откровенный контент и эротика разрешены в рамках сюжета.'
-    const realismText = policies.realism <= 2 
-      ? 'Условный реализм, фокус на действии и диалогах, без бытовых мелочей.' 
-      : policies.realism <= 4 
-        ? 'Высокий реализм. Раны, усталость, страх и последствия действий влияют на поведение персонажей.' 
+    const realismText = policies.realism <= 2
+      ? 'Условный реализм, фокус на действии и диалогах, без бытовых мелочей.'
+      : policies.realism <= 4
+        ? 'Высокий реализм. Раны, усталость, страх и последствия действий влияют на поведение персонажей.'
         : 'Максимальный реализм. Физиология, психология и быт описываются с медицинской и исторической точностью.'
-    const crueltyText = policies.cruelty === 0 
-      ? 'Бескровный стиль. Насилие и жестокость остаются за кадром.' 
-      : policies.cruelty <= 2 
-        ? 'Умеренная жестокость. Показывай последствия и боль, но без садистской детализации.' 
+    const crueltyText = policies.cruelty === 0
+      ? 'Бескровный стиль. Насилие и жестокость остаются за кадром.'
+      : policies.cruelty <= 2
+        ? 'Умеренная жестокость. Показывай последствия и боль, но без садистской детализации.'
         : 'Жестокость, насилие и кровь могут описываться подробно, если этого требует сюжет.'
-    
+
     return `- Откровенность (NSFW): ${nsfwText}\n- Реализм: ${realismText}\n- Жестокость: ${crueltyText}`
   }
-  
-   const handleGenerateAI = async () => {
+
+  const handleGenerateAI = async () => {
     if (!aiInstruction.trim() || !activeScene) return
     setIsGenerating(true)
     try {
@@ -338,11 +337,11 @@ export default function App() {
             if (c.sexual_orientation && c.sexual_orientation !== 'not_specified') parts.push(`Ориентация: ${c.sexual_orientation}`)
             if (c.appearance) parts.push(`Внешность: ${c.appearance}`)
             if (c.personality) parts.push(`Характер: ${c.personality}`)
+            if (c.description) parts.push(`Роль в сюжете: ${c.description}`)
             return parts.join('. ')
           }).join('\n')
         : 'Персонажей пока нет.'
 
-      // === НОВОЕ: Секция мира книги ===
       const worldSection = [
         worldNotes.setting && `Место действия: ${worldNotes.setting}`,
         worldNotes.time_period && `Время: ${worldNotes.time_period}`,
@@ -352,7 +351,6 @@ export default function App() {
         worldNotes.custom_notes && `Дополнительно: ${worldNotes.custom_notes}`
       ].filter(Boolean).join('\n')
 
-      // === НОВОЕ: Расширенный промпт с политиками и свободой ===
       const prompt = `Ты — ИИ-соавтор художественной литературы. Строго соблюдай канон произведения.
 
 === МИР ПРОИЗВЕДЕНИЯ ===
@@ -403,7 +401,7 @@ ${getPolicyInstruction()}
     }
   }
 
-  const inputStyle = { width: '100%', padding: '8px', border: '1px solid #dcd3c1', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', background: '#fdfbf7', fontFamily: 'Georgia, serif' }
+  const inputStyle = { width: '100%', padding: '8px', border: '1px solid #dcd3c1', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' as const, background: '#fdfbf7', fontFamily: 'Georgia, serif' }
   const labelStyle = { display: 'block', marginBottom: '4px', fontWeight: 'bold', color: '#5c3a21', fontSize: '0.8rem' }
 
   return (
@@ -440,9 +438,7 @@ ${getPolicyInstruction()}
       {!loading && view === 'characters' && activeBook && (
         <div style={{ padding: '40px 10%', maxWidth: '1000px', margin: '0 auto' }}>
           <header style={{ marginBottom: '30px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>Персонажи: {activeBook.title}</h1>
-            </div>
+            <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>Персонажи: {activeBook.title}</h1>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>← К редактору</button>
               <button onClick={() => openCharacterModal()} style={{ padding: '8px 16px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>+ Новый персонаж</button>
@@ -545,13 +541,13 @@ ${getPolicyInstruction()}
         </div>
       )}
 
-      {/* === ВОССТАНОВЛЕНО: МИР КНИГИ === */}
+      {/* === МИР КНИГИ === */}
       {!loading && view === 'world' && activeBook && (
         <div style={{ padding: '40px 10%', maxWidth: '900px', margin: '0 auto' }}>
           <header style={{ marginBottom: '30px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>🌍 Мир книги: {activeBook.title}</h1>
-              <p style={{ color: '#7a6b5d', marginTop: '8px' }}>Эти данные помогают ИИ сохранять канон и атмосферу произведения</p>
+              <p style={{ color: '#7a6b5d', marginTop: '8px' }}>Эти данные передаются ИИ и помогают сохранять канон</p>
             </div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>← К редактору</button>
@@ -560,33 +556,27 @@ ${getPolicyInstruction()}
               </button>
             </div>
           </header>
-
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
             <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
               <label style={labelStyle}>🏰 Сеттинг (место действия)</label>
-              <textarea value={worldNotes.setting} onChange={(e) => setWorldNotes({ ...worldNotes, setting: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Например: портовый город на севере континента, эпоха парусов и магии..." />
+              <textarea value={worldNotes.setting} onChange={(e) => setWorldNotes({ ...worldNotes, setting: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Например: порт Тортуги, эпоха парусов и магии..." />
             </div>
-
             <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
               <label style={labelStyle}>⏳ Временной период</label>
-              <input type="text" value={worldNotes.time_period} onChange={(e) => setWorldNotes({ ...worldNotes, time_period: e.target.value })} style={inputStyle} placeholder="Например: конец XVIII века, осень" />
+              <input type="text" value={worldNotes.time_period} onChange={(e) => setWorldNotes({ ...worldNotes, time_period: e.target.value })} style={inputStyle} placeholder="Например: конец XVII века, осень" />
             </div>
-
             <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
               <label style={labelStyle}>⚖️ Правила мира</label>
               <textarea value={worldNotes.rules} onChange={(e) => setWorldNotes({ ...worldNotes, rules: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Законы магии, социальные нормы, технологический уровень, табу..." />
             </div>
-
             <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
               <label style={labelStyle}>📜 Важные события (предыстория мира)</label>
               <textarea value={worldNotes.important_events} onChange={(e) => setWorldNotes({ ...worldNotes, important_events: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Войны, катаклизмы, ключевые события до начала сюжета..." />
             </div>
-
             <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
               <label style={labelStyle}>🎨 Тон и стиль произведения</label>
-              <textarea value={worldNotes.tone} onChange={(e) => setWorldNotes({ ...worldNotes, tone: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Например: мрачное фэнтези с элементами детектива, медленный темп, длинные описания, редкие диалоги..." />
+              <textarea value={worldNotes.tone} onChange={(e) => setWorldNotes({ ...worldNotes, tone: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Например: мрачное пиратское приключение, медленный темп, длинные описания..." />
             </div>
-
             <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
               <label style={labelStyle}>📝 Дополнительные заметки</label>
               <textarea value={worldNotes.custom_notes} onChange={(e) => setWorldNotes({ ...worldNotes, custom_notes: e.target.value })} style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} placeholder="Любые другие детали, важные для канона..." />
@@ -604,28 +594,29 @@ ${getPolicyInstruction()}
               <button onClick={() => setView('characters')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>👥 Персонажи</button>
               <button onClick={() => setView('world')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>🌍 Мир</button>
             </div>
-            
+
             {editingBookId === activeBook.id ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
-                <input type="text" value={bookMetaForm.title} onChange={(e) => setBookMetaForm({...bookMetaForm, title: e.target.value})} placeholder="Название" style={{ ...inputStyle, width: '150px', padding: '4px 8px' }} />
-                <input type="text" value={bookMetaForm.genre} onChange={(e) => setBookMetaForm({...bookMetaForm, genre: e.target.value})} placeholder="Жанр" style={{ ...inputStyle, width: '100px', padding: '4px 8px' }} />
-                <input type="text" value={bookMetaForm.subgenre} onChange={(e) => setBookMetaForm({...bookMetaForm, subgenre: e.target.value})} placeholder="Поджанр" style={{ ...inputStyle, width: '100px', padding: '4px 8px' }} />
+                <input type="text" value={bookMetaForm.title} onChange={(e) => setBookMetaForm({ ...bookMetaForm, title: e.target.value })} placeholder="Название" style={{ ...inputStyle, width: '150px', padding: '4px 8px' }} />
+                <input type="text" value={bookMetaForm.genre} onChange={(e) => setBookMetaForm({ ...bookMetaForm, genre: e.target.value })} placeholder="Жанр" style={{ ...inputStyle, width: '100px', padding: '4px 8px' }} />
+                <input type="text" value={bookMetaForm.subgenre} onChange={(e) => setBookMetaForm({ ...bookMetaForm, subgenre: e.target.value })} placeholder="Поджанр" style={{ ...inputStyle, width: '100px', padding: '4px 8px' }} />
                 <button onClick={handleUpdateBookMeta} style={{ padding: '4px 12px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>✓</button>
                 <button onClick={() => setEditingBookId(null)} style={{ padding: '4px 12px', background: '#999', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>✗</button>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <div style={{ fontWeight: 'bold', color: '#5c3a21' }}>{activeBook.title} <span style={{fontWeight: 'normal', color: '#7a6b5d', fontSize: '0.85rem'}}>({activeBook.genre}{activeBook.subgenre ? ` • ${activeBook.subgenre}` : ''})</span></div>
+                <div style={{ fontWeight: 'bold', color: '#5c3a21' }}>{activeBook.title} <span style={{ fontWeight: 'normal', color: '#7a6b5d', fontSize: '0.85rem' }}>({activeBook.genre}{activeBook.subgenre ? ` • ${activeBook.subgenre}` : ''})</span></div>
                 <button onClick={() => { setEditingBookId(activeBook.id); setBookMetaForm({ title: activeBook.title, genre: activeBook.genre, subgenre: activeBook.subgenre }) }} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px' }}>⚙️ Настройки</button>
               </div>
             )}
-            
+
             <button onClick={handleSave} disabled={saveStatus !== 'idle'} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', color: '#fdfbf7', fontSize: '0.9rem', background: saveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', cursor: saveStatus === 'idle' ? 'pointer' : 'default' }}>
               {saveStatus === 'saving' ? 'Сохранение...' : saveStatus === 'saved' ? '✓ Сохранено' : '💾 Сохранить'}
             </button>
           </header>
 
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
+            {/* ЛЕВАЯ ПАНЕЛЬ: структура */}
             <aside style={{ width: '260px', borderRight: '1px solid #dcd3c1', background: '#f5f0e6', overflowY: 'auto', padding: '15px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: 0 }}>Структура</h3>
@@ -633,19 +624,34 @@ ${getPolicyInstruction()}
               </div>
               {activeBook.chapters.map(chapter => (
                 <div key={chapter.id} style={{ marginBottom: '15px' }}>
-                  <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#5c3a21', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ flex: 1 }}>{chapter.title}</span>
-                    <button onClick={() => addScene(chapter.id)} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>+</button>
-                  </div>
+                  {editingChapterId === chapter.id ? (
+                    <div style={{ marginBottom: '5px' }}>
+                      <input type="text" value={editingChapterId === chapter.id ? bookMetaForm.title : chapter.title} onChange={(e) => setBookMetaForm({ ...bookMetaForm, title: e.target.value })} autoFocus style={{ width: '100%', padding: '6px 8px', border: '1px solid #7a4b3a', borderRadius: '4px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+                      <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
+                        <button onClick={() => { handleUpdateChapterTitle(chapter.id, bookMetaForm.title); setEditingChapterId(null) }} style={{ padding: '4px 10px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.75rem' }}>✓</button>
+                        <button onClick={() => setEditingChapterId(null)} style={{ padding: '4px 10px', background: '#999', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.75rem' }}>✗</button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#5c3a21', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ flex: 1 }}>{chapter.title}</span>
+                      <div style={{ display: 'flex', gap: '4px' }}>
+                        <button onClick={() => { setEditingChapterId(chapter.id); setBookMetaForm({ ...bookMetaForm, title: chapter.title }) }} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '3px' }}>✏️</button>
+                        <button onClick={() => addScene(chapter.id)} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>+</button>
+                      </div>
+                    </div>
+                  )}
                   {chapter.scenes.map(scene => (
-                    <div key={scene.id} style={{ marginLeft: '10px', marginBottom: '4px' }}>
-                      <div className="tree-item" onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id) }} style={{ padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem', borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent', color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35' }}>{scene.title}</div>
+                    <div key={scene.id} style={{ marginLeft: '10px', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
+                      <div className="tree-item" onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id) }} style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem', borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent', color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35' }}>{scene.title}</div>
+                      <button onClick={() => { setEditingSceneId(scene.id); setBookMetaForm({ ...bookMetaForm, title: scene.title }) }} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '3px' }}>✏️</button>
                     </div>
                   ))}
                 </div>
               ))}
             </aside>
 
+            {/* ЦЕНТР: редактор */}
             <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fdfbf7' }}>
               {activeScene ? (
                 <>
@@ -656,7 +662,7 @@ ${getPolicyInstruction()}
                     </button>
                     {showContextBefore && (
                       <div style={{ padding: '0 20px 15px 20px' }}>
-                        <textarea value={activeScene.context_before} onChange={(e) => handleContextBeforeChange(e.target.value)} placeholder="Что произошло до этой сцены? Кратко опишите контекст, чтобы ИИ понимал ситуацию..." style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} />
+                        <textarea value={activeScene.context_before} onChange={(e) => handleContextBeforeChange(e.target.value)} placeholder="Что произошло до этой сцены? Кратко опишите контекст..." style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} />
                       </div>
                     )}
                   </div>
@@ -667,19 +673,57 @@ ${getPolicyInstruction()}
               )}
             </main>
 
+            {/* ПРАВАЯ ПАНЕЛЬ: ИИ-СОАВТОР */}
             <aside style={{ width: '340px', borderLeft: '1px solid #dcd3c1', background: '#f5f0e6', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ flex: 1, padding: '15px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
                 <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: '0 0 10px 0' }}>✨ ИИ-Соавтор</h3>
+
+                {/* === CREATIVE LATITUDE & POLICIES === */}
+                <div style={{ marginBottom: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', background: '#fdfbf7' }}>
+                  <button onClick={() => setShowSettings(!showSettings)} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#5c3a21', fontSize: '0.85rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
+                    <span>⚙️ Параметры генерации</span>
+                    <span>{showSettings ? '▲' : '▼'}</span>
+                  </button>
+                  {showSettings && (
+                    <div style={{ padding: '10px 12px 12px 12px', borderTop: '1px solid #dcd3c1' }}>
+                      <div style={{ marginBottom: '10px' }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Творческая свобода:</label>
+                        <select value={creativeLatitude} onChange={(e) => setCreativeLatitude(e.target.value)} style={{ ...inputStyle, padding: '6px' }}>
+                          <option value="strict">Строгий (только по инструкции)</option>
+                          <option value="constrained">Ограниченный (минимум допущений)</option>
+                          <option value="guided">Сбалансированный (атмосфера)</option>
+                          <option value="open">Свободный (импровизация)</option>
+                        </select>
+                      </div>
+                      <div style={{ marginBottom: '8px' }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Откровенность (NSFW): {policies.nsfw}</label>
+                        <input type="range" min="0" max="5" value={policies.nsfw} onChange={(e) => setPolicies({ ...policies, nsfw: Number(e.target.value) })} style={{ width: '100%' }} />
+                      </div>
+                      <div style={{ marginBottom: '8px' }}>
+                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Реализм: {policies.realism}</label>
+                        <input type="range" min="1" max="5" value={policies.realism} onChange={(e) => setPolicies({ ...policies, realism: Number(e.target.value) })} style={{ width: '100%' }} />
+                      </div>
+                      <div>
+                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Жестокость: {policies.cruelty}</label>
+                        <input type="range" min="0" max="5" value={policies.cruelty} onChange={(e) => setPolicies({ ...policies, cruelty: Number(e.target.value) })} style={{ width: '100%' }} />
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 <div style={{ marginBottom: '10px' }}>
                   <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Модель:</label>
                   <select value={selectedModel} onChange={(e) => { setSelectedModel(e.target.value); localStorage.setItem('selectedAIModel', e.target.value) }} style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #dcd3c1', fontSize: '0.85rem', background: '#fdfbf7', boxSizing: 'border-box' }}>
                     {availableModels.map((model: any) => <option key={model.id} value={model.id}>{model.name}</option>)}
                   </select>
                 </div>
-                <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} placeholder="Например: Опиши, как Энн замечает незнакомку..." style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', marginBottom: '10px', boxSizing: 'border-box', background: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', resize: 'none' }} />
+
+                <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} placeholder="Например: Опиши, как Энн замечает незнакомку в толпе..." style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', marginBottom: '10px', boxSizing: 'border-box', background: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', resize: 'none' }} />
+
                 <button onClick={handleGenerateAI} disabled={isGenerating || !aiInstruction.trim()} style={{ width: '100%', padding: '10px', background: isGenerating ? '#999' : '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: isGenerating ? 'wait' : 'pointer', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '15px' }}>
                   {isGenerating ? '✨ Генерация...' : '✨ Сгенерировать'}
                 </button>
+
                 {generationHistory.length > 0 && (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
                     <div style={{ fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '8px', fontWeight: 'bold' }}>📜 История черновиков:</div>
@@ -688,11 +732,11 @@ ${getPolicyInstruction()}
                         <button key={h.id} onClick={() => setActiveHistoryId(h.id)} style={{ padding: '4px 10px', background: activeHistoryId === h.id ? '#7a4b3a' : '#fdfbf7', color: activeHistoryId === h.id ? '#fdfbf7' : '#7a4b3a', border: '1px solid #dcd3c1', borderRadius: '12px', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}>
                           Вариант {generationHistory.length - i}
                         </button>
-                    ))}
+                      ))}
                     </div>
                     {activeHistory && (
                       <div style={{ flex: 1, overflowY: 'auto', padding: '12px', background: '#ffffff', borderRadius: '6px', border: '1px solid #dcd3c1', fontSize: '0.9rem', lineHeight: '1.6', color: '#2c241b', marginBottom: '10px' }}>
-                        <div style={{ fontSize: '0.7rem', color: '#7a6b5d', marginBottom: '6px', fontStyle: 'italic' }}>Запрос: "{activeHistory.instruction}"</div>
+                        <div style={{ fontSize: '0.7rem', color: '#7a6b5d', marginBottom: '6px', fontStyle: 'italic' }}>Запрос: «{activeHistory.instruction}»</div>
                         <div style={{ whiteSpace: 'pre-wrap', borderTop: '1px dashed #dcd3c1', paddingTop: '8px' }}>{activeHistory.text}</div>
                       </div>
                     )}
