@@ -2,10 +2,6 @@ import { useState, useEffect } from 'react'
 
 export default function App() {
   const [view, setView] = useState('library')
-    const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
-  const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
-  const [editingTitle, setEditingTitle] = useState('')
-    const [editingBookId, setEditingBookId] = useState<string | null>(null)
   const [hoveredBookId, setHoveredBookId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState('idle')
   
@@ -15,6 +11,22 @@ export default function App() {
   const [activeBookId, setActiveBookId] = useState<string | null>(null)
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null)
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null)
+
+  // Состояния для редактирования названий
+  const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
+  const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
+  const [editingBookId, setEditingBookId] = useState<string | null>(null)
+  const [editingTitle, setEditingTitle] = useState('')
+
+  // Состояния для персонажей
+  const [characters, setCharacters] = useState<any[]>([])
+  const [showCharacterModal, setShowCharacterModal] = useState(false)
+  const [editingCharacter, setEditingCharacter] = useState<any>(null)
+  const [characterForm, setCharacterForm] = useState({
+    name: '',
+    description: '',
+    role: 'secondary'
+  })
 
   // Загрузка книг из базы данных при старте
   useEffect(() => {
@@ -136,6 +148,7 @@ export default function App() {
         setActiveChapterId(newBook.chapters[0].id);
         setActiveSceneId(newBook.chapters[0].scenes[0].id);
         setView('editor');
+        loadCharacters(newBook.id);
       } else {
         alert('Ошибка создания: ' + data.error);
       }
@@ -171,36 +184,22 @@ export default function App() {
     }
   };
 
-  // Удаление книги (проекта)
-  const handleDeleteBook = async (bookId: string, bookTitle: string) => {
-    const confirmed = window.confirm(`Вы уверены, что хотите удалить книгу "${bookTitle}"?\nЭто действие нельзя отменить, будут удалены все главы и сцены.`);
-    if (!confirmed) return;
-
-    try {
-      const res = await fetch(`/api/projects/${bookId}`, {
-        method: 'DELETE',
-      });
-        // Обновление названия главы
+  // Обновление названия главы
   const handleUpdateChapterTitle = async (chapterId: string, newTitle: string) => {
     if (!newTitle.trim()) return;
-    
     try {
       const res = await fetch(`/api/chapters/${chapterId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle }),
       });
-      
       const data = await res.json();
-      
       if (data.success) {
         setBooks(books.map(book => {
           if (book.id !== activeBookId) return book;
           return {
             ...book,
-            chapters: book.chapters.map(ch =>
-              ch.id === chapterId ? { ...ch, title: newTitle } : ch
-            )
+            chapters: book.chapters.map(ch => ch.id === chapterId ? { ...ch, title: newTitle } : ch)
           };
         }));
         setEditingChapterId(null);
@@ -215,16 +214,13 @@ export default function App() {
   // Обновление названия сцены
   const handleUpdateSceneTitle = async (sceneId: string, newTitle: string) => {
     if (!newTitle.trim()) return;
-    
     try {
       const res = await fetch(`/api/scenes/title/${sceneId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle }),
       });
-      
       const data = await res.json();
-      
       if (data.success) {
         setBooks(books.map(book => {
           if (book.id !== activeBookId) return book;
@@ -232,9 +228,7 @@ export default function App() {
             ...book,
             chapters: book.chapters.map(ch => ({
               ...ch,
-              scenes: ch.scenes.map(s =>
-                s.id === sceneId ? { ...s, title: newTitle } : s
-              )
+              scenes: ch.scenes.map(s => s.id === sceneId ? { ...s, title: newTitle } : s)
             }))
           };
         }));
@@ -246,19 +240,17 @@ export default function App() {
       alert('Ошибка соединения: ' + error.message);
     }
   };
-        // Обновление названия книги
+
+  // Обновление названия книги
   const handleUpdateBookTitle = async (bookId: string, newTitle: string) => {
     if (!newTitle.trim()) return;
-    
     try {
       const res = await fetch(`/api/projects/${bookId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title: newTitle }),
       });
-      
       const data = await res.json();
-      
       if (data.success) {
         setBooks(books.map(b => b.id === bookId ? { ...b, title: newTitle } : b));
         setEditingBookId(null);
@@ -269,7 +261,14 @@ export default function App() {
       alert('Ошибка соединения: ' + error.message);
     }
   };
-      
+
+  // Удаление книги (проекта)
+  const handleDeleteBook = async (bookId: string, bookTitle: string) => {
+    const confirmed = window.confirm(`Вы уверены, что хотите удалить книгу "${bookTitle}"?\nЭто действие нельзя отменить, будут удалены все главы и сцены.`);
+    if (!confirmed) return;
+
+    try {
+      const res = await fetch(`/api/projects/${bookId}`, { method: 'DELETE' });
       const data = await res.json();
       
       if (data.success) {
@@ -287,6 +286,93 @@ export default function App() {
       alert('Ошибка соединения: ' + error.message);
     }
   };
+
+  // === ФУНКЦИИ ДЛЯ ПЕРСОНАЖЕЙ ===
+
+  const loadCharacters = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/characters`)
+      const data = await res.json()
+      if (data.characters) {
+        setCharacters(data.characters)
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки персонажей:', error)
+    }
+  }
+
+  const handleSaveCharacter = async () => {
+    if (!characterForm.name.trim()) {
+      alert('Имя персонажа обязательно')
+      return
+    }
+
+    try {
+      const url = editingCharacter
+        ? `/api/characters/${editingCharacter.id}`
+        : `/api/projects/${activeBookId}/characters`
+      
+      const method = editingCharacter ? 'PATCH' : 'POST'
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(characterForm)
+      })
+
+      const data = await res.json()
+
+      if (data.character) {
+        if (editingCharacter) {
+          setCharacters(characters.map(c => c.id === data.character.id ? data.character : c))
+        } else {
+          setCharacters([...characters, data.character])
+        }
+        setShowCharacterModal(false)
+        setEditingCharacter(null)
+        setCharacterForm({ name: '', description: '', role: 'secondary' })
+      } else {
+        alert('Ошибка: ' + data.error)
+      }
+    } catch (error) {
+      alert('Ошибка соединения: ' + error.message)
+    }
+  }
+
+  const handleDeleteCharacter = async (characterId: string, characterName: string) => {
+    const confirmed = window.confirm(`Удалить персонажа "${characterName}"?`)
+    if (!confirmed) return
+
+    try {
+      const res = await fetch(`/api/characters/${characterId}`, { method: 'DELETE' })
+      const data = await res.json()
+
+      if (data.success) {
+        setCharacters(characters.filter(c => c.id !== characterId))
+      } else {
+        alert('Ошибка: ' + data.error)
+      }
+    } catch (error) {
+      alert('Ошибка соединения: ' + error.message)
+    }
+  }
+
+  const openCharacterModal = (character?: any) => {
+    if (character) {
+      setEditingCharacter(character)
+      setCharacterForm({
+        name: character.name,
+        description: character.description || '',
+        role: character.role || 'secondary'
+      })
+    } else {
+      setEditingCharacter(null)
+      setCharacterForm({ name: '', description: '', role: 'secondary' })
+    }
+    setShowCharacterModal(true)
+  }
+
+  // === РЕНДЕРИНГ ===
 
   return (
     <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
@@ -313,7 +399,6 @@ export default function App() {
             <h1 style={{ fontSize: '2.5rem', color: '#5c3a21', margin: 0 }}>Моя Библиотека</h1>
           </header>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '25px' }}>
-            
             <div className="create-card" onClick={handleCreateBook} style={{ aspectRatio: '3/4', border: '2px dashed #bfaea1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f5f0e6' }}>
               <div style={{ fontSize: '3rem', color: '#7a4b3a' }}>+</div>
               <div style={{ fontSize: '1.1rem', color: '#5c3a21', fontWeight: 'bold' }}>Новая книга</div>
@@ -329,32 +414,21 @@ export default function App() {
                   setActiveBookId(book.id); 
                   setActiveChapterId(book.chapters[0]?.id || null); 
                   setActiveSceneId(book.chapters[0]?.scenes[0]?.id || null); 
-                  setView('editor'); 
+                  setView('editor');
+                  loadCharacters(book.id);
                 }} 
                 style={{ aspectRatio: '3/4', background: '#ffffff', borderRadius: '8px', border: '1px solid #dcd3c1', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative', overflow: 'hidden' }}
               >
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b' }}>{book.title}</h3>
                 
-                {/* Кнопка удаления (появляется при наведении) */}
                 {hoveredBookId === book.id && (
                   <button
                     onClick={(e) => {
-                      e.stopPropagation(); // Предотвращаем открытие книги при клике на удаление
+                      e.stopPropagation();
                       handleDeleteBook(book.id, book.title);
                     }}
                     style={{
-                      position: 'absolute',
-                      top: '10px',
-                      right: '10px',
-                      background: '#dc2626',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: '4px',
-                      padding: '6px 10px',
-                      cursor: 'pointer',
-                      fontSize: '0.8rem',
-                      fontFamily: 'sans-serif',
-                      zIndex: 10
+                      position: 'absolute', top: '10px', right: '10px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', padding: '6px 10px', cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'sans-serif', zIndex: 10
                     }}
                   >
                     🗑️ Удалить
@@ -376,10 +450,121 @@ export default function App() {
         </div>
       )}
 
+      {!loading && view === 'characters' && activeBook && (
+        <div style={{ padding: '40px 10%', maxWidth: '1000px', margin: '0 auto' }}>
+          <header style={{ marginBottom: '30px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>Персонажи: {activeBook.title}</h1>
+              <p style={{ color: '#7a6b5d', marginTop: '8px' }}>Управляйте персонажами вашей книги</p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>
+                ← К редактору
+              </button>
+              <button onClick={() => openCharacterModal()} style={{ padding: '8px 16px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                + Новый персонаж
+              </button>
+            </div>
+          </header>
+
+          {characters.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '60px 20px', color: '#7a6b5d' }}>
+              <div style={{ fontSize: '3rem', marginBottom: '20px' }}>👥</div>
+              <p style={{ fontSize: '1.1rem' }}>Пока нет персонажей</p>
+              <p style={{ fontSize: '0.9rem' }}>Нажмите "+ Новый персонаж", чтобы добавить первого</p>
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px' }}>
+              {characters.map(char => (
+                <div key={char.id} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px', position: 'relative' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+                    <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b' }}>{char.name}</h3>
+                    <span style={{ 
+                      padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', 
+                      background: char.role === 'protagonist' ? '#dbeafe' : char.role === 'antagonist' ? '#fee2e2' : '#f3f4f6',
+                      color: char.role === 'protagonist' ? '#1e40af' : char.role === 'antagonist' ? '#991b1b' : '#4b5563'
+                    }}>
+                      {char.role === 'protagonist' ? 'Протагонист' : char.role === 'antagonist' ? 'Антагонист' : 'Второстепенный'}
+                    </span>
+                  </div>
+                  {char.description && (
+                    <p style={{ margin: '10px 0', fontSize: '0.9rem', color: '#4a3f35', lineHeight: '1.5' }}>{char.description}</p>
+                  )}
+                  <div style={{ display: 'flex', gap: '8px', marginTop: '15px' }}>
+                    <button onClick={() => openCharacterModal(char)} style={{ flex: 1, padding: '6px', background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                      ✏️ Изменить
+                    </button>
+                    <button onClick={() => handleDeleteCharacter(char.id, char.name)} style={{ flex: 1, padding: '6px', background: 'none', border: '1px solid #fee2e2', color: '#991b1b', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                      🗑️ Удалить
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {showCharacterModal && (
+            <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: '#fdfbf7', borderRadius: '12px', padding: '30px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
+                <h2 style={{ marginTop: 0, color: '#5c3a21' }}>{editingCharacter ? 'Редактировать персонажа' : 'Новый персонаж'}</h2>
+                
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Имя *</label>
+                  <input
+                    type="text"
+                    value={characterForm.name}
+                    onChange={(e) => setCharacterForm({ ...characterForm, name: e.target.value })}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '1rem', boxSizing: 'border-box' }}
+                    placeholder="Например: Энн Бони"
+                  />
+                </div>
+
+                <div style={{ marginBottom: '20px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Роль</label>
+                  <select
+                    value={characterForm.role}
+                    onChange={(e) => setCharacterForm({ ...characterForm, role: e.target.value })}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '1rem', boxSizing: 'border-box' }}
+                  >
+                    <option value="protagonist">Протагонист</option>
+                    <option value="antagonist">Антагонист</option>
+                    <option value="secondary">Второстепенный</option>
+                  </select>
+                </div>
+
+                <div style={{ marginBottom: '25px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Описание</label>
+                  <textarea
+                    value={characterForm.description}
+                    onChange={(e) => setCharacterForm({ ...characterForm, description: e.target.value })}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '1rem', minHeight: '100px', boxSizing: 'border-box', resize: 'vertical' }}
+                    placeholder="Краткое описание персонажа, его роль в истории..."
+                  />
+                </div>
+
+                <div style={{ display: 'flex', gap: '10px' }}>
+                  <button onClick={() => { setShowCharacterModal(false); setEditingCharacter(null); }} style={{ flex: 1, padding: '10px', background: 'none', border: '1px solid #dcd3c1', color: '#7a6b5d', borderRadius: '6px', cursor: 'pointer' }}>
+                    Отмена
+                  </button>
+                  <button onClick={handleSaveCharacter} style={{ flex: 1, padding: '10px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>
+                    {editingCharacter ? 'Сохранить' : 'Создать'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {!loading && view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
-                    <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
-            <button onClick={() => setView('library')} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>← Библиотека</button>
+          <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button onClick={() => setView('library')} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>← Библиотека</button>
+              <button onClick={() => setView('characters')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.9rem', padding: '4px 12px', borderRadius: '4px' }}>
+                👥 Персонажи ({characters.length})
+              </button>
+            </div>
             
             {editingBookId === activeBook.id ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -392,69 +577,19 @@ export default function App() {
                     if (e.key === 'Escape') setEditingBookId(null);
                   }}
                   autoFocus
-                  style={{
-                    padding: '4px 8px',
-                    border: '1px solid #7a4b3a',
-                    borderRadius: '4px',
-                    fontSize: '1rem',
-                    fontFamily: 'Georgia, serif',
-                    outline: 'none',
-                    fontWeight: 'bold'
-                  }}
+                  style={{ padding: '4px 8px', border: '1px solid #7a4b3a', borderRadius: '4px', fontSize: '1rem', fontFamily: 'Georgia, serif', outline: 'none', fontWeight: 'bold' }}
                 />
-                <button
-                  onClick={() => handleUpdateBookTitle(activeBook.id, editingTitle)}
-                  style={{
-                    padding: '4px 12px',
-                    background: '#5c7a5c',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  ✓ Сохранить
-                </button>
-                <button
-                  onClick={() => setEditingBookId(null)}
-                  style={{
-                    padding: '4px 12px',
-                    background: '#999',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    fontSize: '0.85rem'
-                  }}
-                >
-                  ✗ Отмена
-                </button>
+                <button onClick={() => handleUpdateBookTitle(activeBook.id, editingTitle)} style={{ padding: '4px 12px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>✓ Сохранить</button>
+                <button onClick={() => setEditingBookId(null)} style={{ padding: '4px 12px', background: '#999', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>✗ Отмена</button>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ fontWeight: 'bold', color: '#5c3a21' }}>{activeBook.title}</div>
                 <button
-                  onClick={() => {
-                    setEditingBookId(activeBook.id);
-                    setEditingTitle(activeBook.title);
-                  }}
-                  style={{
-                    background: 'none',
-                    border: '1px solid #dcd3c1',
-                    color: '#7a4b3a',
-                    cursor: 'pointer',
-                    fontSize: '0.75rem',
-                    padding: '2px 8px',
-                    borderRadius: '4px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = '#ebe3d5';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'none';
-                  }}
+                  onClick={() => { setEditingBookId(activeBook.id); setEditingTitle(activeBook.title); }}
+                  style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px', transition: 'all 0.2s' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#ebe3d5'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
                   title="Переименовать книгу"
                 >
                   ✏️ Изменить
@@ -474,7 +609,7 @@ export default function App() {
                 <button onClick={addChapter} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1.2rem' }}>+</button>
               </div>
               
-                                         {activeBook.chapters.map(chapter => (
+              {activeBook.chapters.map(chapter => (
                 <div key={chapter.id} style={{ marginBottom: '15px' }}>
                   {editingChapterId === chapter.id ? (
                     <div style={{ marginBottom: '5px' }}>
@@ -487,47 +622,11 @@ export default function App() {
                           if (e.key === 'Escape') setEditingChapterId(null);
                         }}
                         autoFocus
-                        style={{
-                          width: '100%',
-                          padding: '6px 8px',
-                          border: '1px solid #7a4b3a',
-                          borderRadius: '4px',
-                          fontSize: '0.9rem',
-                          fontFamily: 'Georgia, serif',
-                          outline: 'none',
-                          fontWeight: 'bold',
-                          boxSizing: 'border-box'
-                        }}
+                        style={{ width: '100%', padding: '6px 8px', border: '1px solid #7a4b3a', borderRadius: '4px', fontSize: '0.9rem', fontFamily: 'Georgia, serif', outline: 'none', fontWeight: 'bold', boxSizing: 'border-box' }}
                       />
                       <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-                        <button
-                          onClick={() => handleUpdateChapterTitle(chapter.id, editingTitle)}
-                          style={{
-                            padding: '4px 10px',
-                            background: '#5c7a5c',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '3px',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem'
-                          }}
-                        >
-                          ✓ Сохранить
-                        </button>
-                        <button
-                          onClick={() => setEditingChapterId(null)}
-                          style={{
-                            padding: '4px 10px',
-                            background: '#999',
-                            color: 'white',
-                            border: 'none',
-                            borderRadius: '3px',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem'
-                          }}
-                        >
-                          ✗ Отмена
-                        </button>
+                        <button onClick={() => handleUpdateChapterTitle(chapter.id, editingTitle)} style={{ padding: '4px 10px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.75rem' }}>✓ Сохранить</button>
+                        <button onClick={() => setEditingChapterId(null)} style={{ padding: '4px 10px', background: '#999', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.75rem' }}>✗ Отмена</button>
                       </div>
                     </div>
                   ) : (
@@ -535,26 +634,10 @@ export default function App() {
                       <span style={{ flex: 1 }}>{chapter.title}</span>
                       <div style={{ display: 'flex', gap: '4px' }}>
                         <button
-                          onClick={() => {
-                            setEditingChapterId(chapter.id);
-                            setEditingTitle(chapter.title);
-                          }}
-                          style={{
-                            background: 'none',
-                            border: '1px solid #dcd3c1',
-                            color: '#7a4b3a',
-                            cursor: 'pointer',
-                            fontSize: '0.7rem',
-                            padding: '2px 6px',
-                            borderRadius: '3px',
-                            transition: 'all 0.2s'
-                          }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = '#ebe3d5';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'none';
-                          }}
+                          onClick={() => { setEditingChapterId(chapter.id); setEditingTitle(chapter.title); }}
+                          style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '3px', transition: 'all 0.2s' }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = '#ebe3d5'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
                           title="Переименовать главу"
                         >
                           ✏️ Изм.
@@ -577,46 +660,11 @@ export default function App() {
                               if (e.key === 'Escape') setEditingSceneId(null);
                             }}
                             autoFocus
-                            style={{
-                              width: '100%',
-                              padding: '6px 10px',
-                              border: '1px solid #7a4b3a',
-                              borderRadius: '4px',
-                              fontSize: '0.85rem',
-                              fontFamily: 'Georgia, serif',
-                              outline: 'none',
-                              boxSizing: 'border-box'
-                            }}
+                            style={{ width: '100%', padding: '6px 10px', border: '1px solid #7a4b3a', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'Georgia, serif', outline: 'none', boxSizing: 'border-box' }}
                           />
                           <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                            <button
-                              onClick={() => handleUpdateSceneTitle(scene.id, editingTitle)}
-                              style={{
-                                padding: '3px 8px',
-                                background: '#5c7a5c',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '3px',
-                                cursor: 'pointer',
-                                fontSize: '0.7rem'
-                              }}
-                            >
-                              ✓ Сохранить
-                            </button>
-                            <button
-                              onClick={() => setEditingSceneId(null)}
-                              style={{
-                                padding: '3px 8px',
-                                background: '#999',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '3px',
-                                cursor: 'pointer',
-                                fontSize: '0.7rem'
-                              }}
-                            >
-                              ✗ Отмена
-                            </button>
+                            <button onClick={() => handleUpdateSceneTitle(scene.id, editingTitle)} style={{ padding: '3px 8px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.7rem' }}>✓ Сохранить</button>
+                            <button onClick={() => setEditingSceneId(null)} style={{ padding: '3px 8px', background: '#999', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.7rem' }}>✗ Отмена</button>
                           </div>
                         </div>
                       ) : (
@@ -624,38 +672,15 @@ export default function App() {
                           <div
                             className="tree-item"
                             onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id); }}
-                            style={{
-                              flex: 1,
-                              padding: '6px 10px',
-                              borderRadius: '4px',
-                              fontSize: '0.85rem',
-                              borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent',
-                              color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35'
-                            }}
+                            style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem', borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent', color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35' }}
                           >
                             {scene.title}
                           </div>
                           <button
-                            onClick={() => {
-                              setEditingSceneId(scene.id);
-                              setEditingTitle(scene.title);
-                            }}
-                            style={{
-                              background: 'none',
-                              border: '1px solid #dcd3c1',
-                              color: '#7a4b3a',
-                              cursor: 'pointer',
-                              fontSize: '0.7rem',
-                              padding: '2px 6px',
-                              borderRadius: '3px',
-                              transition: 'all 0.2s'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = '#ebe3d5';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'none';
-                            }}
+                            onClick={() => { setEditingSceneId(scene.id); setEditingTitle(scene.title); }}
+                            style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '3px', transition: 'all 0.2s' }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = '#ebe3d5'; }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'none'; }}
                             title="Переименовать сцену"
                           >
                             ✏️ Изм.
