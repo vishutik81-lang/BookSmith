@@ -13,8 +13,6 @@ export default function App() {
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
   const [editingBookId, setEditingBookId] = useState<string | null>(null)
-  
-  // Расширенное состояние для метаданных книги
   const [bookMetaForm, setBookMetaForm] = useState({ title: '', genre: '', subgenre: '' })
 
   const [characters, setCharacters] = useState<any[]>([])
@@ -26,10 +24,15 @@ export default function App() {
     gender: 'not_specified', race: 'human'
   })
 
-  // Сцена: предыстория
+  // === ВОССТАНОВЛЕНО: Состояния для Мира книги ===
+  const [worldNotes, setWorldNotes] = useState({
+    setting: '', time_period: '', rules: '',
+    important_events: '', tone: '', custom_notes: ''
+  })
+  const [worldNotesSaveStatus, setWorldNotesSaveStatus] = useState('idle')
+
   const [showContextBefore, setShowContextBefore] = useState(false)
 
-  // ИИ
   const [selectedModel, setSelectedModel] = useState<string>(localStorage.getItem('selectedAIModel') || 'liquid/lfm-2.5-2.6b:free')
   const [availableModels, setAvailableModels] = useState<any[]>([])
   const [aiInstruction, setAiInstruction] = useState('')
@@ -44,18 +47,18 @@ export default function App() {
         const data = await res.json()
         if (data.projects) {
           const loadedBooks = data.projects.map((p: any) => ({
-            id: p.id, title: p.title, status: 'В работе', 
+            id: p.id, title: p.title, status: 'В работе',
             genre: p.genre || 'Не указан', subgenre: p.subgenre || '',
             chapters: (p.chapters || []).map((ch: any) => ({
               id: ch.id, title: ch.title,
-              scenes: (ch.scenes || []).map((s: any) => ({ 
-                id: s.id, title: s.title, text: s.body || '', context_before: s.context_before || '' 
+              scenes: (ch.scenes || []).map((s: any) => ({
+                id: s.id, title: s.title, text: s.body || '', context_before: s.context_before || ''
               }))
             }))
           }))
           setBooks(loadedBooks)
         }
-      } catch (error) { console.error('Ошибка загрузки книг:', error) } 
+      } catch (error) { console.error('Ошибка загрузки книг:', error) }
       finally { setLoading(false) }
     }
     loadBooks()
@@ -111,23 +114,22 @@ export default function App() {
     if (!title || title.trim() === '') return
     const genre = window.prompt('Жанр (например: Фэнтези, Детектив):') || 'Не указан'
     const subgenre = window.prompt('Поджанр (необязательно, например: Киберпанк, Историческое):') || ''
-    
     try {
-      const res = await fetch('/api/projects', { 
+      const res = await fetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description: subgenre, genre, subgenre })
       })
       const data = await res.json()
       if (data.project) {
-        const newBook = { 
-          id: data.project.id, title: data.project.title, status: 'В работе', 
+        const newBook = {
+          id: data.project.id, title: data.project.title, status: 'В работе',
           genre: genre, subgenre: subgenre,
           chapters: data.project.chapters.map((ch: any) => ({
             id: ch.id, title: ch.title,
             scenes: ch.scenes.map((s: any) => ({ id: s.id, title: s.title, text: s.body || '', context_before: '' }))
           }))
         }
-        setBooks([...books, newBook]); setActiveBookId(newBook.id); setActiveChapterId(newBook.chapters[0].id); setActiveSceneId(newBook.chapters[0].scenes[0].id); setView('editor'); loadCharacters(newBook.id)
+        setBooks([...books, newBook]); setActiveBookId(newBook.id); setActiveChapterId(newBook.chapters[0].id); setActiveSceneId(newBook.chapters[0].scenes[0].id); setView('editor'); loadCharacters(newBook.id); loadWorldNotes(newBook.id)
       } else { alert('Ошибка создания: ' + data.error) }
     } catch (error: any) { alert('Ошибка соединения: ' + error.message) }
   }
@@ -136,12 +138,12 @@ export default function App() {
     if (!activeScene) return
     setSaveStatus('saving')
     try {
-      const res = await fetch(`/api/scenes/${activeScene.id}`, { 
+      const res = await fetch(`/api/scenes/${activeScene.id}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: activeScene.text, context_before: activeScene.context_before })
       })
       const data = await res.json()
-      if (data.success) { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000) } 
+      if (data.success) { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000) }
       else { alert('Ошибка сохранения: ' + data.error); setSaveStatus('idle') }
     } catch (error: any) { alert('Ошибка сети: ' + error.message); setSaveStatus('idle') }
   }
@@ -151,7 +153,7 @@ export default function App() {
     try {
       const res = await fetch(`/api/chapters/${chapterId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newTitle }) })
       const data = await res.json()
-      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map(ch => ch.id === chapterId ? { ...ch, title: newTitle } : ch) })); setEditingChapterId(null) } 
+      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map(ch => ch.id === chapterId ? { ...ch, title: newTitle } : ch) })); setEditingChapterId(null) }
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
@@ -161,12 +163,11 @@ export default function App() {
     try {
       const res = await fetch(`/api/scenes/title/${sceneId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newTitle }) })
       const data = await res.json()
-      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map(ch => ({ ...ch, scenes: ch.scenes.map(s => s.id === sceneId ? { ...s, title: newTitle } : s) })) })); setEditingSceneId(null) } 
+      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map(ch => ({ ...ch, scenes: ch.scenes.map(s => s.id === sceneId ? { ...s, title: newTitle } : s) })) })); setEditingSceneId(null) }
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
 
-  // Обновление метаданных книги (Название, Жанр, Поджанр)
   const handleUpdateBookMeta = async () => {
     if (!bookMetaForm.title.trim()) { alert('Название обязательно'); return }
     try {
@@ -178,12 +179,8 @@ export default function App() {
       if (data.success) {
         setBooks(books.map(b => b.id === activeBookId ? { ...b, title: bookMetaForm.title, genre: bookMetaForm.genre, subgenre: bookMetaForm.subgenre } : b))
         setEditingBookId(null)
-      } else {
-        alert('Ошибка: ' + data.error)
-      }
-    } catch (error: any) {
-      alert('Ошибка: ' + error.message)
-    }
+      } else { alert('Ошибка: ' + data.error) }
+    } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
 
   const handleDeleteBook = async (bookId: string, bookTitle: string) => {
@@ -191,7 +188,7 @@ export default function App() {
     try {
       const res = await fetch(`/api/projects/${bookId}`, { method: 'DELETE' })
       const data = await res.json()
-      if (data.success) { setBooks(books.filter(b => b.id !== bookId)); if (activeBookId === bookId) { setView('library'); setActiveBookId(null); setActiveChapterId(null); setActiveSceneId(null) } } 
+      if (data.success) { setBooks(books.filter(b => b.id !== bookId)); if (activeBookId === bookId) { setView('library'); setActiveBookId(null); setActiveChapterId(null); setActiveSceneId(null) } }
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
@@ -202,6 +199,35 @@ export default function App() {
       const data = await res.json()
       if (data.characters) setCharacters(data.characters)
     } catch (error) { console.error('Ошибка загрузки персонажей:', error) }
+  }
+
+  // === ВОССТАНОВЛЕНО: Функции для Мира книги ===
+  const loadWorldNotes = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/world-notes`)
+      const data = await res.json()
+      if (data.notes) {
+        setWorldNotes({
+          setting: data.notes.setting || '', time_period: data.notes.time_period || '', rules: data.notes.rules || '',
+          important_events: data.notes.important_events || '', tone: data.notes.tone || '', custom_notes: data.notes.custom_notes || ''
+        })
+      } else {
+        setWorldNotes({ setting: '', time_period: '', rules: '', important_events: '', tone: '', custom_notes: '' })
+      }
+    } catch (error) { console.error('Ошибка загрузки заметок:', error) }
+  }
+
+  const handleSaveWorldNotes = async () => {
+    if (!activeBookId) return
+    setWorldNotesSaveStatus('saving')
+    try {
+      const res = await fetch(`/api/projects/${activeBookId}/world-notes`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(worldNotes)
+      })
+      const data = await res.json()
+      if (data.notes) { setWorldNotesSaveStatus('saved'); setTimeout(() => setWorldNotesSaveStatus('idle'), 2000) }
+      else { alert('Ошибка: ' + data.error); setWorldNotesSaveStatus('idle') }
+    } catch (error: any) { alert('Ошибка: ' + error.message); setWorldNotesSaveStatus('idle') }
   }
 
   const loadModels = async () => {
@@ -334,7 +360,7 @@ ${aiInstruction}
             </div>
             {books.map(book => (
               <div key={book.id} className="book-card" onMouseEnter={() => setHoveredBookId(book.id)} onMouseLeave={() => setHoveredBookId(null)} onClick={() => {
-                setActiveBookId(book.id); setActiveChapterId(book.chapters[0]?.id || null); setActiveSceneId(book.chapters[0]?.scenes[0]?.id || null); setView('editor'); loadCharacters(book.id)
+                setActiveBookId(book.id); setActiveChapterId(book.chapters[0]?.id || null); setActiveSceneId(book.chapters[0]?.scenes[0]?.id || null); setView('editor'); loadCharacters(book.id); loadWorldNotes(book.id)
               }} style={{ aspectRatio: '3/4', background: '#ffffff', borderRadius: '8px', border: '1px solid #dcd3c1', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative', overflow: 'hidden' }}>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b' }}>{book.title}</h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#7a6b5d' }}>{book.genre}{book.subgenre ? ` • ${book.subgenre}` : ''}</p>
@@ -454,6 +480,56 @@ ${aiInstruction}
         </div>
       )}
 
+      {/* === ВОССТАНОВЛЕНО: МИР КНИГИ === */}
+      {!loading && view === 'world' && activeBook && (
+        <div style={{ padding: '40px 10%', maxWidth: '900px', margin: '0 auto' }}>
+          <header style={{ marginBottom: '30px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <div>
+              <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>🌍 Мир книги: {activeBook.title}</h1>
+              <p style={{ color: '#7a6b5d', marginTop: '8px' }}>Эти данные помогают ИИ сохранять канон и атмосферу произведения</p>
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>← К редактору</button>
+              <button onClick={handleSaveWorldNotes} disabled={worldNotesSaveStatus !== 'idle'} style={{ padding: '8px 16px', background: worldNotesSaveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: worldNotesSaveStatus === 'idle' ? 'pointer' : 'default', fontWeight: 'bold' }}>
+                {worldNotesSaveStatus === 'saving' ? 'Сохранение...' : worldNotesSaveStatus === 'saved' ? '✓ Сохранено' : '💾 Сохранить мир'}
+              </button>
+            </div>
+          </header>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
+              <label style={labelStyle}>🏰 Сеттинг (место действия)</label>
+              <textarea value={worldNotes.setting} onChange={(e) => setWorldNotes({ ...worldNotes, setting: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Например: портовый город на севере континента, эпоха парусов и магии..." />
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
+              <label style={labelStyle}>⏳ Временной период</label>
+              <input type="text" value={worldNotes.time_period} onChange={(e) => setWorldNotes({ ...worldNotes, time_period: e.target.value })} style={inputStyle} placeholder="Например: конец XVIII века, осень" />
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
+              <label style={labelStyle}>⚖️ Правила мира</label>
+              <textarea value={worldNotes.rules} onChange={(e) => setWorldNotes({ ...worldNotes, rules: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Законы магии, социальные нормы, технологический уровень, табу..." />
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
+              <label style={labelStyle}>📜 Важные события (предыстория мира)</label>
+              <textarea value={worldNotes.important_events} onChange={(e) => setWorldNotes({ ...worldNotes, important_events: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Войны, катаклизмы, ключевые события до начала сюжета..." />
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
+              <label style={labelStyle}>🎨 Тон и стиль произведения</label>
+              <textarea value={worldNotes.tone} onChange={(e) => setWorldNotes({ ...worldNotes, tone: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Например: мрачное фэнтези с элементами детектива, медленный темп, длинные описания, редкие диалоги..." />
+            </div>
+
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
+              <label style={labelStyle}>📝 Дополнительные заметки</label>
+              <textarea value={worldNotes.custom_notes} onChange={(e) => setWorldNotes({ ...worldNotes, custom_notes: e.target.value })} style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} placeholder="Любые другие детали, важные для канона..." />
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* === РЕДАКТОР === */}
       {!loading && view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -461,6 +537,7 @@ ${aiInstruction}
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <button onClick={() => setView('library')} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>← Библиотека</button>
               <button onClick={() => setView('characters')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>👥 Персонажи</button>
+              <button onClick={() => setView('world')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>🌍 Мир</button>
             </div>
             
             {editingBookId === activeBook.id ? (
@@ -491,39 +568,13 @@ ${aiInstruction}
               </div>
               {activeBook.chapters.map(chapter => (
                 <div key={chapter.id} style={{ marginBottom: '15px' }}>
-                  {editingChapterId === chapter.id ? (
-                    <div style={{ marginBottom: '5px' }}>
-                      <input type="text" value={editingTitle} onChange={(e) => setEditingTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateChapterTitle(chapter.id, editingTitle); if (e.key === 'Escape') setEditingChapterId(null) }} autoFocus style={{ width: '100%', padding: '6px 8px', border: '1px solid #7a4b3a', borderRadius: '4px', fontSize: '0.9rem', fontFamily: 'Georgia, serif', outline: 'none', fontWeight: 'bold', boxSizing: 'border-box' }} />
-                      <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
-                        <button onClick={() => handleUpdateChapterTitle(chapter.id, editingTitle)} style={{ padding: '4px 10px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.75rem' }}>✓</button>
-                        <button onClick={() => setEditingChapterId(null)} style={{ padding: '4px 10px', background: '#999', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.75rem' }}>✗</button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#5c3a21', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ flex: 1 }}>{chapter.title}</span>
-                      <div style={{ display: 'flex', gap: '4px' }}>
-                        <button onClick={() => { setEditingChapterId(chapter.id); setEditingTitle(chapter.title) }} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '3px' }}>✏️</button>
-                        <button onClick={() => addScene(chapter.id)} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>+</button>
-                      </div>
-                    </div>
-                  )}
+                  <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#5c3a21', marginBottom: '5px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ flex: 1 }}>{chapter.title}</span>
+                    <button onClick={() => addScene(chapter.id)} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>+</button>
+                  </div>
                   {chapter.scenes.map(scene => (
                     <div key={scene.id} style={{ marginLeft: '10px', marginBottom: '4px' }}>
-                      {editingSceneId === scene.id ? (
-                        <div>
-                          <input type="text" value={editingTitle} onChange={(e) => setEditingTitle(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter') handleUpdateSceneTitle(scene.id, editingTitle); if (e.key === 'Escape') setEditingSceneId(null) }} autoFocus style={{ width: '100%', padding: '6px 10px', border: '1px solid #7a4b3a', borderRadius: '4px', fontSize: '0.85rem', fontFamily: 'Georgia, serif', outline: 'none', boxSizing: 'border-box' }} />
-                          <div style={{ display: 'flex', gap: '6px', marginTop: '4px' }}>
-                            <button onClick={() => handleUpdateSceneTitle(scene.id, editingTitle)} style={{ padding: '3px 8px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.7rem' }}>✓</button>
-                            <button onClick={() => setEditingSceneId(null)} style={{ padding: '3px 8px', background: '#999', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.7rem' }}>✗</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <div style={{ display: 'flex', alignItems: 'center' }}>
-                          <div className="tree-item" onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id) }} style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem', borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent', color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35' }}>{scene.title}</div>
-                          <button onClick={() => { setEditingSceneId(scene.id); setEditingTitle(scene.title) }} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '3px' }}>✏️</button>
-                        </div>
-                      )}
+                      <div className="tree-item" onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id) }} style={{ padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem', borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent', color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35' }}>{scene.title}</div>
                     </div>
                   ))}
                 </div>
@@ -533,7 +584,6 @@ ${aiInstruction}
             <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fdfbf7' }}>
               {activeScene ? (
                 <>
-                  {/* ВОССТАНОВЛЕНО: Предыстория сцены */}
                   <div style={{ borderBottom: '1px solid #dcd3c1', background: '#f9f5ec' }}>
                     <button onClick={() => setShowContextBefore(!showContextBefore)} style={{ width: '100%', padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7a4b3a', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
                       <span>📖 {activeScene.context_before ? 'Предыстория сцены (заполнена)' : 'Предыстория сцены (пусто)'}</span>
