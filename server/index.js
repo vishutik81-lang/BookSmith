@@ -254,8 +254,8 @@ app.get('/api/projects/:projectId/characters', async (req, res) => {
 // 5.11. Создание персонажа
 app.post('/api/projects/:projectId/characters', async (req, res) => {
   try {
-    const { projectId } = req.params;
-    const { name, description, role, appearance, personality, sexual_orientation } = req.body;
+    // ДОБАВЛЕНО: gender, race в деструктуризацию
+    const { name, description, role, appearance, personality, sexual_orientation, gender, race } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Имя персонажа обязательно' });
@@ -270,7 +270,9 @@ app.post('/api/projects/:projectId/characters', async (req, res) => {
         role: role || 'secondary',
         appearance: appearance || '',
         personality: personality || '',
-        sexual_orientation: sexual_orientation || ''
+        sexual_orientation: sexual_orientation || '',
+        gender: gender || 'not_specified', // <-- ДОБАВЛЕНО
+        race: race || 'human'               // <-- ДОБАВЛЕНО
       }])
       .select()
       .single();
@@ -287,8 +289,8 @@ app.post('/api/projects/:projectId/characters', async (req, res) => {
 // 5.12. Обновление персонажа
 app.patch('/api/characters/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { name, description, role, appearance, personality, sexual_orientation } = req.body;
+    // ДОБАВЛЕНО: gender, race в деструктуризацию
+    const { name, description, role, appearance, personality, sexual_orientation, gender, race } = req.body;
 
     const updateData = {};
     if (name !== undefined) updateData.name = name.trim();
@@ -297,6 +299,8 @@ app.patch('/api/characters/:id', async (req, res) => {
     if (appearance !== undefined) updateData.appearance = appearance;
     if (personality !== undefined) updateData.personality = personality;
     if (sexual_orientation !== undefined) updateData.sexual_orientation = sexual_orientation;
+    if (gender !== undefined) updateData.gender = gender;       // <-- ДОБАВЛЕНО
+    if (race !== undefined) updateData.race = race;             // <-- ДОБАВЛЕНО
 
     const { data, error } = await supabase
       .from('characters')
