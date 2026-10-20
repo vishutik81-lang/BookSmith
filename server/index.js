@@ -332,6 +332,82 @@ app.delete('/api/characters/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// === ЗАМЕТКИ О МИРЕ ===
+
+// 7.1. Получить заметки о мире проекта
+app.get('/api/projects/:projectId/world-notes', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { data, error } = await supabase
+      .from('world_notes')
+      .select('*')
+      .eq('project_id', projectId)
+      .single();
+
+    if (error && error.code !== 'PGRST116') throw error; // PGRST116 = не найдено
+    res.json({ notes: data || null });
+  } catch (err) {
+    console.error('Ошибка загрузки заметок:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7.2. Создать или обновить заметки о мире (upsert)
+app.post('/api/projects/:projectId/world-notes', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { setting, time_period, rules, important_events, tone, custom_notes } = req.body;
+
+    const { data, error } = await supabase
+      .from('world_notes')
+      .upsert([{
+        project_id: projectId,
+        setting: setting || '',
+        time_period: time_period || '',
+        rules: rules || '',
+        important_events: important_events || '',
+        tone: tone || '',
+        custom_notes: custom_notes || '',
+        updated_at: new Date().toISOString()
+      }], { onConflict: 'project_id' })
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ notes: data });
+  } catch (err) {
+    console.error('Ошибка сохранения заметок:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 7.3. Обновление сцены с учетом предыстории (заменяем старый PATCH /api/scenes/:id)
+app.patch('/api/scenes/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { body, context_before, title } = req.body;
+
+    const updateData = {};
+    if (body !== undefined) updateData.body = body;
+    if (context_before !== undefined) updateData.context_before = context_before;
+    if (title !== undefined) updateData.title = title;
+
+    const { data, error } = await supabase
+      .from('scenes')
+      .update(updateData)
+      .eq('id', id)
+      .select();
+
+    if (error) {
+      console.error('Ошибка обновления сцены:', error);
+      return res.status(500).json({ error: error.message });
+    }
+    res.json({ success: true, scene: data[0] });
+  } catch (err) {
+    console.error('Ошибка сервера:', err);
+    res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+  }
+});
 // 6. Отдача фронтенда
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
