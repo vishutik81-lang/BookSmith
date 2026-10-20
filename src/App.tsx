@@ -26,8 +26,8 @@ export default function App() {
     role: 'secondary'
   })
 
-  // Состояния для ИИ
-  const [selectedModel, setSelectedModel] = useState<string>(localStorage.getItem('selectedAIModel') || 'nvidia/llama-3.1-nemotron-70b-instruct')
+  // === СОСТОЯНИЯ ДЛЯ ИИ ===
+  const [selectedModel, setSelectedModel] = useState<string>(localStorage.getItem('selectedAIModel') || 'liquid/lfm-2.5-2.6b:free')
   const [availableModels, setAvailableModels] = useState<any[]>([])
   const [aiInstruction, setAiInstruction] = useState('')
   const [aiResult, setAiResult] = useState<string | null>(null)
@@ -64,11 +64,7 @@ export default function App() {
       }
     }
     loadBooks()
-  }, [])
-
-  // Загрузка моделей при старте
-  useEffect(() => {
-    loadModels()
+    loadModels() // Загружаем модели при старте
   }, [])
 
   const activeBook = books.find(b => b.id === activeBookId)
@@ -121,7 +117,6 @@ export default function App() {
     setActiveSceneId(newScene.id);
   };
 
-  // Создание книги с отправкой на сервер
   const handleCreateBook = async () => {
     const title = window.prompt('Как назовем новую книгу?');
     if (!title || title.trim() === '') return;
@@ -162,7 +157,6 @@ export default function App() {
     }
   };
 
-  // Сохранение сцены в базу данных
   const handleSave = async () => {
     if (!activeScene) return;
     setSaveStatus('saving');
@@ -186,7 +180,6 @@ export default function App() {
     }
   };
 
-  // Обновление названия главы
   const handleUpdateChapterTitle = async (chapterId: string, newTitle: string) => {
     if (!newTitle.trim()) return;
     try {
@@ -213,7 +206,6 @@ export default function App() {
     }
   };
 
-  // Обновление названия сцены
   const handleUpdateSceneTitle = async (sceneId: string, newTitle: string) => {
     if (!newTitle.trim()) return;
     try {
@@ -243,7 +235,6 @@ export default function App() {
     }
   };
 
-  // Обновление названия книги
   const handleUpdateBookTitle = async (bookId: string, newTitle: string) => {
     if (!newTitle.trim()) return;
     try {
@@ -264,7 +255,6 @@ export default function App() {
     }
   };
 
-  // Удаление книги (проекта)
   const handleDeleteBook = async (bookId: string, bookTitle: string) => {
     const confirmed = window.confirm(`Вы уверены, что хотите удалить книгу "${bookTitle}"?\nЭто действие нельзя отменить, будут удалены все главы и сцены.`);
     if (!confirmed) return;
@@ -297,41 +287,6 @@ export default function App() {
       }
     } catch (error) {
       console.error('Ошибка загрузки персонажей:', error)
-    }
-  }
-
-    // Загрузка списка доступных моделей
-  const loadModels = async () => {
-    try {
-      const res = await fetch('/api/models')
-      if (!res.ok) {
-        throw new Error(`HTTP ошибка: ${res.status}`)
-      }
-      const data = await res.json()
-      if (data.models && data.models.length > 0) {
-        setAvailableModels(data.models)
-        // Если выбранная модель не найдена, используем первую доступную
-        if (!data.models.find((m: any) => m.id === selectedModel) && data.models.length > 0) {
-          setSelectedModel(data.models[0].id)
-          localStorage.setItem('selectedAIModel', data.models[0].id)
-        }
-      } else {
-        throw new Error('Список моделей пуст')
-      }
-    } catch (error) {
-      console.warn('Не удалось загрузить модели с сервера, используем fallback-список:', error)
-      // Fallback список моделей для прототипа
-      const fallbackModels = [
-        { id: 'nvidia/llama-3.1-nemotron-70b-instruct', name: 'NVIDIA Llama 3.1 Nemotron 70B Instruct' },
-        { id: 'openai/gpt-4o', name: 'OpenAI GPT-4o' },
-        { id: 'anthropic/claude-3-5-sonnet', name: 'Anthropic Claude 3.5 Sonnet' },
-        { id: 'meta-llama/llama-3-70b-instruct', name: 'Meta Llama 3 70B Instruct' }
-      ]
-      setAvailableModels(fallbackModels)
-      if (!fallbackModels.find((m: any) => m.id === selectedModel)) {
-        setSelectedModel(fallbackModels[0].id)
-        localStorage.setItem('selectedAIModel', fallbackModels[0].id)
-      }
     }
   }
 
@@ -368,60 +323,6 @@ export default function App() {
     }
   }
 
-  // Генерация текста с помощью ИИ
-  const handleGenerateAI = async () => {
-    if (!aiInstruction.trim() || !activeScene) return;
-
-    setIsGenerating(true);
-    setAiResult(null);
-
-    try {
-      // Формируем контекст из персонажей
-      const charactersContext = characters.length > 0
-        ? 'Персонажи в этой книге:\n' + characters.map(c => 
-            `- ${c.name} (${c.role === 'protagonist' ? 'протагонист' : c.role === 'antagonist' ? 'антагонист' : 'второстепенный'})${c.description ? ': ' + c.description : ''}`
-          ).join('\n')
-        : 'Персонажей пока нет.';
-
-      // Формируем промпт
-      const prompt = `Ты — ИИ-соавтор для писателя. Помогай создавать художественные тексты, сохраняя стиль и контекст произведения.
-
-${charactersContext}
-
-Текущий текст сцены:
-"""
-${activeScene.text || '(сцена пока пустая)'}
-"""
-
-Инструкция автора: ${aiInstruction}
-
-Напиши художественный фрагмент, который соответствует инструкции. Сохраняй стиль, учитывай персонажей и контекст. Не добавляй объяснений, только текст.`;
-
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt, 
-          modelId: selectedModel 
-        })
-      });
-
-      const data = await res.json();
-
-      if (data.text) {
-        setAiResult(data.text);
-      } else if (data.error) {
-        alert('Ошибка ИИ: ' + data.error);
-      } else {
-        alert('Неожиданный ответ от ИИ');
-      }
-    } catch (error) {
-      alert('Ошибка соединения: ' + error.message);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
-
   const handleDeleteCharacter = async (characterId: string, characterName: string) => {
     const confirmed = window.confirm(`Удалить персонажа "${characterName}"?`)
     if (!confirmed) return
@@ -453,19 +354,97 @@ ${activeScene.text || '(сцена пока пустая)'}
     setShowCharacterModal(true)
   }
 
+  // === ФУНКЦИИ ДЛЯ ИИ ===
+  const loadModels = async () => {
+    try {
+      const res = await fetch('/api/models')
+      const data = await res.json()
+      
+      // Умная обработка: поддерживаем и прямой массив, и объект { models: [...] }
+      const modelsList = Array.isArray(data) ? data : (data.models || [])
+      
+      if (modelsList.length > 0) {
+        setAvailableModels(modelsList)
+        if (!modelsList.find((m: any) => m.id === selectedModel)) {
+          setSelectedModel(modelsList[0].id)
+          localStorage.setItem('selectedAIModel', modelsList[0].id)
+        }
+      }
+    } catch (error) {
+      console.warn('Не удалось загрузить модели с сервера, используем fallback-список:', error)
+      // Fallback список в точности совпадает с AVAILABLE_MODELS в openrouter.js
+      const fallbackModels = [
+        { id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5 (2.6B)' },
+        { id: 'thinkingmachines/inkling-small:free', name: 'Inkling Small' },
+        { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra (550B)' },
+        { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 (31B)' },
+        { id: 'qwen/qwen3.8-27b:free', name: 'Qwen 3.8 (27B)' }
+      ]
+      setAvailableModels(fallbackModels)
+      if (!fallbackModels.find((m: any) => m.id === selectedModel)) {
+        setSelectedModel(fallbackModels[0].id)
+        localStorage.setItem('selectedAIModel', fallbackModels[0].id)
+      }
+    }
+  }
+
+  const handleGenerateAI = async () => {
+    if (!aiInstruction.trim() || !activeScene) return;
+
+    setIsGenerating(true);
+    setAiResult(null);
+
+    try {
+      // 1. Формируем контекст из персонажей для ИИ
+      const charactersContext = characters.length > 0
+        ? 'Персонажи в этой книге:\n' + characters.map(c => 
+            `- ${c.name} (${c.role === 'protagonist' ? 'протагонист' : c.role === 'antagonist' ? 'антагонист' : 'второстепенный'})${c.description ? ': ' + c.description : ''}`
+          ).join('\n')
+        : 'Персонажей пока нет.';
+
+      // 2. Формируем промпт
+      const prompt = `Ты — ИИ-соавтор для писателя. Помогай создавать художественные тексты, сохраняя стиль и контекст произведения.
+
+${charactersContext}
+
+Текущий текст сцены:
+"""
+${activeScene.text || '(сцена пока пустая)'}
+"""
+
+Инструкция автора: ${aiInstruction}
+
+Напиши художественный фрагмент, который соответствует инструкции. Сохраняй стиль, учитывай персонажей и контекст. Не добавляй объяснений, только текст.`;
+
+      // 3. Отправляем запрос на наш Express-бэкенд
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt, 
+          modelId: selectedModel 
+        })
+      });
+
+      const data = await res.json();
+
+      // 4. Обрабатываем ответ (учитываем формат ошибки из openrouter.js)
+      if (data.text && !data.text.startsWith('Ошибка:')) {
+        setAiResult(data.text);
+      } else {
+        alert('Ошибка ИИ: ' + (data.text || data.error || 'Неизвестная ошибка'));
+      }
+    } catch (error: any) {
+      alert('Ошибка соединения: ' + error.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   // === РЕНДЕРИНГ ===
   return (
     <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
-      <style>{`
-        .book-card { transition: all 0.2s ease; cursor: pointer; }
-        .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(92, 58, 33, 0.15); }
-        .create-card { transition: all 0.2s ease; cursor: pointer; }
-        .create-card:hover { background: #ebe3d5 !important; border-color: #7a4b3a !important; }
-        .hover-info { display: none; }
-        .book-card:hover .hover-info { display: block; }
-        .tree-item { cursor: pointer; transition: background 0.2s; }
-        .tree-item:hover { background: #ebe3d5; }
-      `}</style>
+      <style>{`.book-card { transition: all 0.2s ease; cursor: pointer; } .book-card:hover { transform: translateY(-4px); box-shadow: 0 10px 20px rgba(92, 58, 33, 0.15); } .create-card { transition: all 0.2s ease; cursor: pointer; } .create-card:hover { background: #ebe3d5 !important; border-color: #7a4b3a !important; } .hover-info { display: none; } .book-card:hover .hover-info { display: block; } .tree-item { cursor: pointer; transition: background 0.2s; } .tree-item:hover { background: #ebe3d5; }`}</style>
 
       {loading && (
         <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.2rem', color: '#7a6b5d' }}>
@@ -773,6 +752,7 @@ ${activeScene.text || '(сцена пока пустая)'}
               )}
             </main>
 
+            {/* === ПРАВАЯ ПАНЕЛЬ: ПЕРСОНАЖИ + ИИ === */}
             <aside style={{ width: '320px', borderLeft: '1px solid #dcd3c1', background: '#f5f0e6', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               {/* Секция персонажей */}
               <div style={{ padding: '15px', borderBottom: '1px solid #dcd3c1', maxHeight: '200px', overflowY: 'auto' }}>
@@ -899,7 +879,7 @@ ${activeScene.text || '(сцена пока пустая)'}
                     lineHeight: '1.6',
                     color: '#2c241b'
                   }}>
-                    <div style={{ fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '8px', textTransform: 'uppercase' }}>Результат:</div>
+                    <div style={{ fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '8px', textTransform: 'uppercase' }}>Результат (черновик):</div>
                     <div style={{ whiteSpace: 'pre-wrap' }}>{aiResult}</div>
                     <div style={{ display: 'flex', gap: '8px', marginTop: '12px', borderTop: '1px solid #dcd3c1', paddingTop: '10px' }}>
                       <button 
@@ -907,6 +887,7 @@ ${activeScene.text || '(сцена пока пустая)'}
                           if (activeScene && aiResult) {
                             const newText = activeScene.text + (activeScene.text ? '\n\n' : '') + aiResult;
                             handleTextChange(newText);
+                            setAiResult(null); // Очищаем после вставки
                           }
                         }}
                         style={{ 
