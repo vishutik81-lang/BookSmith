@@ -254,7 +254,7 @@ app.get('/api/projects/:projectId/characters', async (req, res) => {
 // 5.11. Создание персонажа
 app.post('/api/projects/:projectId/characters', async (req, res) => {
   try {
-    // ДОБАВЛЕНО: gender, race в деструктуризацию
+    const { projectId } = req.params;
     const { name, description, role, appearance, personality, sexual_orientation, gender, race } = req.body;
 
     if (!name || !name.trim()) {
@@ -271,14 +271,13 @@ app.post('/api/projects/:projectId/characters', async (req, res) => {
         appearance: appearance || '',
         personality: personality || '',
         sexual_orientation: sexual_orientation || '',
-        gender: gender || 'not_specified', // <-- ДОБАВЛЕНО
-        race: race || 'human'               // <-- ДОБАВЛЕНО
+        gender: gender || 'not_specified',
+        race: race || 'human'
       }])
       .select()
       .single();
 
     if (error) throw error;
-    
     res.json({ character: data });
   } catch (err) {
     console.error('Ошибка создания персонажа:', err);
@@ -289,7 +288,7 @@ app.post('/api/projects/:projectId/characters', async (req, res) => {
 // 5.12. Обновление персонажа
 app.patch('/api/characters/:id', async (req, res) => {
   try {
-    // ДОБАВЛЕНО: gender, race в деструктуризацию
+    const { id } = req.params;
     const { name, description, role, appearance, personality, sexual_orientation, gender, race } = req.body;
 
     const updateData = {};
@@ -299,8 +298,8 @@ app.patch('/api/characters/:id', async (req, res) => {
     if (appearance !== undefined) updateData.appearance = appearance;
     if (personality !== undefined) updateData.personality = personality;
     if (sexual_orientation !== undefined) updateData.sexual_orientation = sexual_orientation;
-    if (gender !== undefined) updateData.gender = gender;       // <-- ДОБАВЛЕНО
-    if (race !== undefined) updateData.race = race;             // <-- ДОБАВЛЕНО
+    if (gender !== undefined) updateData.gender = gender;
+    if (race !== undefined) updateData.race = race;
 
     const { data, error } = await supabase
       .from('characters')
@@ -310,7 +309,6 @@ app.patch('/api/characters/:id', async (req, res) => {
       .single();
 
     if (error) throw error;
-    
     res.json({ character: data });
   } catch (err) {
     console.error('Ошибка обновления персонажа:', err);
