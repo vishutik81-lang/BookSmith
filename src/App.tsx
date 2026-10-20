@@ -17,13 +17,13 @@ export default function App() {
   const [editingTitle, setEditingTitle] = useState('')
   
   // Состояния для персонажей
-  const [characters, setCharacters] = useState<any[]>([])
-  const [showCharacterModal, setShowCharacterModal] = useState(false)
-  const [editingCharacter, setEditingCharacter] = useState<any>(null)
-  const [characterForm, setCharacterForm] = useState({
+   const [characterForm, setCharacterForm] = useState({
     name: '',
     description: '',
-    role: 'secondary'
+    role: 'secondary',
+    appearance: '',
+    personality: '',
+    sexual_orientation: ''
   })
 
   // === СОСТОЯНИЯ ДЛЯ ИИ ===
@@ -388,22 +388,25 @@ export default function App() {
     }
   }
 
-  const handleGenerateAI = async () => {
+    const handleGenerateAI = async () => {
     if (!aiInstruction.trim() || !activeScene) return;
 
     setIsGenerating(true);
     setAiResult(null);
 
     try {
-      // 1. Формируем контекст из персонажей для ИИ
+      // УЛУЧШЕННЫЙ контекст из персонажей для ИИ
       const charactersContext = characters.length > 0
         ? 'Персонажи в этой книге:\n' + characters.map(c => 
-            `- ${c.name} (${c.role === 'protagonist' ? 'протагонист' : c.role === 'antagonist' ? 'антагонист' : 'второстепенный'})${c.description ? ': ' + c.description : ''}`
+            `- **${c.name}** (${c.role === 'protagonist' ? 'протагонист' : c.role === 'antagonist' ? 'антагонист' : 'второстепенный'}). ` +
+            `Ориентация: ${c.sexual_orientation || 'не указана'}. ` +
+            `Внешность: ${c.appearance || 'не описана'}. ` +
+            `Характер: ${c.personality || 'не описан'}. ` +
+            `Дополнительно: ${c.description || 'нет'}`
           ).join('\n')
         : 'Персонажей пока нет.';
 
-      // 2. Формируем промпт
-      const prompt = `Ты — ИИ-соавтор для писателя. Помогай создавать художественные тексты, сохраняя стиль и контекст произведения.
+      const prompt = `Ты — ИИ-соавтор для писателя. Помогай создавать художественные тексты, строго сохраняя стиль, контекст и идентичность персонажей.
 
 ${charactersContext}
 
@@ -414,9 +417,8 @@ ${activeScene.text || '(сцена пока пустая)'}
 
 Инструкция автора: ${aiInstruction}
 
-Напиши художественный фрагмент, который соответствует инструкции. Сохраняй стиль, учитывай персонажей и контекст. Не добавляй объяснений, только текст.`;
+Напиши художественный фрагмент. Строго соблюдай описанную внешность, характер и ориентацию персонажей. Не добавляй объяснений, только текст.`;
 
-      // 3. Отправляем запрос на наш Express-бэкенд
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -428,7 +430,6 @@ ${activeScene.text || '(сцена пока пустая)'}
 
       const data = await res.json();
 
-      // 4. Обрабатываем ответ (учитываем формат ошибки из openrouter.js)
       if (data.text && !data.text.startsWith('Ошибка:')) {
         setAiResult(data.text);
       } else {
@@ -557,11 +558,12 @@ ${activeScene.text || '(сцена пока пустая)'}
               ))}
             </div>
           )}
-          {showCharacterModal && (
+                    {showCharacterModal && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
               <div style={{ background: '#fdfbf7', borderRadius: '12px', padding: '30px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
                 <h2 style={{ marginTop: 0, color: '#5c3a21' }}>{editingCharacter ? 'Редактировать персонажа' : 'Новый персонаж'}</h2>
-                <div style={{ marginBottom: '20px' }}>
+                
+                <div style={{ marginBottom: '15px' }}>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Имя *</label>
                   <input
                     type="text"
@@ -571,27 +573,62 @@ ${activeScene.text || '(сцена пока пустая)'}
                     placeholder="Например: Энн Бони"
                   />
                 </div>
-                <div style={{ marginBottom: '20px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Роль</label>
-                  <select
-                    value={characterForm.role}
-                    onChange={(e) => setCharacterForm({ ...characterForm, role: e.target.value })}
-                    style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '1rem', boxSizing: 'border-box' }}
-                  >
-                    <option value="protagonist">Протагонист</option>
-                    <option value="antagonist">Антагонист</option>
-                    <option value="secondary">Второстепенный</option>
-                  </select>
+
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '15px' }}>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Роль</label>
+                    <select
+                      value={characterForm.role}
+                      onChange={(e) => setCharacterForm({ ...characterForm, role: e.target.value })}
+                      style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '1rem', boxSizing: 'border-box' }}
+                    >
+                      <option value="protagonist">Протагонист</option>
+                      <option value="antagonist">Антагонист</option>
+                      <option value="secondary">Второстепенный</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Ориентация</label>
+                    <input
+                      type="text"
+                      value={characterForm.sexual_orientation}
+                      onChange={(e) => setCharacterForm({ ...characterForm, sexual_orientation: e.target.value })}
+                      style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '1rem', boxSizing: 'border-box' }}
+                      placeholder="Например: гомосексуальна"
+                    />
+                  </div>
                 </div>
+
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Внешность</label>
+                  <textarea
+                    value={characterForm.appearance}
+                    onChange={(e) => setCharacterForm({ ...characterForm, appearance: e.target.value })}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '0.95rem', minHeight: '60px', boxSizing: 'border-box', resize: 'vertical' }}
+                    placeholder="Цвет волос, глаз, телосложение, отличительные черты, стиль одежды..."
+                  />
+                </div>
+
+                <div style={{ marginBottom: '15px' }}>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Характер и повадки</label>
+                  <textarea
+                    value={characterForm.personality}
+                    onChange={(e) => setCharacterForm({ ...characterForm, personality: e.target.value })}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '0.95rem', minHeight: '60px', boxSizing: 'border-box', resize: 'vertical' }}
+                    placeholder="Темперамент, манера речи, страхи, мотивы, привычки..."
+                  />
+                </div>
+
                 <div style={{ marginBottom: '25px' }}>
-                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Описание</label>
+                  <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Краткая роль в сюжете (дополнительно)</label>
                   <textarea
                     value={characterForm.description}
                     onChange={(e) => setCharacterForm({ ...characterForm, description: e.target.value })}
-                    style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '1rem', minHeight: '100px', boxSizing: 'border-box', resize: 'vertical' }}
-                    placeholder="Краткое описание персонажа, его роль в истории..."
+                    style={{ width: '100%', padding: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '0.95rem', minHeight: '60px', boxSizing: 'border-box', resize: 'vertical' }}
+                    placeholder="Как этот персонаж связан с главным героем или сюжетом?"
                   />
                 </div>
+
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setShowCharacterModal(false); setEditingCharacter(null); }} style={{ flex: 1, padding: '10px', background: 'none', border: '1px solid #dcd3c1', color: '#7a6b5d', borderRadius: '6px', cursor: 'pointer' }}>
                     Отмена
@@ -603,8 +640,6 @@ ${activeScene.text || '(сцена пока пустая)'}
               </div>
             </div>
           )}
-        </div>
-      )}
 
       {!loading && view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
