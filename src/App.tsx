@@ -33,6 +33,10 @@ export default function App() {
 
   const [showContextBefore, setShowContextBefore] = useState(false)
 
+    // === CREATIVE LATITUDE & POLICY LEXICON ===
+  const [showSettings, setShowSettings] = useState(false)
+  const [creativeLatitude, setCreativeLatitude] = useState('guided') // strict | constrained | guided | open
+  const [policies, setPolicies] = useState({ nsfw: 2, realism: 3, cruelty: 2 })
   const [selectedModel, setSelectedModel] = useState<string>(localStorage.getItem('selectedAIModel') || 'liquid/lfm-2.5-2.6b:free')
   const [availableModels, setAvailableModels] = useState<any[]>([])
   const [aiInstruction, setAiInstruction] = useState('')
@@ -291,7 +295,38 @@ export default function App() {
     setShowCharacterModal(true)
   }
 
-  const handleGenerateAI = async () => {
+    // === POLICY EXPANDER & CREATIVE LATITUDE ===
+  const getLatitudeInstruction = () => {
+    switch (creativeLatitude) {
+      case 'strict': return 'Строго следуй инструкции автора. Не добавляй новых деталей, локаций или персонажей, не импровизируй.'
+      case 'constrained': return 'Минимальные допущения. Добавляй только то, что логически вытекает из контекста и предыстории.'
+      case 'guided': return 'Сбалансированный подход. Можешь добавлять атмосферные детали (запахи, звуки), но не меняй суть сцены.'
+      case 'open': return 'Максимальная творческая свобода. Можешь придумывать новые детали, второстепенных персонажей, неожиданные повороты, если это оживляет сцену.'
+      default: return ''
+    }
+  }
+
+  const getPolicyInstruction = () => {
+    const nsfwText = policies.nsfw <= 1 
+      ? 'Полностью исключи откровенность и намёки.' 
+      : policies.nsfw <= 3 
+        ? 'Допустимы взрослые темы, эмоциональная интимность и намёки. Запрещена порнографическая детализация.' 
+        : 'Откровенный контент и эротика разрешены в рамках сюжета.'
+    const realismText = policies.realism <= 2 
+      ? 'Условный реализм, фокус на действии и диалогах, без бытовых мелочей.' 
+      : policies.realism <= 4 
+        ? 'Высокий реализм. Раны, усталость, страх и последствия действий влияют на поведение персонажей.' 
+        : 'Максимальный реализм. Физиология, психология и быт описываются с медицинской и исторической точностью.'
+    const crueltyText = policies.cruelty === 0 
+      ? 'Бескровный стиль. Насилие и жестокость остаются за кадром.' 
+      : policies.cruelty <= 2 
+        ? 'Умеренная жестокость. Показывай последствия и боль, но без садистской детализации.' 
+        : 'Жестокость, насилие и кровь могут описываться подробно, если этого требует сюжет.'
+    
+    return `- Откровенность (NSFW): ${nsfwText}\n- Реализм: ${realismText}\n- Жестокость: ${crueltyText}`
+  }
+  
+   const handleGenerateAI = async () => {
     if (!aiInstruction.trim() || !activeScene) return
     setIsGenerating(true)
     try {
@@ -307,18 +342,48 @@ export default function App() {
           }).join('\n')
         : 'Персонажей пока нет.'
 
-      const prompt = `Ты — ИИ-соавтор. Строго соблюдай канон.
+      // === НОВОЕ: Секция мира книги ===
+      const worldSection = [
+        worldNotes.setting && `Место действия: ${worldNotes.setting}`,
+        worldNotes.time_period && `Время: ${worldNotes.time_period}`,
+        worldNotes.rules && `Правила мира: ${worldNotes.rules}`,
+        worldNotes.important_events && `Важные события: ${worldNotes.important_events}`,
+        worldNotes.tone && `Тон и стиль: ${worldNotes.tone}`,
+        worldNotes.custom_notes && `Дополнительно: ${worldNotes.custom_notes}`
+      ].filter(Boolean).join('\n')
+
+      // === НОВОЕ: Расширенный промпт с политиками и свободой ===
+      const prompt = `Ты — ИИ-соавтор художественной литературы. Строго соблюдай канон произведения.
+
+=== МИР ПРОИЗВЕДЕНИЯ ===
+${worldSection || '(мир не описан)'}
+
 === ПЕРСОНАЖИ ===
 ${charactersContext}
+
 === ПРЕДЫСТОРИЯ СЦЕНЫ ===
 ${activeScene.context_before || '(не указана)'}
+
 === ТЕКУЩАЯ СЦЕНА ===
 """
 ${activeScene.text || '(пусто)'}
 """
-=== ИНСТРУКЦИЯ ===
+
+=== ИНСТРУКЦИЯ АВТОРА ===
 ${aiInstruction}
-Пиши художественно, без мета-комментариев.`
+
+=== РЕЖИМ ГЕНЕРАЦИИ ===
+${getLatitudeInstruction()}
+
+=== ПОЛИТИКИ КОНТЕНТА ===
+${getPolicyInstruction()}
+
+=== ТРЕБОВАНИЯ ===
+1. Строго соблюдай внешность, характер и ориентацию персонажей — не искажай их.
+2. Следуй тону и стилю, указанному в описании мира.
+3. Учитывай предысторию сцены для логической связности.
+4. Пиши художественно, без объяснений и мета-комментариев.
+5. Только готовый текст, без заголовков и подписей.`
 
       const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, modelId: selectedModel }) })
       const data = await res.json()
