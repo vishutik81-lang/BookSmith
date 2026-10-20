@@ -231,6 +231,101 @@ app.patch('/api/projects/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// 5.10. Получение всех персонажей проекта
+app.get('/api/projects/:projectId/characters', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    const { data, error } = await supabase
+      .from('characters')
+      .select('*')
+      .eq('project_id', projectId)
+      .order('created_at', { ascending: true });
+
+    if (error) throw error;
+    
+    res.json({ characters: data || [] });
+  } catch (err) {
+    console.error('Ошибка загрузки персонажей:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5.11. Создание персонажа
+app.post('/api/projects/:projectId/characters', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { name, description, role } = req.body;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Имя персонажа обязательно' });
+    }
+
+    const { data, error } = await supabase
+      .from('characters')
+      .insert([{ 
+        project_id: projectId, 
+        name: name.trim(),
+        description: description || '',
+        role: role || 'secondary'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    res.json({ character: data });
+  } catch (err) {
+    console.error('Ошибка создания персонажа:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5.12. Обновление персонажа
+app.patch('/api/characters/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, role } = req.body;
+
+    const updateData = {};
+    if (name !== undefined) updateData.name = name.trim();
+    if (description !== undefined) updateData.description = description;
+    if (role !== undefined) updateData.role = role;
+
+    const { data, error } = await supabase
+      .from('characters')
+      .update(updateData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    
+    res.json({ character: data });
+  } catch (err) {
+    console.error('Ошибка обновления персонажа:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5.13. Удаление персонажа
+app.delete('/api/characters/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabase
+      .from('characters')
+      .delete()
+      .eq('id', id);
+
+    if (error) throw error;
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Ошибка удаления персонажа:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // 6. Отдача фронтенда
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
