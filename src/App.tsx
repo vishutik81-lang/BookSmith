@@ -4,20 +4,18 @@ export default function App() {
   const [view, setView] = useState('library')
   const [hoveredBookId, setHoveredBookId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState('idle')
-  
   const [books, setBooks] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-
   const [activeBookId, setActiveBookId] = useState<string | null>(null)
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null)
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null)
-
+  
   // Состояния для редактирования названий
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
   const [editingBookId, setEditingBookId] = useState<string | null>(null)
   const [editingTitle, setEditingTitle] = useState('')
-
+  
   // Состояния для персонажей
   const [characters, setCharacters] = useState<any[]>([])
   const [showCharacterModal, setShowCharacterModal] = useState(false)
@@ -28,13 +26,19 @@ export default function App() {
     role: 'secondary'
   })
 
+  // Состояния для ИИ
+  const [selectedModel, setSelectedModel] = useState<string>(localStorage.getItem('selectedAIModel') || 'nvidia/llama-3.1-nemotron-70b-instruct')
+  const [availableModels, setAvailableModels] = useState<any[]>([])
+  const [aiInstruction, setAiInstruction] = useState('')
+  const [aiResult, setAiResult] = useState<string | null>(null)
+  const [isGenerating, setIsGenerating] = useState(false)
+
   // Загрузка книг из базы данных при старте
   useEffect(() => {
     const loadBooks = async () => {
       try {
         const res = await fetch('/api/projects')
         const data = await res.json()
-        
         if (data.projects) {
           const loadedBooks = data.projects.map((p: any) => ({
             id: p.id,
@@ -60,6 +64,11 @@ export default function App() {
       }
     }
     loadBooks()
+  }, [])
+
+  // Загрузка моделей при старте
+  useEffect(() => {
+    loadModels()
   }, [])
 
   const activeBook = books.find(b => b.id === activeBookId)
@@ -116,16 +125,13 @@ export default function App() {
   const handleCreateBook = async () => {
     const title = window.prompt('Как назовем новую книгу?');
     if (!title || title.trim() === '') return;
-
     try {
       const res = await fetch('/api/projects', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description: 'Новый проект' }),
       });
-      
       const data = await res.json();
-      
       if (data.project) {
         const newBook = {
           id: data.project.id,
@@ -142,7 +148,6 @@ export default function App() {
             }))
           }))
         };
-        
         setBooks([...books, newBook]);
         setActiveBookId(newBook.id);
         setActiveChapterId(newBook.chapters[0].id);
@@ -161,16 +166,13 @@ export default function App() {
   const handleSave = async () => {
     if (!activeScene) return;
     setSaveStatus('saving');
-
     try {
       const res = await fetch(`/api/scenes/${activeScene.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ body: activeScene.text }),
       });
-      
       const data = await res.json();
-      
       if (data.success) {
         setSaveStatus('saved');
         setTimeout(() => setSaveStatus('idle'), 2000);
@@ -266,11 +268,9 @@ export default function App() {
   const handleDeleteBook = async (bookId: string, bookTitle: string) => {
     const confirmed = window.confirm(`Вы уверены, что хотите удалить книгу "${bookTitle}"?\nЭто действие нельзя отменить, будут удалены все главы и сцены.`);
     if (!confirmed) return;
-
     try {
       const res = await fetch(`/api/projects/${bookId}`, { method: 'DELETE' });
       const data = await res.json();
-      
       if (data.success) {
         setBooks(books.filter(b => b.id !== bookId));
         if (activeBookId === bookId) {
@@ -288,7 +288,6 @@ export default function App() {
   };
 
   // === ФУНКЦИИ ДЛЯ ПЕРСОНАЖЕЙ ===
-
   const loadCharacters = async (projectId: string) => {
     try {
       const res = await fetch(`/api/projects/${projectId}/characters`)
@@ -301,27 +300,40 @@ export default function App() {
     }
   }
 
+  // Загрузка списка доступных моделей
+  const loadModels = async () => {
+    try {
+      const res = await fetch('/api/models')
+      const data = await res.json()
+      if (data.models) {
+        setAvailableModels(data.models)
+        // Если выбранная модель не найдена, используем первую доступную
+        if (!data.models.find((m: any) => m.id === selectedModel) && data.models.length > 0) {
+          setSelectedModel(data.models[0].id)
+          localStorage.setItem('selectedAIModel', data.models[0].id)
+        }
+      }
+    } catch (error) {
+      console.error('Ошибка загрузки моделей:', error)
+    }
+  }
+
   const handleSaveCharacter = async () => {
     if (!characterForm.name.trim()) {
       alert('Имя персонажа обязательно')
       return
     }
-
     try {
       const url = editingCharacter
         ? `/api/characters/${editingCharacter.id}`
         : `/api/projects/${activeBookId}/characters`
-      
       const method = editingCharacter ? 'PATCH' : 'POST'
-
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(characterForm)
       })
-
       const data = await res.json()
-
       if (data.character) {
         if (editingCharacter) {
           setCharacters(characters.map(c => c.id === data.character.id ? data.character : c))
@@ -339,14 +351,66 @@ export default function App() {
     }
   }
 
+  // Генерация текста с помощью ИИ
+  const handleGenerateAI = async () => {
+    if (!aiInstruction.trim() || !activeScene) return;
+
+    setIsGenerating(true);
+    setAiResult(null);
+
+    try {
+      // Формируем контекст из персонажей
+      const charactersContext = characters.length > 0
+        ? 'Персонажи в этой книге:\n' + characters.map(c => 
+            `- ${c.name} (${c.role === 'protagonist' ? 'протагонист' : c.role === 'antagonist' ? 'антагонист' : 'второстепенный'})${c.description ? ': ' + c.description : ''}`
+          ).join('\n')
+        : 'Персонажей пока нет.';
+
+      // Формируем промпт
+      const prompt = `Ты — ИИ-соавтор для писателя. Помогай создавать художественные тексты, сохраняя стиль и контекст произведения.
+
+${charactersContext}
+
+Текущий текст сцены:
+"""
+${activeScene.text || '(сцена пока пустая)'}
+"""
+
+Инструкция автора: ${aiInstruction}
+
+Напиши художественный фрагмент, который соответствует инструкции. Сохраняй стиль, учитывай персонажей и контекст. Не добавляй объяснений, только текст.`;
+
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          prompt, 
+          modelId: selectedModel 
+        })
+      });
+
+      const data = await res.json();
+
+      if (data.text) {
+        setAiResult(data.text);
+      } else if (data.error) {
+        alert('Ошибка ИИ: ' + data.error);
+      } else {
+        alert('Неожиданный ответ от ИИ');
+      }
+    } catch (error) {
+      alert('Ошибка соединения: ' + error.message);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   const handleDeleteCharacter = async (characterId: string, characterName: string) => {
     const confirmed = window.confirm(`Удалить персонажа "${characterName}"?`)
     if (!confirmed) return
-
     try {
       const res = await fetch(`/api/characters/${characterId}`, { method: 'DELETE' })
       const data = await res.json()
-
       if (data.success) {
         setCharacters(characters.filter(c => c.id !== characterId))
       } else {
@@ -373,7 +437,6 @@ export default function App() {
   }
 
   // === РЕНДЕРИНГ ===
-
   return (
     <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
       <style>{`
@@ -403,24 +466,22 @@ export default function App() {
               <div style={{ fontSize: '3rem', color: '#7a4b3a' }}>+</div>
               <div style={{ fontSize: '1.1rem', color: '#5c3a21', fontWeight: 'bold' }}>Новая книга</div>
             </div>
-
             {books.map(book => (
-              <div 
-                key={book.id} 
-                className="book-card" 
-                onMouseEnter={() => setHoveredBookId(book.id)} 
-                onMouseLeave={() => setHoveredBookId(null)} 
-                onClick={() => { 
-                  setActiveBookId(book.id); 
-                  setActiveChapterId(book.chapters[0]?.id || null); 
-                  setActiveSceneId(book.chapters[0]?.scenes[0]?.id || null); 
+              <div
+                key={book.id}
+                className="book-card"
+                onMouseEnter={() => setHoveredBookId(book.id)}
+                onMouseLeave={() => setHoveredBookId(null)}
+                onClick={() => {
+                  setActiveBookId(book.id);
+                  setActiveChapterId(book.chapters[0]?.id || null);
+                  setActiveSceneId(book.chapters[0]?.scenes[0]?.id || null);
                   setView('editor');
                   loadCharacters(book.id);
-                }} 
+                }}
                 style={{ aspectRatio: '3/4', background: '#ffffff', borderRadius: '8px', border: '1px solid #dcd3c1', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative', overflow: 'hidden' }}
               >
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b' }}>{book.title}</h3>
-                
                 {hoveredBookId === book.id && (
                   <button
                     onClick={(e) => {
@@ -434,7 +495,6 @@ export default function App() {
                     🗑️ Удалить
                   </button>
                 )}
-                
                 {hoveredBookId === book.id && (
                   <div className="hover-info" style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(253, 251, 247, 0.95)', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'center', fontSize: '0.9rem', color: '#5c4a3d', zIndex: 5 }}>
                     <p style={{ margin: '0 0 8px 0' }}><strong>Жанр:</strong> {book.genre}</p>
@@ -466,7 +526,6 @@ export default function App() {
               </button>
             </div>
           </header>
-
           {characters.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '60px 20px', color: '#7a6b5d' }}>
               <div style={{ fontSize: '3rem', marginBottom: '20px' }}>👥</div>
@@ -479,8 +538,8 @@ export default function App() {
                 <div key={char.id} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px', position: 'relative' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
                     <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b' }}>{char.name}</h3>
-                    <span style={{ 
-                      padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem', 
+                    <span style={{
+                      padding: '2px 8px', borderRadius: '12px', fontSize: '0.75rem',
                       background: char.role === 'protagonist' ? '#dbeafe' : char.role === 'antagonist' ? '#fee2e2' : '#f3f4f6',
                       color: char.role === 'protagonist' ? '#1e40af' : char.role === 'antagonist' ? '#991b1b' : '#4b5563'
                     }}>
@@ -502,12 +561,10 @@ export default function App() {
               ))}
             </div>
           )}
-
           {showCharacterModal && (
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
               <div style={{ background: '#fdfbf7', borderRadius: '12px', padding: '30px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
                 <h2 style={{ marginTop: 0, color: '#5c3a21' }}>{editingCharacter ? 'Редактировать персонажа' : 'Новый персонаж'}</h2>
-                
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Имя *</label>
                   <input
@@ -518,7 +575,6 @@ export default function App() {
                     placeholder="Например: Энн Бони"
                   />
                 </div>
-
                 <div style={{ marginBottom: '20px' }}>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Роль</label>
                   <select
@@ -531,7 +587,6 @@ export default function App() {
                     <option value="secondary">Второстепенный</option>
                   </select>
                 </div>
-
                 <div style={{ marginBottom: '25px' }}>
                   <label style={{ display: 'block', marginBottom: '6px', fontWeight: 'bold', color: '#5c3a21' }}>Описание</label>
                   <textarea
@@ -541,7 +596,6 @@ export default function App() {
                     placeholder="Краткое описание персонажа, его роль в истории..."
                   />
                 </div>
-
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setShowCharacterModal(false); setEditingCharacter(null); }} style={{ flex: 1, padding: '10px', background: 'none', border: '1px solid #dcd3c1', color: '#7a6b5d', borderRadius: '6px', cursor: 'pointer' }}>
                     Отмена
@@ -565,7 +619,6 @@ export default function App() {
                 👥 Персонажи ({characters.length})
               </button>
             </div>
-            
             {editingBookId === activeBook.id ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <input
@@ -596,7 +649,6 @@ export default function App() {
                 </button>
               </div>
             )}
-            
             <button onClick={handleSave} disabled={saveStatus !== 'idle'} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', color: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', background: saveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', cursor: saveStatus === 'idle' ? 'pointer' : 'default', transition: 'all 0.3s ease' }}>
               {saveStatus === 'saving' ? 'Сохранение...' : saveStatus === 'saved' ? '✓ Сохранено' : 'Сохранить'}
             </button>
@@ -608,7 +660,6 @@ export default function App() {
                 <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: 0 }}>Структура</h3>
                 <button onClick={addChapter} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1.2rem' }}>+</button>
               </div>
-              
               {activeBook.chapters.map(chapter => (
                 <div key={chapter.id} style={{ marginBottom: '15px' }}>
                   {editingChapterId === chapter.id ? (
@@ -646,7 +697,6 @@ export default function App() {
                       </div>
                     </div>
                   )}
-                  
                   {chapter.scenes.map(scene => (
                     <div key={scene.id} style={{ marginLeft: '10px', marginBottom: '4px' }}>
                       {editingSceneId === scene.id ? (
@@ -706,10 +756,174 @@ export default function App() {
               )}
             </main>
 
-            <aside style={{ width: '300px', borderLeft: '1px solid #dcd3c1', background: '#f5f0e6', padding: '20px' }}>
-              <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: '0 0 15px 0' }}>ИИ-Соавтор</h3>
-              <textarea placeholder="Запрос к ИИ..." style={{ width: '100%', height: '100px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', background: '#fdfbf7', boxSizing: 'border-box', fontFamily: 'sans-serif', resize: 'none' }} />
-              <button style={{ width: '100%', padding: '10px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', marginTop: '10px' }}>Сгенерировать</button>
+            <aside style={{ width: '320px', borderLeft: '1px solid #dcd3c1', background: '#f5f0e6', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              {/* Секция персонажей */}
+              <div style={{ padding: '15px', borderBottom: '1px solid #dcd3c1', maxHeight: '200px', overflowY: 'auto' }}>
+                <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: '0 0 10px 0', letterSpacing: '1px' }}>
+                  👥 Персонажи ({characters.length})
+                </h3>
+                {characters.length === 0 ? (
+                  <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic' }}>
+                    Нет персонажей. Добавьте в разделе "Персонажи".
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    {characters.map(char => (
+                      <div key={char.id} style={{ padding: '8px', background: '#ffffff', borderRadius: '6px', border: '1px solid #dcd3c1' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '4px' }}>
+                          <div style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#2c241b' }}>{char.name}</div>
+                          <span style={{ 
+                            padding: '2px 6px', 
+                            borderRadius: '10px', 
+                            fontSize: '0.7rem', 
+                            background: char.role === 'protagonist' ? '#dbeafe' : char.role === 'antagonist' ? '#fee2e2' : '#f3f4f6',
+                            color: char.role === 'protagonist' ? '#1e40af' : char.role === 'antagonist' ? '#991b1b' : '#4b5563'
+                          }}>
+                            {char.role === 'protagonist' ? 'Протагонист' : char.role === 'antagonist' ? 'Антагонист' : 'Второстепенный'}
+                          </span>
+                        </div>
+                        {char.description && (
+                          <div style={{ fontSize: '0.8rem', color: '#4a3f35', lineHeight: '1.4' }}>
+                            {char.description.length > 100 ? char.description.substring(0, 100) + '...' : char.description}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Секция ИИ */}
+              <div style={{ flex: 1, padding: '15px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: '0 0 10px 0', letterSpacing: '1px' }}>ИИ-Соавтор</h3>
+                
+                {/* Выбор модели */}
+                <div style={{ marginBottom: '10px' }}>
+                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Модель:</label>
+                  <select
+                    value={selectedModel}
+                    onChange={(e) => {
+                      setSelectedModel(e.target.value);
+                      localStorage.setItem('selectedAIModel', e.target.value);
+                    }}
+                    style={{ 
+                      width: '100%', 
+                      padding: '6px 8px', 
+                      borderRadius: '4px', 
+                      border: '1px solid #dcd3c1', 
+                      fontSize: '0.85rem',
+                      background: '#fdfbf7',
+                      boxSizing: 'border-box'
+                    }}
+                  >
+                    {availableModels.length === 0 ? (
+                      <option value="">Загрузка моделей...</option>
+                    ) : (
+                      availableModels.map((model: any) => (
+                        <option key={model.id} value={model.id}>
+                          {model.name}
+                        </option>
+                      ))
+                    )}
+                  </select>
+                </div>
+
+                {/* Поле запроса */}
+                <textarea 
+                  value={aiInstruction}
+                  onChange={(e) => setAiInstruction(e.target.value)}
+                  placeholder="Например: Опиши, как Энн замечает Тёмного рыцаря в толпе..." 
+                  style={{ 
+                    width: '100%', 
+                    height: '80px', 
+                    padding: '10px', 
+                    borderRadius: '6px', 
+                    border: '1px solid #dcd3c1', 
+                    marginBottom: '10px', 
+                    boxSizing: 'border-box', 
+                    background: '#fdfbf7', 
+                    fontFamily: 'sans-serif', 
+                    fontSize: '0.9rem', 
+                    resize: 'none' 
+                  }}
+                />
+                
+                {/* Кнопка генерации */}
+                <button 
+                  onClick={handleGenerateAI}
+                  disabled={isGenerating || !aiInstruction.trim()}
+                  style={{ 
+                    width: '100%', 
+                    padding: '10px', 
+                    background: isGenerating ? '#999' : '#7a4b3a', 
+                    color: '#fdfbf7', 
+                    border: 'none', 
+                    borderRadius: '6px', 
+                    cursor: isGenerating ? 'wait' : 'pointer', 
+                    fontFamily: 'sans-serif', 
+                    fontWeight: 'bold', 
+                    fontSize: '0.9rem',
+                    marginBottom: '10px'
+                  }}
+                >
+                  {isGenerating ? '✨ Генерация...' : '✨ Сгенерировать'}
+                </button>
+
+                {/* Результат генерации */}
+                {aiResult && (
+                  <div style={{ 
+                    flex: 1, 
+                    overflowY: 'auto', 
+                    padding: '12px', 
+                    background: '#ffffff', 
+                    borderRadius: '6px', 
+                    border: '1px solid #dcd3c1',
+                    fontSize: '0.9rem',
+                    lineHeight: '1.6',
+                    color: '#2c241b'
+                  }}>
+                    <div style={{ fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '8px', textTransform: 'uppercase' }}>Результат:</div>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{aiResult}</div>
+                    <div style={{ display: 'flex', gap: '8px', marginTop: '12px', borderTop: '1px solid #dcd3c1', paddingTop: '10px' }}>
+                      <button 
+                        onClick={() => {
+                          if (activeScene && aiResult) {
+                            const newText = activeScene.text + (activeScene.text ? '\n\n' : '') + aiResult;
+                            handleTextChange(newText);
+                          }
+                        }}
+                        style={{ 
+                          flex: 1, 
+                          padding: '6px', 
+                          background: '#5c7a5c', 
+                          color: 'white', 
+                          border: 'none', 
+                          borderRadius: '4px', 
+                          cursor: 'pointer',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        ✓ Вставить в сцену
+                      </button>
+                      <button 
+                        onClick={() => setAiResult(null)}
+                        style={{ 
+                          flex: 1, 
+                          padding: '6px', 
+                          background: '#999', 
+                          color: 'white', 
+                          border: 'none', 
+                          borderRadius: '4px', 
+                          cursor: 'pointer',
+                          fontSize: '0.8rem'
+                        }}
+                      >
+                        ✗ Очистить
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </aside>
           </div>
         </div>
