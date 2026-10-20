@@ -255,7 +255,7 @@ app.get('/api/projects/:projectId/characters', async (req, res) => {
 app.post('/api/projects/:projectId/characters', async (req, res) => {
   try {
     const { projectId } = req.params;
-    const { name, description, role } = req.body;
+    const { name, description, role, appearance, personality, sexual_orientation } = req.body;
 
     if (!name || !name.trim()) {
       return res.status(400).json({ error: 'Имя персонажа обязательно' });
@@ -267,7 +267,10 @@ app.post('/api/projects/:projectId/characters', async (req, res) => {
         project_id: projectId, 
         name: name.trim(),
         description: description || '',
-        role: role || 'secondary'
+        role: role || 'secondary',
+        appearance: appearance || '',
+        personality: personality || '',
+        sexual_orientation: sexual_orientation || ''
       }])
       .select()
       .single();
@@ -285,12 +288,15 @@ app.post('/api/projects/:projectId/characters', async (req, res) => {
 app.patch('/api/characters/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, role } = req.body;
+    const { name, description, role, appearance, personality, sexual_orientation } = req.body;
 
     const updateData = {};
     if (name !== undefined) updateData.name = name.trim();
     if (description !== undefined) updateData.description = description;
     if (role !== undefined) updateData.role = role;
+    if (appearance !== undefined) updateData.appearance = appearance;
+    if (personality !== undefined) updateData.personality = personality;
+    if (sexual_orientation !== undefined) updateData.sexual_orientation = sexual_orientation;
 
     const { data, error } = await supabase
       .from('characters')
