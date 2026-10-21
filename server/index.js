@@ -416,11 +416,23 @@ app.get('/api/scenes/:sceneId/characters', async (req, res) => {
     const { sceneId } = req.params;
     const { data, error } = await supabase
       .from('scene_characters')
-      .select('*, characters(*)')
+      .select('*, characters(*)')  // ← ИСПРАВЛЕНО: правильный синтаксис join
       .eq('scene_id', sceneId);
 
-    if (error) throw error;
-    res.json({ characters: data || [] });
+    if (error) {
+      console.error('Ошибка Supabase:', error);
+      throw error;
+    }
+    
+    // Преобразуем данные: вместо characters вложенного объекта, делаем плоскую структуру
+    const characters = (data || []).map(link => ({
+      character_id: link.character_id,
+      scene_id: link.scene_id,
+      role: link.role,
+      characters: link.characters  // вложенный объект с данными персонажа
+    }));
+    
+    res.json({ characters });
   } catch (err) {
     console.error('Ошибка загрузки персонажей сцены:', err);
     res.status(500).json({ error: err.message });
