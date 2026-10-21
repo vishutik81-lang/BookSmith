@@ -112,19 +112,67 @@ export default function App() {
     }))
   }
 
-  const addChapter = () => {
-    const newChapter = { id: generateUUID(), title: 'Новая глава', scenes: [] }
-    setBooks(books.map(b => b.id === activeBookId ? { ...b, chapters: [...b.chapters, newChapter] } : b))
+ const addChapter = async () => {
+  try {
+    // Создаём главу на сервере сразу
+    const res = await fetch(`/api/projects/${activeBookId}/chapters`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Новая глава', sort_order: 0 })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      const newChapter = { 
+        id: data.chapter.id, 
+        title: data.chapter.title, 
+        scenes: [] 
+      };
+      
+      setBooks(books.map(b => b.id === activeBookId ? { ...b, chapters: [...b.chapters, newChapter] } : b));
+    } else {
+      alert('Ошибка создания главы: ' + data.error);
+    }
+  } catch (error: any) {
+    alert('Ошибка соединения: ' + error.message);
   }
+};
 
-  const addScene = (chapterId: string) => {
-    const newScene = { id: generateUUID(), title: 'Новая сцена', text: '', context_before: '' }
-    setBooks(books.map(b => {
-      if (b.id !== activeBookId) return b
-      return { ...b, chapters: b.chapters.map(c => c.id === chapterId ? { ...c, scenes: [...c.scenes, newScene] } : c) }
-    }))
-    setActiveChapterId(chapterId); setActiveSceneId(newScene.id)
+  const addScene = async (chapterId: string) => {
+  try {
+    // Создаём сцену на сервере сразу
+    const res = await fetch(`/api/chapters/${chapterId}/scenes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ title: 'Новая сцена', body: '', sort_order: 0 })
+    });
+    const data = await res.json();
+    
+    if (data.success) {
+      const newScene = { 
+        id: data.scene.id, 
+        title: data.scene.title, 
+        text: data.scene.body || '', 
+        context_before: '' 
+      };
+      
+      setBooks(books.map(b => {
+        if (b.id !== activeBookId) return b;
+        return { 
+          ...b, 
+          chapters: b.chapters.map(c => c.id === chapterId ? { ...c, scenes: [...c.scenes, newScene] } : c) 
+        };
+      }));
+      
+      setActiveChapterId(chapterId);
+      setActiveSceneId(newScene.id);
+    } else {
+      alert('Ошибка создания сцены: ' + data.error);
+    }
+  } catch (error: any) {
+    alert('Ошибка соединения: ' + error.message);
   }
+};
 
   const handleCreateBook = async () => {
     const title = window.prompt('Как назовем новую книгу?')
