@@ -24,6 +24,10 @@ export default function App() {
     gender: 'not_specified', race: 'human'
   })
 
+  // === НОВОЕ: Персонажи текущей сцены ===
+  const [sceneCharacters, setSceneCharacters] = useState<any[]>([])
+  const [showSceneCharPicker, setShowSceneCharPicker] = useState(false)
+
   const [worldNotes, setWorldNotes] = useState({
     setting: '', time_period: '', rules: '',
     important_events: '', tone: '', custom_notes: ''
@@ -31,8 +35,8 @@ export default function App() {
   const [worldNotesSaveStatus, setWorldNotesSaveStatus] = useState('idle')
 
   const [showContextBefore, setShowContextBefore] = useState(false)
+  const [showSceneChars, setShowSceneChars] = useState(true)
 
-  // === CREATIVE LATITUDE & POLICY LEXICON ===
   const [showSettings, setShowSettings] = useState(false)
   const [creativeLatitude, setCreativeLatitude] = useState('guided')
   const [policies, setPolicies] = useState({ nsfw: 2, realism: 3, cruelty: 2 })
@@ -68,6 +72,15 @@ export default function App() {
     loadBooks()
     loadModels()
   }, [])
+
+  // === НОВОЕ: Загружаем персонажей сцены при её смене ===
+  useEffect(() => {
+    if (activeSceneId) {
+      loadSceneCharacters(activeSceneId)
+    } else {
+      setSceneCharacters([])
+    }
+  }, [activeSceneId])
 
   const activeBook = books.find(b => b.id === activeBookId)
   const activeChapter = activeBook?.chapters.find(c => c.id === activeChapterId)
@@ -205,6 +218,61 @@ export default function App() {
     } catch (error) { console.error('Ошибка загрузки персонажей:', error) }
   }
 
+  // === НОВОЕ: Загрузка персонажей конкретной сцены ===
+  const loadSceneCharacters = async (sceneId: string) => {
+    try {
+      const res = await fetch(`/api/scenes/${sceneId}/characters`)
+      const data = await res.json()
+      if (data.characters) setSceneCharacters(data.characters)
+      else setSceneCharacters([])
+    } catch (error) {
+      console.error('Ошибка загрузки персонажей сцены:', error)
+      setSceneCharacters([])
+    }
+  }
+
+  // === НОВОЕ: Добавление персонажа в сцену ===
+  const addCharacterToScene = async (characterId: string, role: string = 'present') => {
+    if (!activeSceneId) return
+    try {
+      const res = await fetch(`/api/scenes/${activeSceneId}/characters`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ character_id: characterId, role })
+      })
+      const data = await res.json()
+      if (data.success) {
+        await loadSceneCharacters(activeSceneId)
+        setShowSceneCharPicker(false)
+      } else { alert('Ошибка: ' + data.error) }
+    } catch (error: any) { alert('Ошибка: ' + error.message) }
+  }
+
+  // === НОВОЕ: Удаление персонажа из сцены ===
+  const removeCharacterFromScene = async (characterId: string) => {
+    if (!activeSceneId) return
+    try {
+      const res = await fetch(`/api/scenes/${activeSceneId}/characters/${characterId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.success) {
+        setSceneCharacters(sceneCharacters.filter(sc => sc.character_id !== characterId))
+      } else { alert('Ошибка: ' + data.error) }
+    } catch (error: any) { alert('Ошибка: ' + error.message) }
+  }
+
+  // === НОВОЕ: Изменение роли персонажа в сцене ===
+  const updateSceneCharacterRole = async (characterId: string, newRole: string) => {
+    if (!activeSceneId) return
+    try {
+      // Удаляем и добавляем с новой ролью (т.к. нет PATCH)
+      await fetch(`/api/scenes/${activeSceneId}/characters/${characterId}`, { method: 'DELETE' })
+      await fetch(`/api/scenes/${activeSceneId}/characters`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ character_id: characterId, role: newRole })
+      })
+      await loadSceneCharacters(activeSceneId)
+    } catch (error: any) { alert('Ошибка: ' + error.message) }
+  }
+
   const loadWorldNotes = async (projectId: string) => {
     try {
       const res = await fetch(`/api/projects/${projectId}/world-notes`)
@@ -294,7 +362,6 @@ export default function App() {
     setShowCharacterModal(true)
   }
 
-  // === POLICY EXPANDER & CREATIVE LATITUDE ===
   const getLatitudeInstruction = () => {
     switch (creativeLatitude) {
       case 'strict': return 'Строго следуй инструкции автора. Не добавляй новых деталей, локаций или персонажей, не импровизируй.'
@@ -321,17 +388,20 @@ export default function App() {
       : policies.cruelty <= 2
         ? 'Умеренная жестокость. Показывай последствия и боль, но без садистской детализации.'
         : 'Жестокость, насилие и кровь могут описываться подробно, если этого требует сюжет.'
-
     return `- Откровенность (NSFW): ${nsfwText}\n- Реализм: ${realismText}\n- Жестокость: ${crueltyText}`
   }
 
+  // === ОБНОВЛЕНО: Промпт теперь использует ТОЛЬКО персонажей сцены ===
   const handleGenerateAI = async () => {
     if (!aiInstruction.trim() || !activeScene) return
     setIsGenerating(true)
     try {
-      const charactersContext = characters.length > 0
-        ? 'Персонажи:\n' + characters.map(c => {
-            const parts = [`• ${c.name} (${c.role === 'protagonist' ? 'протагонист' : c.role === 'antagonist' ? 'антагонист' : 'второстепенный'})`]
+      // Берём персонажей СЦЕНЫ, а не всех из книги
+      const charactersContext = sceneCharacters.length > 0
+        ? 'Персонажи в этой сцене:\n' + sceneCharacters.map((sc: any) => {
+            const c = sc.characters
+            const roleLabel = sc.role === 'pov' ? 'POV' : sc.role === 'mentioned' ? 'упоминается' : 'присутствует'
+            const parts = [`• ${c.name} (${roleLabel})`]
             if (c.gender && c.gender !== 'not_specified') parts.push(`Пол: ${c.gender}`)
             if (c.race && c.race !== 'human') parts.push(`Раса: ${c.race}`)
             if (c.sexual_orientation && c.sexual_orientation !== 'not_specified') parts.push(`Ориентация: ${c.sexual_orientation}`)
@@ -340,7 +410,7 @@ export default function App() {
             if (c.description) parts.push(`Роль в сюжете: ${c.description}`)
             return parts.join('. ')
           }).join('\n')
-        : 'Персонажей пока нет.'
+        : 'В этой сцене пока нет привязанных персонажей. Используй только тех, кто упомянут в инструкции автора.'
 
       const worldSection = [
         worldNotes.setting && `Место действия: ${worldNotes.setting}`,
@@ -356,7 +426,7 @@ export default function App() {
 === МИР ПРОИЗВЕДЕНИЯ ===
 ${worldSection || '(мир не описан)'}
 
-=== ПЕРСОНАЖИ ===
+=== ПЕРСОНАЖИ СЦЕНЫ ===
 ${charactersContext}
 
 === ПРЕДЫСТОРИЯ СЦЕНЫ ===
@@ -378,10 +448,11 @@ ${getPolicyInstruction()}
 
 === ТРЕБОВАНИЯ ===
 1. Строго соблюдай внешность, характер и ориентацию персонажей — не искажай их.
-2. Следуй тону и стилю, указанному в описании мира.
-3. Учитывай предысторию сцены для логической связности.
-4. Пиши художественно, без объяснений и мета-комментариев.
-5. Только готовый текст, без заголовков и подписей.`
+2. НЕ добавляй в сцену персонажей, которых нет в списке "Персонажи сцены", если это не требуется инструкцией.
+3. Следуй тону и стилю, указанному в описании мира.
+4. Учитывай предысторию сцены для логической связности.
+5. Пиши художественно, без объяснений и мета-комментариев.
+6. Только готовый текст, без заголовков и подписей.`
 
       const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, modelId: selectedModel }) })
       const data = await res.json()
@@ -403,6 +474,11 @@ ${getPolicyInstruction()}
 
   const inputStyle = { width: '100%', padding: '8px', border: '1px solid #dcd3c1', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' as const, background: '#fdfbf7', fontFamily: 'Georgia, serif' }
   const labelStyle = { display: 'block', marginBottom: '4px', fontWeight: 'bold', color: '#5c3a21', fontSize: '0.8rem' }
+
+  // === НОВОЕ: Список персонажей книги, которых ещё нет в сцене ===
+  const availableCharactersForScene = characters.filter(
+    c => !sceneCharacters.some(sc => sc.character_id === c.id)
+  )
 
   return (
     <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
@@ -438,7 +514,9 @@ ${getPolicyInstruction()}
       {!loading && view === 'characters' && activeBook && (
         <div style={{ padding: '40px 10%', maxWidth: '1000px', margin: '0 auto' }}>
           <header style={{ marginBottom: '30px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>Персонажи: {activeBook.title}</h1>
+            <div>
+              <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>Персонажи: {activeBook.title}</h1>
+            </div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>← К редактору</button>
               <button onClick={() => openCharacterModal()} style={{ padding: '8px 16px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>+ Новый персонаж</button>
@@ -616,7 +694,6 @@ ${getPolicyInstruction()}
           </header>
 
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
-            {/* ЛЕВАЯ ПАНЕЛЬ: структура */}
             <aside style={{ width: '260px', borderRight: '1px solid #dcd3c1', background: '#f5f0e6', overflowY: 'auto', padding: '15px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
                 <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: 0 }}>Структура</h3>
@@ -626,7 +703,7 @@ ${getPolicyInstruction()}
                 <div key={chapter.id} style={{ marginBottom: '15px' }}>
                   {editingChapterId === chapter.id ? (
                     <div style={{ marginBottom: '5px' }}>
-                      <input type="text" value={editingChapterId === chapter.id ? bookMetaForm.title : chapter.title} onChange={(e) => setBookMetaForm({ ...bookMetaForm, title: e.target.value })} autoFocus style={{ width: '100%', padding: '6px 8px', border: '1px solid #7a4b3a', borderRadius: '4px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+                      <input type="text" value={bookMetaForm.title} onChange={(e) => setBookMetaForm({ ...bookMetaForm, title: e.target.value })} autoFocus style={{ width: '100%', padding: '6px 8px', border: '1px solid #7a4b3a', borderRadius: '4px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
                       <div style={{ display: 'flex', gap: '6px', marginTop: '6px' }}>
                         <button onClick={() => { handleUpdateChapterTitle(chapter.id, bookMetaForm.title); setEditingChapterId(null) }} style={{ padding: '4px 10px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.75rem' }}>✓</button>
                         <button onClick={() => setEditingChapterId(null)} style={{ padding: '4px 10px', background: '#999', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.75rem' }}>✗</button>
@@ -651,10 +728,68 @@ ${getPolicyInstruction()}
               ))}
             </aside>
 
-            {/* ЦЕНТР: редактор */}
             <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fdfbf7' }}>
               {activeScene ? (
                 <>
+                  {/* === НОВОЕ: Персонажи сцены === */}
+                  <div style={{ borderBottom: '1px solid #dcd3c1', background: '#f9f5ec' }}>
+                    <button onClick={() => setShowSceneChars(!showSceneChars)} style={{ width: '100%', padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7a4b3a', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
+                      <span>👥 Персонажи в этой сцене ({sceneCharacters.length})</span>
+                      <span>{showSceneChars ? '▲' : '▼'}</span>
+                    </button>
+                    {showSceneChars && (
+                      <div style={{ padding: '0 20px 15px 20px' }}>
+                        {sceneCharacters.length === 0 ? (
+                          <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic', marginBottom: '10px' }}>
+                            В этой сцене пока нет персонажей. ИИ не будет знать, о ком писать. Добавьте хотя бы одного.
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
+                            {sceneCharacters.map((sc: any) => {
+                              const c = sc.characters
+                              return (
+                                <div key={sc.character_id} style={{ padding: '6px 10px', background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                  <span style={{ fontWeight: 'bold', color: '#2c241b' }}>{c.name}</span>
+                                  <select
+                                    value={sc.role}
+                                    onChange={(e) => updateSceneCharacterRole(sc.character_id, e.target.value)}
+                                    style={{ padding: '2px 4px', fontSize: '0.75rem', border: '1px solid #dcd3c1', borderRadius: '3px', background: '#fdfbf7' }}
+                                  >
+                                    <option value="pov">POV</option>
+                                    <option value="present">присутствует</option>
+                                    <option value="mentioned">упоминается</option>
+                                  </select>
+                                  <button onClick={() => removeCharacterFromScene(sc.character_id)} style={{ background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer', fontSize: '1rem', padding: '0 4px' }} title="Убрать из сцены">×</button>
+                                </div>
+                              )
+                            })}
+                          </div>
+                        )}
+                        {showSceneCharPicker ? (
+                          <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '10px' }}>
+                            <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginBottom: '8px' }}>Выберите персонажа из книги:</div>
+                            {availableCharactersForScene.length === 0 ? (
+                              <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic' }}>Все персонажи книги уже добавлены в сцену.</div>
+                            ) : (
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '200px', overflowY: 'auto' }}>
+                                {availableCharactersForScene.map(c => (
+                                  <button key={c.id} onClick={() => addCharacterToScene(c.id, 'present')} style={{ padding: '6px 10px', background: '#fdfbf7', border: '1px solid #dcd3c1', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem' }}>
+                                    + {c.name} <span style={{ fontSize: '0.75rem', color: '#7a6b5d' }}>({c.role === 'protagonist' ? 'протагонист' : c.role === 'antagonist' ? 'антагонист' : 'второстепенный'})</span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                            <button onClick={() => setShowSceneCharPicker(false)} style={{ marginTop: '8px', padding: '4px 10px', background: '#999', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Закрыть</button>
+                          </div>
+                        ) : (
+                          <button onClick={() => setShowSceneCharPicker(true)} style={{ padding: '6px 12px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>
+                            + Добавить персонажа в сцену
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
                   <div style={{ borderBottom: '1px solid #dcd3c1', background: '#f9f5ec' }}>
                     <button onClick={() => setShowContextBefore(!showContextBefore)} style={{ width: '100%', padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7a4b3a', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
                       <span>📖 {activeScene.context_before ? 'Предыстория сцены (заполнена)' : 'Предыстория сцены (пусто)'}</span>
@@ -673,12 +808,10 @@ ${getPolicyInstruction()}
               )}
             </main>
 
-            {/* ПРАВАЯ ПАНЕЛЬ: ИИ-СОАВТОР */}
             <aside style={{ width: '340px', borderLeft: '1px solid #dcd3c1', background: '#f5f0e6', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
               <div style={{ flex: 1, padding: '15px', display: 'flex', flexDirection: 'column', overflowY: 'auto' }}>
                 <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: '0 0 10px 0' }}>✨ ИИ-Соавтор</h3>
 
-                {/* === CREATIVE LATITUDE & POLICIES === */}
                 <div style={{ marginBottom: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', background: '#fdfbf7' }}>
                   <button onClick={() => setShowSettings(!showSettings)} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#5c3a21', fontSize: '0.85rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
                     <span>⚙️ Параметры генерации</span>
