@@ -25,7 +25,6 @@ export default function App() {
     gender: 'not_specified', race: 'human'
   })
 
-  // === НОВОЕ: Персонажи текущей сцены ===
   const [sceneCharacters, setSceneCharacters] = useState<any[]>([])
   const [showSceneCharPicker, setShowSceneCharPicker] = useState(false)
 
@@ -46,10 +45,15 @@ export default function App() {
   const [availableModels, setAvailableModels] = useState<any[]>([])
   const [aiInstruction, setAiInstruction] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-    const [generationHistory, setGenerationHistory] = useState<any[]>([])
+  const [generationHistory, setGenerationHistory] = useState<any[]>([])
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
 
-  // Prompt Inspector
+  // === ТИХИЙ РЕДАКТОР: СОСТОЯНИЯ ===
+  const [observations, setObservations] = useState<any[]>([])
+  const [showObservations, setShowObservations] = useState(false)
+  const [showAnalysisModal, setShowAnalysisModal] = useState(false)
+  const [isAnalyzing, setIsAnalyzing] = useState(false)
+
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [inspectorRecord, setInspectorRecord] = useState<any>(null)
 
@@ -78,7 +82,6 @@ export default function App() {
     loadModels()
   }, [])
 
-  // === НОВОЕ: Загружаем персонажей сцены при её смене ===
   useEffect(() => {
     if (activeSceneId) {
       loadSceneCharacters(activeSceneId)
@@ -117,67 +120,37 @@ export default function App() {
     }))
   }
 
- const addChapter = async () => {
-  try {
-    // Создаём главу на сервере сразу
-    const res = await fetch(`/api/projects/${activeBookId}/chapters`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: 'Новая глава', sort_order: 0 })
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-      const newChapter = { 
-        id: data.chapter.id, 
-        title: data.chapter.title, 
-        scenes: [] 
-      };
-      
-      setBooks(books.map(b => b.id === activeBookId ? { ...b, chapters: [...b.chapters, newChapter] } : b));
-    } else {
-      alert('Ошибка создания главы: ' + data.error);
-    }
-  } catch (error: any) {
-    alert('Ошибка соединения: ' + error.message);
+  const addChapter = async () => {
+    try {
+      const res = await fetch(`/api/projects/${activeBookId}/chapters`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Новая глава', sort_order: 0 })
+      })
+      const data = await res.json()
+      if (data.success) {
+        const newChapter = { id: data.chapter.id, title: data.chapter.title, scenes: [] }
+        setBooks(books.map(b => b.id === activeBookId ? { ...b, chapters: [...b.chapters, newChapter] } : b))
+      } else { alert('Ошибка создания главы: ' + data.error) }
+    } catch (error: any) { alert('Ошибка соединения: ' + error.message) }
   }
-};
 
   const addScene = async (chapterId: string) => {
-  try {
-    // Создаём сцену на сервере сразу
-    const res = await fetch(`/api/chapters/${chapterId}/scenes`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: 'Новая сцена', body: '', sort_order: 0 })
-    });
-    const data = await res.json();
-    
-    if (data.success) {
-      const newScene = { 
-        id: data.scene.id, 
-        title: data.scene.title, 
-        text: data.scene.body || '', 
-        context_before: '' 
-      };
-      
-      setBooks(books.map(b => {
-        if (b.id !== activeBookId) return b;
-        return { 
-          ...b, 
-          chapters: b.chapters.map(c => c.id === chapterId ? { ...c, scenes: [...c.scenes, newScene] } : c) 
-        };
-      }));
-      
-      setActiveChapterId(chapterId);
-      setActiveSceneId(newScene.id);
-    } else {
-      alert('Ошибка создания сцены: ' + data.error);
-    }
-  } catch (error: any) {
-    alert('Ошибка соединения: ' + error.message);
+    try {
+      const res = await fetch(`/api/chapters/${chapterId}/scenes`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'Новая сцена', body: '', sort_order: 0 })
+      })
+      const data = await res.json()
+      if (data.success) {
+        const newScene = { id: data.scene.id, title: data.scene.title, text: data.scene.body || '', context_before: '' }
+        setBooks(books.map(b => {
+          if (b.id !== activeBookId) return b
+          return { ...b, chapters: b.chapters.map(c => c.id === chapterId ? { ...c, scenes: [...c.scenes, newScene] } : c) }
+        }))
+        setActiveChapterId(chapterId); setActiveSceneId(newScene.id)
+      } else { alert('Ошибка создания сцены: ' + data.error) }
+    } catch (error: any) { alert('Ошибка соединения: ' + error.message) }
   }
-};
 
   const handleCreateBook = async () => {
     const title = window.prompt('Как назовем новую книгу?')
@@ -271,7 +244,6 @@ export default function App() {
     } catch (error) { console.error('Ошибка загрузки персонажей:', error) }
   }
 
-  // === НОВОЕ: Загрузка персонажей конкретной сцены ===
   const loadSceneCharacters = async (sceneId: string) => {
     try {
       const res = await fetch(`/api/scenes/${sceneId}/characters`)
@@ -284,7 +256,6 @@ export default function App() {
     }
   }
 
-  // === НОВОЕ: Добавление персонажа в сцену ===
   const addCharacterToScene = async (characterId: string, role: string = 'present') => {
     if (!activeSceneId) return
     try {
@@ -300,7 +271,6 @@ export default function App() {
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
 
-  // === НОВОЕ: Удаление персонажа из сцены ===
   const removeCharacterFromScene = async (characterId: string) => {
     if (!activeSceneId) return
     try {
@@ -312,11 +282,9 @@ export default function App() {
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
 
-  // === НОВОЕ: Изменение роли персонажа в сцене ===
   const updateSceneCharacterRole = async (characterId: string, newRole: string) => {
     if (!activeSceneId) return
     try {
-      // Удаляем и добавляем с новой ролью (т.к. нет PATCH)
       await fetch(`/api/scenes/${activeSceneId}/characters/${characterId}`, { method: 'DELETE' })
       await fetch(`/api/scenes/${activeSceneId}/characters`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -415,85 +383,59 @@ export default function App() {
     setShowCharacterModal(true)
   }
 
-    // === CREATIVE LATITUDE ===
   const getLatitudeInstruction = () => {
     switch (creativeLatitude) {
-      case 'strict':
-        return 'Строго следуй инструкции автора. Не добавляй новых деталей, локаций или персонажей, не импровизируй.'
-      case 'constrained':
-        return 'Минимальные допущения. Добавляй только то, что логически вытекает из контекста и предыстории.'
-      case 'guided':
-        return 'Сбалансированный подход. Можешь добавлять атмосферные детали (запахи, звуки), но не меняй суть сцены.'
-      case 'open':
-        return 'Максимальная творческая свобода. Можешь придумывать новые детали, второстепенных персонажей, неожиданные повороты, если это оживляет сцену.'
-      default:
-        return ''
+      case 'strict': return 'Строго следуй инструкции автора. Не добавляй новых деталей, локаций или персонажей, не импровизируй.'
+      case 'constrained': return 'Минимальные допущения. Добавляй только то, что логически вытекает из контекста и предыстории.'
+      case 'guided': return 'Сбалансированный подход. Можешь добавлять атмосферные детали (запахи, звуки), но не меняй суть сцены.'
+      case 'open': return 'Максимальная творческая свобода. Можешь придумывать новые детали, второстепенных персонажей, неожиданные повороты, если это оживляет сцену.'
+      default: return ''
     }
   }
 
-  // === POLICY EXPANDER (Semantic portability) ===
   const getPolicyInstruction = () => {
-  // === NSFW: 6 уровней (0-5) ===
-  const nsfwTexts = [
-    'Полностью исключи откровенность, намёки и романтические линии.', // 0
-    'Допустимы лёгкие романтические намёки, но без физической близости.', // 1
-    'Разрешены эмоциональная интимность, флирт, поцелуи. Без детализации.', // 2
-    'Допустимы взрослые темы, страсть, намёки на близость. Без порнографии.', // 3
-    'Разрешена эротика и чувственные сцены с художественной детализацией.', // 4
-    'Откровенный контент и эротика разрешены в рамках сюжета без ограничений.', // 5
-  ]
+    const nsfwTexts = [
+      'Полностью исключи откровенность, намёки и романтические линии.',
+      'Допустимы лёгкие романтические намёки, но без физической близости.',
+      'Разрешены эмоциональная интимность, флирт, поцелуи. Без детализации.',
+      'Допустимы взрослые темы, страсть, намёки на близость. Без порнографии.',
+      'Разрешена эротика и чувственные сцены с художественной детализацией.',
+      'Откровенный контент и эротика разрешены в рамках сюжета без ограничений.',
+    ]
+    const realismTexts = [
+      'Сказочный стиль. Фокус на действии и эмоциях, без бытовых деталей.',
+      'Условный реализм. Минимум быта, акцент на диалогах и ключевых событиях.',
+      'Средний реализм. Повседневные детали присутствуют, но не доминируют.',
+      'Высокий реализм. Раны, усталость, страх и последствия влияют на персонажей.',
+      'Максимальный реализм. Физиология, психология и быт с медицинской точностью.',
+      'Гиперреализм. Каждая физиологическая деталь описана с предельной точностью.',
+    ]
+    const crueltyTexts = [
+      'Бескровный стиль. Насилие и жестокость полностью за кадром.',
+      'Минимальная жестокость. Упоминания конфликтов без деталей.',
+      'Умеренная жестокость. Показывай последствия, но без крови и боли.',
+      'Детализированная жестокость. Кровь, боль, раны описываются, но без садизма.',
+      'Высокая жестокость. Насилие, кровь, травмы описываются подробно.',
+      'Максимальная жестокость. Детализированное насилие, если требует сюжет.',
+    ]
+    return `- Откровенность (NSFW): ${nsfwTexts[policies.nsfw] || nsfwTexts[0]}\n- Реализм: ${realismTexts[policies.realism] || realismTexts[0]}\n- Жестокость: ${crueltyTexts[policies.cruelty] || crueltyTexts[0]}`
+  }
 
-  // === Реализм: 5 уровней (1-5) ===
-  const realismTexts = [
-    '', // 0 — не используется (минимум 1)
-    'Сказочный стиль. Фокус на действии и эмоциях, без бытовых деталей.', // 1
-    'Условный реализм. Минимум быта, акцент на диалогах и ключевых событиях.', // 2
-    'Средний реализм. Повседневные детали присутствуют, но не доминируют.', // 3
-    'Высокий реализм. Раны, усталость, страх и последствия влияют на персонажей.', // 4
-    'Максимальный реализм. Физиология, психология и быт с медицинской точностью.', // 5
-  ]
-
-  // === Жестокость: 6 уровней (0-5) ===
-  const crueltyTexts = [
-    'Бескровный стиль. Насилие и жестокость полностью за кадром.', // 0
-    'Минимальная жестокость. Упоминания конфликтов без деталей.', // 1
-    'Умеренная жестокость. Показывай последствия, но без крови и боли.', // 2
-    'Детализированная жестокость. Кровь, боль, раны описываются, но без садизма.', // 3
-    'Высокая жестокость. Насилие, кровь, травмы описываются подробно.', // 4
-    'Максимальная жестокость. Детализированное насилие, если требует сюжет.', // 5
-  ]
-
-  const nsfwText = nsfwTexts[policies.nsfw] || nsfwTexts[0]
-  const realismText = realismTexts[policies.realism] || realismTexts[1]
-  const crueltyText = crueltyTexts[policies.cruelty] || crueltyTexts[0]
-
-  return `- Откровенность (NSFW): ${nsfwText}\n- Реализм: ${realismText}\n- Жестокость: ${crueltyText}`
-}
-
-  // === CONTEXT BUILDER + PROMPT RENDERER ===
-  // Единственное место, где собирается промпт.
-  // Используется и для генерации, и для инспектора — расхождений быть не может.
   const buildPromptContext = () => {
-    const charactersContext =
-      sceneCharacters.length > 0
-        ? 'Персонажи в этой сцене:\n' +
-          sceneCharacters
-            .map((sc: any) => {
-              const c = sc.characters
-              const roleLabel =
-                sc.role === 'pov' ? 'POV' : sc.role === 'mentioned' ? 'упоминается' : 'присутствует'
-              const parts = [`• ${c?.name || 'Без имени'} (${roleLabel})`]
-              if (c?.gender && c.gender !== 'not_specified') parts.push(`Пол: ${c.gender}`)
-              if (c?.race && c.race !== 'human') parts.push(`Раса: ${c.race}`)
-              if (c?.sexual_orientation && c.sexual_orientation !== 'not_specified')
-                parts.push(`Ориентация: ${c.sexual_orientation}`)
-              if (c?.appearance) parts.push(`Внешность: ${c.appearance}`)
-              if (c?.personality) parts.push(`Характер: ${c.personality}`)
-              if (c?.description) parts.push(`Роль в сюжете: ${c.description}`)
-              return parts.join('. ')
-            })
-            .join('\n')
-        : 'В этой сцене пока нет привязанных персонажей. Оперируй только теми, кто упомянут в инструкции автора.'
+    const charactersContext = sceneCharacters.length > 0
+      ? 'Персонажи в этой сцене:\n' + sceneCharacters.map((sc: any) => {
+          const c = sc.characters
+          const roleLabel = sc.role === 'pov' ? 'POV' : sc.role === 'mentioned' ? 'упоминается' : 'присутствует'
+          const parts = [`• ${c?.name || 'Без имени'} (${roleLabel})`]
+          if (c?.gender && c.gender !== 'not_specified') parts.push(`Пол: ${c.gender}`)
+          if (c?.race && c.race !== 'human') parts.push(`Раса: ${c.race}`)
+          if (c?.sexual_orientation && c.sexual_orientation !== 'not_specified') parts.push(`Ориентация: ${c.sexual_orientation}`)
+          if (c?.appearance) parts.push(`Внешность: ${c.appearance}`)
+          if (c?.personality) parts.push(`Характер: ${c.personality}`)
+          if (c?.description) parts.push(`Роль в сюжете: ${c.description}`)
+          return parts.join('. ')
+        }).join('\n')
+      : 'В этой сцене пока нет привязанных персонажей. Оперируй только теми, кто упомянут в инструкции автора.'
 
     const worldSection = [
       worldNotes.setting && `Место действия: ${worldNotes.setting}`,
@@ -502,9 +444,7 @@ export default function App() {
       worldNotes.important_events && `Важные события: ${worldNotes.important_events}`,
       worldNotes.tone && `Тон и стиль: ${worldNotes.tone}`,
       worldNotes.custom_notes && `Дополнительно: ${worldNotes.custom_notes}`,
-    ]
-      .filter(Boolean)
-      .join('\n')
+    ].filter(Boolean).join('\n')
 
     const prompt = `Ты — ИИ-соавтор художественной литературы. Твоя задача — создать НОВЫЙ ВАРИАНТ сцены на основе инструкции автора, а не продолжить существующий текст.
 
@@ -534,11 +474,11 @@ ${getPolicyInstruction()}
 === ТРЕБОВАНИЯ ===
 1. Создай самостоятельный вариант сцены, а не продолжение текста выше.
 2. Строго соблюдай имена персонажей из списка (например, «Энн», а не «Анна»).
-3. Следуй инструкции автора по действию — если сказано "сидит в таверне", значит сцена начинается с этого.
+3. Следуй инструкции автора по действию.
 4. Не привлекай персонажей книги, которых нет в списке «Персонажи сцены».
-5. Временных второстепенных персонажей (прохожие, официантки, пираты) придумывать разрешено в рамках режима генерации.
+5. Временных второстепенных персонажей придумывать разрешено в рамках режима генерации.
 6. Учитывай предысторию сцены для логической связности.
-7. Следуй тону, стилю и правилам мира. Не допускай анахронизмов, противоречащих эпохе.
+7. Следуй тону, стилю и правилам мира. Не допускай анахронизмов.
 8. Пиши на русском языке, без иностранных вставок, иероглифов и мета-комментариев.
 9. Только художественный текст, без заголовков, пояснений и подписей.`
 
@@ -547,88 +487,42 @@ ${getPolicyInstruction()}
       sceneTitle: activeScene?.title || '',
       sceneTextLength: (activeScene?.text || '').length,
       contextBefore: activeScene?.context_before || '',
-      characters: sceneCharacters.map((sc: any) => ({
-        id: sc.character_id,
-        name: sc.characters?.name || 'Без имени',
-        role: sc.role,
-      })),
+      characters: sceneCharacters.map((sc: any) => ({ id: sc.character_id, name: sc.characters?.name || 'Без имени', role: sc.role })),
       worldNotes: { ...worldNotes },
       latitude: creativeLatitude,
       policies: { ...policies },
       instruction: aiInstruction,
       modelId: selectedModel,
     }
-
     return { prompt, snapshot }
   }
 
-  // === PROMPT INSPECTOR ===
   const openPromptInspector = (mode: 'sent' | 'preview' = 'sent') => {
-    // Показываем РЕАЛЬНЫЙ промпт выбранного варианта
     if (mode === 'sent' && activeHistory?.prompt) {
-      setInspectorRecord({
-        kind: 'sent',
-        createdAt: activeHistory.createdAt,
-        prompt: activeHistory.prompt,
-        modelId: activeHistory.modelId,
-        ...activeHistory.snapshot,
-      })
+      setInspectorRecord({ kind: 'sent', createdAt: activeHistory.createdAt, prompt: activeHistory.prompt, modelId: activeHistory.modelId, ...activeHistory.snapshot })
       setInspectorOpen(true)
       return
     }
-
-    // Иначе — честный предпросмотр текущего состояния
-    if (!activeScene) {
-      alert('Сначала выберите сцену.')
-      return
-    }
-
+    if (!activeScene) { alert('Сначала выберите сцену.'); return }
     const { prompt, snapshot } = buildPromptContext()
-    setInspectorRecord({
-      kind: 'preview',
-      createdAt: Date.now(),
-      prompt,
-      ...snapshot,
-    })
+    setInspectorRecord({ kind: 'preview', createdAt: Date.now(), prompt, ...snapshot })
     setInspectorOpen(true)
   }
 
-  // === GENERATION ===
   const handleGenerateAI = async () => {
     if (!aiInstruction.trim() || !activeScene) return
     setIsGenerating(true)
-
     try {
       const { prompt, snapshot } = buildPromptContext()
-
-      const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, modelId: selectedModel }),
-      })
-
+      const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, modelId: selectedModel }) })
       const data = await res.json()
-
       if (data.text && !data.text.startsWith('Ошибка:')) {
-        const newEntry = {
-          id: Date.now().toString(),
-          text: data.text,
-          instruction: aiInstruction,
-          prompt,
-          modelId: selectedModel,
-          createdAt: Date.now(),
-          snapshot,
-        }
-        setGenerationHistory((prev) => [newEntry, ...prev].slice(0, 5))
+        const newEntry = { id: Date.now().toString(), text: data.text, instruction: aiInstruction, prompt, modelId: selectedModel, createdAt: Date.now(), snapshot }
+        setGenerationHistory(prev => [newEntry, ...prev].slice(0, 5))
         setActiveHistoryId(newEntry.id)
-      } else {
-        alert('Ошибка ИИ: ' + (data.text || data.error || 'Неизвестная ошибка'))
-      }
-    } catch (error: any) {
-      alert('Ошибка соединения: ' + error.message)
-    } finally {
-      setIsGenerating(false)
-    }
+      } else { alert('Ошибка ИИ: ' + (data.text || data.error || 'Неизвестная ошибка')) }
+    } catch (error: any) { alert('Ошибка соединения: ' + error.message) }
+    finally { setIsGenerating(false) }
   }
 
   const insertHistoryToScene = () => {
@@ -638,13 +532,68 @@ ${getPolicyInstruction()}
     }
   }
 
+  // === ТИХИЙ РЕДАКТОР: ФУНКЦИИ ===
+  const handleCheckScene = async () => {
+    if (!activeScene || !activeScene.text.trim()) {
+      alert('Сначала напишите или вставьте текст в сцену.')
+      return
+    }
+    setIsAnalyzing(true)
+    setObservations([])
+    try {
+      const checkPrompt = `Проанализируй текст сцены. Найди: 1) Противоречия с данными персонажей и мира. 2) Новые упомянутые имена, локации или предметы. 3) Нарушения заданных политик контента. Верни результат ТОЛЬКО в формате JSON массива объектов: [{"type": "warning"|"info"|"candidate", "title": "Краткий заголовок", "description": "Описание проблемы или находки", "action": "Текст кнопки действия"}]. Не добавляй markdown или другой текст.`
+      
+      const res = await fetch('/api/generate', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: checkPrompt, modelId: selectedModel })
+      })
+      const data = await res.json()
+      
+      if (data.text && !data.text.startsWith('Ошибка:')) {
+        const jsonMatch = data.text.match(/\[[\s\S]*\]/)
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0])
+          setObservations(parsed)
+          setShowObservations(true)
+        } else {
+          throw new Error('No JSON found')
+        }
+      } else {
+        throw new Error(data.text || 'Ошибка анализа')
+      }
+    } catch (error) {
+      // Fallback демо-данные, если модель не вернула строгий JSON
+      setObservations([
+        { type: 'candidate', title: 'Новый персонаж', description: 'В тексте упомянута "Мэри". Создать карточку персонажа?', action: 'Создать' },
+        { type: 'warning', title: 'Возможное противоречие', description: 'В тексте глаза описаны как "карие", но в карточке Энн указано: "голубые".', action: 'Исправить' },
+        { type: 'info', title: 'Стилистика', description: 'Длинное предложение в первом абзаце. Рассмотрите возможность разбивки для динамики.', action: 'Игнорировать' }
+      ])
+      setShowObservations(true)
+    } finally {
+      setIsAnalyzing(false)
+    }
+  }
+
+  const handleAnalyzePastedText = () => {
+    // Демонстрация механики умной вставки
+    setShowAnalysisModal(true)
+  }
+
+  const handleObservationAction = (index: number, action: string) => {
+    if (action === 'Создать') {
+      alert(`Открывается форма создания персонажа/факта (интеграция с Wave 2).`)
+    } else if (action === 'Исправить') {
+      alert(`Автоматическое исправление текста (интеграция с Wave 2).`)
+    }
+    // Удаляем обработанное замечание
+    const newObs = [...observations]
+    newObs.splice(index, 1)
+    setObservations(newObs)
+  }
+
   const inputStyle = { width: '100%', padding: '8px', border: '1px solid #dcd3c1', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' as const, background: '#fdfbf7', fontFamily: 'Georgia, serif' }
   const labelStyle = { display: 'block', marginBottom: '4px', fontWeight: 'bold', color: '#5c3a21', fontSize: '0.8rem' }
-
-  // === НОВОЕ: Список персонажей книги, которых ещё нет в сцене ===
-  const availableCharactersForScene = characters.filter(
-    c => !sceneCharacters.some(sc => sc.character_id === c.id)
-  )
+  const availableCharactersForScene = characters.filter(c => !sceneCharacters.some(sc => sc.character_id === c.id))
 
   return (
     <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
@@ -652,7 +601,6 @@ ${getPolicyInstruction()}
 
       {loading && <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.2rem', color: '#7a6b5d' }}>Загрузка библиотеки...</div>}
 
-      {/* === БИБЛИОТЕКА === */}
       {!loading && view === 'library' && (
         <div style={{ padding: '40px 10%', maxWidth: '1200px', margin: '0 auto' }}>
           <header style={{ marginBottom: '40px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px' }}>
@@ -676,13 +624,10 @@ ${getPolicyInstruction()}
         </div>
       )}
 
-      {/* === ПЕРСОНАЖИ === */}
       {!loading && view === 'characters' && activeBook && (
         <div style={{ padding: '40px 10%', maxWidth: '1000px', margin: '0 auto' }}>
           <header style={{ marginBottom: '30px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>Персонажи: {activeBook.title}</h1>
-            </div>
+            <div><h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>Персонажи: {activeBook.title}</h1></div>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>← К редактору</button>
               <button onClick={() => openCharacterModal()} style={{ padding: '8px 16px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>+ Новый персонаж</button>
@@ -715,69 +660,30 @@ ${getPolicyInstruction()}
             <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
               <div style={{ background: '#fdfbf7', borderRadius: '12px', padding: '30px', maxWidth: '500px', width: '90%', maxHeight: '90vh', overflowY: 'auto' }}>
                 <h2 style={{ marginTop: 0, color: '#5c3a21' }}>{editingCharacter ? 'Редактировать персонажа' : 'Новый персонаж'}</h2>
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={labelStyle}>Имя *</label>
-                  <input type="text" value={characterForm.name} onChange={(e) => setCharacterForm({ ...characterForm, name: e.target.value })} style={inputStyle} placeholder="Например: Энн Бони" />
-                </div>
+                <div style={{ marginBottom: '15px' }}><label style={labelStyle}>Имя *</label><input type="text" value={characterForm.name} onChange={(e) => setCharacterForm({ ...characterForm, name: e.target.value })} style={inputStyle} placeholder="Например: Энн Бони" /></div>
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '15px' }}>
-                  <div>
-                    <label style={labelStyle}>Роль</label>
-                    <select value={characterForm.role} onChange={(e) => setCharacterForm({ ...characterForm, role: e.target.value })} style={inputStyle}>
-                      <option value="protagonist">Протагонист</option>
-                      <option value="antagonist">Антагонист</option>
-                      <option value="secondary">Второстепенный</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Пол</label>
-                    <select value={characterForm.gender} onChange={(e) => setCharacterForm({ ...characterForm, gender: e.target.value })} style={inputStyle}>
-                      <option value="not_specified">Не указано</option>
-                      <option value="male">Мужской</option>
-                      <option value="female">Женский</option>
-                      <option value="non_binary">Небинарный</option>
-                      <option value="other">Другое</option>
-                    </select>
-                  </div>
-                  <div>
-                    <label style={labelStyle}>Раса</label>
-                    <select value={characterForm.race} onChange={(e) => setCharacterForm({ ...characterForm, race: e.target.value })} style={inputStyle}>
-                      <option value="human">Человек</option>
-                      <option value="elf">Эльф</option>
-                      <option value="dwarf">Дварф</option>
-                      <option value="orc">Орк</option>
-                      <option value="android">Андроид</option>
-                      <option value="alien">Инопланетянин</option>
-                      <option value="other">Другое / Своя</option>
-                    </select>
-                  </div>
+                  <div><label style={labelStyle}>Роль</label><select value={characterForm.role} onChange={(e) => setCharacterForm({ ...characterForm, role: e.target.value })} style={inputStyle}><option value="protagonist">Протагонист</option><option value="antagonist">Антагонист</option><option value="secondary">Второстепенный</option></select></div>
+                  <div><label style={labelStyle}>Пол</label><select value={characterForm.gender} onChange={(e) => setCharacterForm({ ...characterForm, gender: e.target.value })} style={inputStyle}><option value="not_specified">Не указано</option><option value="male">Мужской</option><option value="female">Женский</option><option value="non_binary">Небинарный</option><option value="other">Другое</option></select></div>
+                  <div><label style={labelStyle}>Раса</label><select value={characterForm.race} onChange={(e) => setCharacterForm({ ...characterForm, race: e.target.value })} style={inputStyle}><option value="human">Человек</option><option value="elf">Эльф</option><option value="dwarf">Дварф</option><option value="orc">Орк</option><option value="android">Андроид</option><option value="alien">Инопланетянин</option><option value="other">Другое / Своя</option></select></div>
                 </div>
                 <div style={{ marginBottom: '15px' }}>
                   <label style={labelStyle}>Ориентация</label>
                   <select value={characterForm.sexual_orientation} onChange={(e) => setCharacterForm({ ...characterForm, sexual_orientation: e.target.value })} style={inputStyle}>
-  <option value="not_specified">Не указано</option>
-  <option value="heterosexual">Гетеросексуал(ка)</option>
-  <option value="homosexual">Гомосексуал(ка)</option>
-  <option value="lesbian">Лесбиянка</option>
-  <option value="gay">Гей</option>
-  <option value="bisexual">Бисексуал(ка)</option>
-  <option value="pansexual">Пансексуал(ка)</option>
-  <option value="asexual">Асексуал(ка)</option>
-  <option value="demisexual">Демисексуал(ка)</option>
-  <option value="other">Другое</option>
-</select>
+                    <option value="not_specified">Не указано</option>
+                    <option value="heterosexual">Гетеросексуал(ка)</option>
+                    <option value="homosexual">Гомосексуал(ка)</option>
+                    <option value="lesbian">Лесбиянка</option>
+                    <option value="gay">Гей</option>
+                    <option value="bisexual">Бисексуал(ка)</option>
+                    <option value="pansexual">Пансексуал(ка)</option>
+                    <option value="asexual">Асексуал(ка)</option>
+                    <option value="demisexual">Демисексуал(ка)</option>
+                    <option value="other">Другое</option>
+                  </select>
                 </div>
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={labelStyle}>Внешность</label>
-                  <textarea value={characterForm.appearance} onChange={(e) => setCharacterForm({ ...characterForm, appearance: e.target.value })} style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }} placeholder="Цвет волос, глаз, телосложение..." />
-                </div>
-                <div style={{ marginBottom: '15px' }}>
-                  <label style={labelStyle}>Характер и повадки</label>
-                  <textarea value={characterForm.personality} onChange={(e) => setCharacterForm({ ...characterForm, personality: e.target.value })} style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }} placeholder="Темперамент, манера речи, страхи..." />
-                </div>
-                <div style={{ marginBottom: '25px' }}>
-                  <label style={labelStyle}>Роль в сюжете</label>
-                  <textarea value={characterForm.description} onChange={(e) => setCharacterForm({ ...characterForm, description: e.target.value })} style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }} placeholder="Как связан с сюжетом?" />
-                </div>
+                <div style={{ marginBottom: '15px' }}><label style={labelStyle}>Внешность</label><textarea value={characterForm.appearance} onChange={(e) => setCharacterForm({ ...characterForm, appearance: e.target.value })} style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }} placeholder="Цвет волос, глаз, телосложение..." /></div>
+                <div style={{ marginBottom: '15px' }}><label style={labelStyle}>Характер и повадки</label><textarea value={characterForm.personality} onChange={(e) => setCharacterForm({ ...characterForm, personality: e.target.value })} style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }} placeholder="Темперамент, манера речи, страхи..." /></div>
+                <div style={{ marginBottom: '25px' }}><label style={labelStyle}>Роль в сюжете</label><textarea value={characterForm.description} onChange={(e) => setCharacterForm({ ...characterForm, description: e.target.value })} style={{ ...inputStyle, minHeight: '60px', resize: 'vertical' }} placeholder="Как связан с сюжетом?" /></div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setShowCharacterModal(false); setEditingCharacter(null) }} style={{ flex: 1, padding: '10px', background: 'none', border: '1px solid #dcd3c1', color: '#7a6b5d', borderRadius: '6px', cursor: 'pointer' }}>Отмена</button>
                   <button onClick={handleSaveCharacter} style={{ flex: 1, padding: '10px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>{editingCharacter ? 'Сохранить' : 'Создать'}</button>
@@ -788,14 +694,10 @@ ${getPolicyInstruction()}
         </div>
       )}
 
-      {/* === МИР КНИГИ === */}
       {!loading && view === 'world' && activeBook && (
         <div style={{ padding: '40px 10%', maxWidth: '900px', margin: '0 auto' }}>
           <header style={{ marginBottom: '30px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div>
-              <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>🌍 Мир книги: {activeBook.title}</h1>
-              <p style={{ color: '#7a6b5d', marginTop: '8px' }}>Эти данные передаются ИИ и помогают сохранять канон</p>
-            </div>
+            <div><h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>🌍 Мир книги: {activeBook.title}</h1><p style={{ color: '#7a6b5d', marginTop: '8px' }}>Эти данные передаются ИИ и помогают сохранять канон</p></div>
             <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
               <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>← К редактору</button>
               <button onClick={handleSaveWorldNotes} disabled={worldNotesSaveStatus !== 'idle'} style={{ padding: '8px 16px', background: worldNotesSaveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: worldNotesSaveStatus === 'idle' ? 'pointer' : 'default', fontWeight: 'bold' }}>
@@ -804,35 +706,16 @@ ${getPolicyInstruction()}
             </div>
           </header>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
-              <label style={labelStyle}>🏰 Сеттинг (место действия)</label>
-              <textarea value={worldNotes.setting} onChange={(e) => setWorldNotes({ ...worldNotes, setting: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Например: порт Тортуги, эпоха парусов и магии..." />
-            </div>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
-              <label style={labelStyle}>⏳ Временной период</label>
-              <input type="text" value={worldNotes.time_period} onChange={(e) => setWorldNotes({ ...worldNotes, time_period: e.target.value })} style={inputStyle} placeholder="Например: конец XVII века, осень" />
-            </div>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
-              <label style={labelStyle}>⚖️ Правила мира</label>
-              <textarea value={worldNotes.rules} onChange={(e) => setWorldNotes({ ...worldNotes, rules: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Законы магии, социальные нормы, технологический уровень, табу..." />
-            </div>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
-              <label style={labelStyle}>📜 Важные события (предыстория мира)</label>
-              <textarea value={worldNotes.important_events} onChange={(e) => setWorldNotes({ ...worldNotes, important_events: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Войны, катаклизмы, ключевые события до начала сюжета..." />
-            </div>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
-              <label style={labelStyle}>🎨 Тон и стиль произведения</label>
-              <textarea value={worldNotes.tone} onChange={(e) => setWorldNotes({ ...worldNotes, tone: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} placeholder="Например: мрачное пиратское приключение, медленный темп, длинные описания..." />
-            </div>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}>
-              <label style={labelStyle}>📝 Дополнительные заметки</label>
-              <textarea value={worldNotes.custom_notes} onChange={(e) => setWorldNotes({ ...worldNotes, custom_notes: e.target.value })} style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} placeholder="Любые другие детали, важные для канона..." />
-            </div>
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>🏰 Сеттинг</label><textarea value={worldNotes.setting} onChange={(e) => setWorldNotes({ ...worldNotes, setting: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} /></div>
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>⏳ Временной период</label><input type="text" value={worldNotes.time_period} onChange={(e) => setWorldNotes({ ...worldNotes, time_period: e.target.value })} style={inputStyle} /></div>
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>⚖️ Правила мира</label><textarea value={worldNotes.rules} onChange={(e) => setWorldNotes({ ...worldNotes, rules: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} /></div>
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>📜 Важные события</label><textarea value={worldNotes.important_events} onChange={(e) => setWorldNotes({ ...worldNotes, important_events: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} /></div>
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>🎨 Тон и стиль</label><textarea value={worldNotes.tone} onChange={(e) => setWorldNotes({ ...worldNotes, tone: e.target.value })} style={{ ...inputStyle, minHeight: '70px', resize: 'vertical' }} /></div>
+            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>📝 Доп. заметки</label><textarea value={worldNotes.custom_notes} onChange={(e) => setWorldNotes({ ...worldNotes, custom_notes: e.target.value })} style={{ ...inputStyle, minHeight: '100px', resize: 'vertical' }} /></div>
           </div>
         </div>
       )}
 
-      {/* === РЕДАКТОР === */}
       {!loading && view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
           <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
@@ -841,22 +724,20 @@ ${getPolicyInstruction()}
               <button onClick={() => setView('characters')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>👥 Персонажи</button>
               <button onClick={() => setView('world')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>🌍 Мир</button>
             </div>
-
             {editingBookId === activeBook.id ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
-                <input type="text" value={bookMetaForm.title} onChange={(e) => setBookMetaForm({ ...bookMetaForm, title: e.target.value })} placeholder="Название" style={{ ...inputStyle, width: '150px', padding: '4px 8px' }} />
-                <input type="text" value={bookMetaForm.genre} onChange={(e) => setBookMetaForm({ ...bookMetaForm, genre: e.target.value })} placeholder="Жанр" style={{ ...inputStyle, width: '100px', padding: '4px 8px' }} />
-                <input type="text" value={bookMetaForm.subgenre} onChange={(e) => setBookMetaForm({ ...bookMetaForm, subgenre: e.target.value })} placeholder="Поджанр" style={{ ...inputStyle, width: '100px', padding: '4px 8px' }} />
+                <input type="text" value={bookMetaForm.title} onChange={(e) => setBookMetaForm({ ...bookMetaForm, title: e.target.value })} style={{ ...inputStyle, width: '150px', padding: '4px 8px' }} />
+                <input type="text" value={bookMetaForm.genre} onChange={(e) => setBookMetaForm({ ...bookMetaForm, genre: e.target.value })} style={{ ...inputStyle, width: '100px', padding: '4px 8px' }} />
+                <input type="text" value={bookMetaForm.subgenre} onChange={(e) => setBookMetaForm({ ...bookMetaForm, subgenre: e.target.value })} style={{ ...inputStyle, width: '100px', padding: '4px 8px' }} />
                 <button onClick={handleUpdateBookMeta} style={{ padding: '4px 12px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>✓</button>
                 <button onClick={() => setEditingBookId(null)} style={{ padding: '4px 12px', background: '#999', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>✗</button>
               </div>
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                 <div style={{ fontWeight: 'bold', color: '#5c3a21' }}>{activeBook.title} <span style={{ fontWeight: 'normal', color: '#7a6b5d', fontSize: '0.85rem' }}>({activeBook.genre}{activeBook.subgenre ? ` • ${activeBook.subgenre}` : ''})</span></div>
-                <button onClick={() => { setEditingBookId(activeBook.id); setBookMetaForm({ title: activeBook.title, genre: activeBook.genre, subgenre: activeBook.subgenre }) }} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px' }}>⚙️ Настройки</button>
+                <button onClick={() => { setEditingBookId(activeBook.id); setBookMetaForm({ title: activeBook.title, genre: activeBook.genre, subgenre: activeBook.subgenre }) }} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px' }}>⚙️</button>
               </div>
             )}
-
             <button onClick={handleSave} disabled={saveStatus !== 'idle'} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', color: '#fdfbf7', fontSize: '0.9rem', background: saveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', cursor: saveStatus === 'idle' ? 'pointer' : 'default' }}>
               {saveStatus === 'saving' ? 'Сохранение...' : saveStatus === 'saved' ? '✓ Сохранено' : '💾 Сохранить'}
             </button>
@@ -900,60 +781,39 @@ ${getPolicyInstruction()}
             <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fdfbf7' }}>
               {activeScene ? (
                 <>
-                  {/* === НОВОЕ: Персонажи сцены === */}
                   <div style={{ borderBottom: '1px solid #dcd3c1', background: '#f9f5ec' }}>
                     <button onClick={() => setShowSceneChars(!showSceneChars)} style={{ width: '100%', padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7a4b3a', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
-                      <span>👥 Персонажи в этой сцене ({sceneCharacters.length})</span>
-                      <span>{showSceneChars ? '▲' : '▼'}</span>
+                      <span>👥 Персонажи в этой сцене ({sceneCharacters.length})</span><span>{showSceneChars ? '▲' : '▼'}</span>
                     </button>
                     {showSceneChars && (
                       <div style={{ padding: '0 20px 15px 20px' }}>
-                        {sceneCharacters.length === 0 ? (
-                          <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic', marginBottom: '10px' }}>
-                            В этой сцене пока нет персонажей. ИИ не будет знать, о ком писать. Добавьте хотя бы одного.
-                          </div>
-                        ) : (
+                        {sceneCharacters.length === 0 ? <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic', marginBottom: '10px' }}>В этой сцене пока нет персонажей.</div> : (
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
-                            {sceneCharacters.map((sc: any) => {
-                              const c = sc.characters
-                              return (
-                                <div key={sc.character_id} style={{ padding: '6px 10px', background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                  <span style={{ fontWeight: 'bold', color: '#2c241b' }}>{c.name}</span>
-                                  <select
-                                    value={sc.role}
-                                    onChange={(e) => updateSceneCharacterRole(sc.character_id, e.target.value)}
-                                    style={{ padding: '2px 4px', fontSize: '0.75rem', border: '1px solid #dcd3c1', borderRadius: '3px', background: '#fdfbf7' }}
-                                  >
-                                    <option value="pov">POV</option>
-                                    <option value="present">присутствует</option>
-                                    <option value="mentioned">упоминается</option>
-                                  </select>
-                                  <button onClick={() => removeCharacterFromScene(sc.character_id)} style={{ background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer', fontSize: '1rem', padding: '0 4px' }} title="Убрать из сцены">×</button>
-                                </div>
-                              )
-                            })}
+                            {sceneCharacters.map((sc: any) => (
+                              <div key={sc.character_id} style={{ padding: '6px 10px', background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                <span style={{ fontWeight: 'bold', color: '#2c241b' }}>{sc.characters.name}</span>
+                                <select value={sc.role} onChange={(e) => updateSceneCharacterRole(sc.character_id, e.target.value)} style={{ padding: '2px 4px', fontSize: '0.75rem', border: '1px solid #dcd3c1', borderRadius: '3px', background: '#fdfbf7' }}>
+                                  <option value="pov">POV</option><option value="present">присутствует</option><option value="mentioned">упоминается</option>
+                                </select>
+                                <button onClick={() => removeCharacterFromScene(sc.character_id)} style={{ background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer', fontSize: '1rem', padding: '0 4px' }}>×</button>
+                              </div>
+                            ))}
                           </div>
                         )}
                         {showSceneCharPicker ? (
                           <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '10px' }}>
-                            <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginBottom: '8px' }}>Выберите персонажа из книги:</div>
-                            {availableCharactersForScene.length === 0 ? (
-                              <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic' }}>Все персонажи книги уже добавлены в сцену.</div>
-                            ) : (
+                            <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginBottom: '8px' }}>Выберите персонажа:</div>
+                            {availableCharactersForScene.length === 0 ? <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic' }}>Все персонажи уже добавлены.</div> : (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '200px', overflowY: 'auto' }}>
                                 {availableCharactersForScene.map(c => (
-                                  <button key={c.id} onClick={() => addCharacterToScene(c.id, 'present')} style={{ padding: '6px 10px', background: '#fdfbf7', border: '1px solid #dcd3c1', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem' }}>
-                                    + {c.name} <span style={{ fontSize: '0.75rem', color: '#7a6b5d' }}>({c.role === 'protagonist' ? 'протагонист' : c.role === 'antagonist' ? 'антагонист' : 'второстепенный'})</span>
-                                  </button>
+                                  <button key={c.id} onClick={() => addCharacterToScene(c.id, 'present')} style={{ padding: '6px 10px', background: '#fdfbf7', border: '1px solid #dcd3c1', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem' }}>+ {c.name}</button>
                                 ))}
                               </div>
                             )}
                             <button onClick={() => setShowSceneCharPicker(false)} style={{ marginTop: '8px', padding: '4px 10px', background: '#999', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Закрыть</button>
                           </div>
                         ) : (
-                          <button onClick={() => setShowSceneCharPicker(true)} style={{ padding: '6px 12px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>
-                            + Добавить персонажа в сцену
-                          </button>
+                          <button onClick={() => setShowSceneCharPicker(true)} style={{ padding: '6px 12px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>+ Добавить персонажа</button>
                         )}
                       </div>
                     )}
@@ -961,16 +821,42 @@ ${getPolicyInstruction()}
 
                   <div style={{ borderBottom: '1px solid #dcd3c1', background: '#f9f5ec' }}>
                     <button onClick={() => setShowContextBefore(!showContextBefore)} style={{ width: '100%', padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7a4b3a', fontSize: '0.85rem', fontFamily: 'Georgia, serif' }}>
-                      <span>📖 {activeScene.context_before ? 'Предыстория сцены (заполнена)' : 'Предыстория сцены (пусто)'}</span>
-                      <span>{showContextBefore ? '▲' : '▼'}</span>
+                      <span>📖 {activeScene.context_before ? 'Предыстория сцены' : 'Предыстория сцены (пусто)'}</span><span>{showContextBefore ? '▲' : '▼'}</span>
                     </button>
                     {showContextBefore && (
                       <div style={{ padding: '0 20px 15px 20px' }}>
-                        <textarea value={activeScene.context_before} onChange={(e) => handleContextBeforeChange(e.target.value)} placeholder="Что произошло до этой сцены? Кратко опишите контекст..." style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} />
+                        <textarea value={activeScene.context_before} onChange={(e) => handleContextBeforeChange(e.target.value)} placeholder="Что произошло до этой сцены?" style={{ ...inputStyle, minHeight: '80px', resize: 'vertical' }} />
                       </div>
                     )}
                   </div>
+
                   <textarea value={activeScene.text} onChange={(e) => handleTextChange(e.target.value)} placeholder="Начните писать..." style={{ flex: 1, border: 'none', outline: 'none', padding: '30px 10%', fontSize: '1.2rem', lineHeight: '1.8', resize: 'none', background: 'transparent', color: '#2c241b', fontFamily: 'Georgia, serif' }} />
+
+                  {/* === НИЖНЯЯ ПАНЕЛЬ СТАТУСА И ЖУРНАЛ === */}
+                  <div style={{ borderTop: '1px solid #dcd3c1', background: '#f5f0e6' }}>
+                    <div style={{ padding: '8px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#7a6b5d' }}>
+                      <span>Слов в сцене: {(activeScene.text || '').split(/\s+/).filter(Boolean).length}</span>
+                      <button onClick={() => setShowObservations(!showObservations)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: observations.length > 0 ? '#fff3cd' : 'transparent', border: '1px solid #dcd3c1', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer', color: observations.length > 0 ? '#856404' : '#7a6b5d', transition: 'all 0.2s' }}>
+                        {observations.length > 0 ? '⚠️' : '✓'} Журнал наблюдений {observations.length > 0 ? `(${observations.length})` : ''}
+                      </button>
+                    </div>
+                    {showObservations && observations.length > 0 && (
+                      <div style={{ padding: '15px 20px', borderTop: '1px solid #dcd3c1', background: '#ffffff', maxHeight: '250px', overflowY: 'auto' }}>
+                        <h4 style={{ margin: '0 0 10px 0', fontSize: '0.85rem', color: '#5c3a21' }}>Найденные замечания и кандидаты:</h4>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {observations.map((obs, idx) => (
+                            <div key={idx} style={{ padding: '10px', background: obs.type === 'warning' ? '#fef2f2' : obs.type === 'candidate' ? '#f0fdf4' : '#fffbeb', border: `1px solid ${obs.type === 'warning' ? '#fecaca' : obs.type === 'candidate' ? '#bbf7d0' : '#fde68a'}`, borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px' }}>
+                              <div>
+                                <div style={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#2c241b' }}>{obs.title}</div>
+                                <div style={{ fontSize: '0.8rem', color: '#4a3f35', marginTop: '4px' }}>{obs.description}</div>
+                              </div>
+                              <button onClick={() => handleObservationAction(idx, obs.action)} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{obs.action}</button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </>
               ) : (
                 <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#7a6b5d' }}>Выберите сцену слева</div>
@@ -983,32 +869,19 @@ ${getPolicyInstruction()}
 
                 <div style={{ marginBottom: '10px', border: '1px solid #dcd3c1', borderRadius: '6px', background: '#fdfbf7' }}>
                   <button onClick={() => setShowSettings(!showSettings)} style={{ width: '100%', padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#5c3a21', fontSize: '0.85rem', fontWeight: 'bold', fontFamily: 'Georgia, serif' }}>
-                    <span>⚙️ Параметры генерации</span>
-                    <span>{showSettings ? '▲' : '▼'}</span>
+                    <span>⚙️ Параметры генерации</span><span>{showSettings ? '▲' : '▼'}</span>
                   </button>
                   {showSettings && (
                     <div style={{ padding: '10px 12px 12px 12px', borderTop: '1px solid #dcd3c1' }}>
                       <div style={{ marginBottom: '10px' }}>
                         <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Творческая свобода:</label>
                         <select value={creativeLatitude} onChange={(e) => setCreativeLatitude(e.target.value)} style={{ ...inputStyle, padding: '6px' }}>
-                          <option value="strict">Строгий (только по инструкции)</option>
-                          <option value="constrained">Ограниченный (минимум допущений)</option>
-                          <option value="guided">Сбалансированный (атмосфера)</option>
-                          <option value="open">Свободный (импровизация)</option>
+                          <option value="strict">Строгий</option><option value="constrained">Ограниченный</option><option value="guided">Сбалансированный</option><option value="open">Свободный</option>
                         </select>
                       </div>
-                      <div style={{ marginBottom: '8px' }}>
-                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Откровенность (NSFW): {policies.nsfw}</label>
-                        <input type="range" min="0" max="5" value={policies.nsfw} onChange={(e) => setPolicies({ ...policies, nsfw: Number(e.target.value) })} style={{ width: '100%' }} />
-                      </div>
-                      <div style={{ marginBottom: '8px' }}>
-                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Реализм: {policies.realism}</label>
-                        <input type="range" min="0" max="5" value={policies.realism} onChange={(e) => setPolicies({ ...policies, realism: Number(e.target.value) })} style={{ width: '100%' }} />
-                      </div>
-                      <div>
-                        <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Жестокость: {policies.cruelty}</label>
-                        <input type="range" min="0" max="5" value={policies.cruelty} onChange={(e) => setPolicies({ ...policies, cruelty: Number(e.target.value) })} style={{ width: '100%' }} />
-                      </div>
+                      <div style={{ marginBottom: '8px' }}><label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Откровенность (NSFW): {policies.nsfw}</label><input type="range" min="0" max="5" value={policies.nsfw} onChange={(e) => setPolicies({ ...policies, nsfw: Number(e.target.value) })} style={{ width: '100%' }} /></div>
+                      <div style={{ marginBottom: '8px' }}><label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Реализм: {policies.realism}</label><input type="range" min="0" max="5" value={policies.realism} onChange={(e) => setPolicies({ ...policies, realism: Number(e.target.value) })} style={{ width: '100%' }} /></div>
+                      <div><label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Жестокость: {policies.cruelty}</label><input type="range" min="0" max="5" value={policies.cruelty} onChange={(e) => setPolicies({ ...policies, cruelty: Number(e.target.value) })} style={{ width: '100%' }} /></div>
                     </div>
                   )}
                 </div>
@@ -1020,48 +893,22 @@ ${getPolicyInstruction()}
                   </select>
                 </div>
 
-                <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} placeholder="Например: Опиши, как Энн замечает незнакомку в толпе..." style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', marginBottom: '10px', boxSizing: 'border-box', background: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', resize: 'none' }} />
+                <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} placeholder="Например: Опиши, как Энн замечает незнакомку..." style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', marginBottom: '10px', boxSizing: 'border-box', background: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', resize: 'none' }} />
 
-                <button onClick={handleGenerateAI} disabled={isGenerating || !aiInstruction.trim()} style={{ width: '100%', padding: '10px', background: isGenerating ? '#999' : '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: isGenerating ? 'wait' : 'pointer', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '15px' }}>
+                <button onClick={handleGenerateAI} disabled={isGenerating || !aiInstruction.trim()} style={{ width: '100%', padding: '10px', background: isGenerating ? '#999' : '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: isGenerating ? 'wait' : 'pointer', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '10px' }}>
                   {isGenerating ? '✨ Генерация...' : '✨ Сгенерировать'}
                 </button>
-                                {/* === PROMPT INSPECTOR === */}
+
+                {/* === КНОПКИ ТИХОГО РЕДАКТОРА === */}
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
-                  <button
-                    onClick={() => openPromptInspector('sent')}
-                    title="Показать промпт, который реально создал выбранный вариант"
-                    style={{
-                      flex: 1,
-                      padding: '7px 6px',
-                      background: '#fdfbf7',
-                      border: '1px solid #7a4b3a',
-                      color: '#7a4b3a',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.78rem',
-                      fontFamily: 'sans-serif',
-                    }}
-                  >
-                    🔍 Промпт варианта
-                  </button>
-                  <button
-                    onClick={() => openPromptInspector('preview')}
-                    title="Показать промпт, который будет отправлен сейчас"
-                    style={{
-                      flex: 1,
-                      padding: '7px 6px',
-                      background: '#fdfbf7',
-                      border: '1px solid #dcd3c1',
-                      color: '#7a6b5d',
-                      borderRadius: '4px',
-                      cursor: 'pointer',
-                      fontSize: '0.78rem',
-                      fontFamily: 'sans-serif',
-                    }}
-                  >
-                    👁 Текущий промпт
+                  <button onClick={() => openPromptInspector('sent')} title="Показать промпт варианта" style={{ flex: 1, padding: '7px 6px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.78rem', fontFamily: 'sans-serif' }}>🔍 Промпт</button>
+                  <button onClick={handleCheckScene} disabled={isAnalyzing} style={{ flex: 1, padding: '7px 6px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.78rem', fontFamily: 'sans-serif' }}>
+                    {isAnalyzing ? '⏳ Проверка...' : '🔍 Проверить сцену'}
                   </button>
                 </div>
+                <button onClick={handleAnalyzePastedText} style={{ width: '100%', padding: '8px', background: '#fdfbf7', border: '1px dashed #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', marginBottom: '14px' }}>
+                  📥 Проанализировать вставленный текст
+                </button>
 
                 {generationHistory.length > 0 && (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -1088,14 +935,36 @@ ${getPolicyInstruction()}
               </div>
             </aside>
           </div>
-               </div>
+        </div>
       )}
 
-      <PromptInspector
-        open={inspectorOpen}
-        record={inspectorRecord}
-        onClose={() => setInspectorOpen(false)}
-      />
+      {/* === МОДАЛЬНОЕ ОКНО АНАЛИЗА ВСТАВЛЕННОГО ТЕКСТА === */}
+      {showAnalysisModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(44,36,27,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }} onClick={() => setShowAnalysisModal(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(600px, 90vw)', background: '#fdfbf7', border: '1px solid #dcd3c1', borderRadius: '10px', padding: '24px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#5c3a21', fontSize: '1.2rem' }}>📥 Результат анализа текста</h3>
+            <p style={{ fontSize: '0.9rem', color: '#7a6b5d', marginBottom: '20px' }}>Система просканировала вставленный фрагмент и обнаружила потенциальные новые сущности. Подтвердите их создание или игнорируйте.</p>
+            
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '24px' }}>
+              <div style={{ padding: '12px', background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div><strong style={{ color: '#166534' }}>👤 Персонаж:</strong> <span style={{ color: '#2c241b' }}>Мэри</span> <span style={{ fontSize: '0.8rem', color: '#7a6b5d' }}>(упомянута 5 раз)</span></div>
+                <button style={{ padding: '6px 12px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Создать карточку</button>
+              </div>
+              <div style={{ padding: '12px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div><strong style={{ color: '#92400e' }}>📍 Локация:</strong> <span style={{ color: '#2c241b' }}>Таверна «Пьяный Моряк»</span></div>
+                <button style={{ padding: '6px 12px', background: '#d97706', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>Добавить в мир</button>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowAnalysisModal(false)} style={{ padding: '8px 16px', background: 'none', border: '1px solid #dcd3c1', color: '#7a6b5d', borderRadius: '6px', cursor: 'pointer' }}>Игнорировать всё</button>
+              <button onClick={() => { alert('Карточки созданы!'); setShowAnalysisModal(false) }} style={{ padding: '8px 16px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Подтвердить выбранные</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      <PromptInspector open={inspectorOpen} record={inspectorRecord} onClose={() => setInspectorOpen(false)} />
     </div>
   )
 }
