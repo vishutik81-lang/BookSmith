@@ -334,6 +334,55 @@ app.delete('/api/characters/:id', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
+// 5.14. Создание новой сцены в главе
+app.post('/api/chapters/:chapterId/scenes', async (req, res) => {
+  try {
+    const { chapterId } = req.params;
+    const { title, body, sort_order } = req.body;
+    
+    const { data, error } = await supabase
+      .from('scenes')
+      .insert([{ 
+        chapter_id: chapterId, 
+        title: title || 'Новая сцена', 
+        body: body || '', 
+        context_before: '',
+        sort_order: sort_order || 0 
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    res.json({ success: true, scene: data });
+  } catch (err) {
+    console.error('Ошибка создания сцены:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 5.15. Создание новой главы в проекте
+app.post('/api/projects/:projectId/chapters', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    const { title, sort_order } = req.body;
+    
+    const { data, error } = await supabase
+      .from('chapters')
+      .insert([{ 
+        project_id: projectId, 
+        title: title || 'Новая глава', 
+        sort_order: sort_order || 0 
+      }])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    res.json({ success: true, chapter: data });
+  } catch (err) {
+    console.error('Ошибка создания главы:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // === ЗАМЕТКИ О МИРЕ ===
 
 // 7.1. Получить заметки о мире проекта
