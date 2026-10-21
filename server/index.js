@@ -410,6 +410,60 @@ app.patch('/api/scenes/:id', async (req, res) => {
     res.status(500).json({ error: 'Внутренняя ошибка сервера' });
   }
 });
+// 8.1. Получить персонажей сцены
+app.get('/api/scenes/:sceneId/characters', async (req, res) => {
+  try {
+    const { sceneId } = req.params;
+    const { data, error } = await supabase
+      .from('scene_characters')
+      .select('*, characters(*)')
+      .eq('scene_id', sceneId);
+
+    if (error) throw error;
+    res.json({ characters: data || [] });
+  } catch (err) {
+    console.error('Ошибка загрузки персонажей сцены:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 8.2. Добавить персонажа в сцену
+app.post('/api/scenes/:sceneId/characters', async (req, res) => {
+  try {
+    const { sceneId } = req.params;
+    const { character_id, role } = req.body;
+
+    const { data, error } = await supabase
+      .from('scene_characters')
+      .insert([{ scene_id: sceneId, character_id, role: role || 'present' }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    res.json({ success: true, link: data });
+  } catch (err) {
+    console.error('Ошибка добавления персонажа:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// 8.3. Удалить персонажа из сцены
+app.delete('/api/scenes/:sceneId/characters/:characterId', async (req, res) => {
+  try {
+    const { sceneId, characterId } = req.params;
+    const { error } = await supabase
+      .from('scene_characters')
+      .delete()
+      .eq('scene_id', sceneId)
+      .eq('character_id', characterId);
+
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Ошибка удаления персонажа:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // 6. Отдача фронтенда
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
