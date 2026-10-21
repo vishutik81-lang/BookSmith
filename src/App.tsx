@@ -754,14 +754,17 @@ ${getPolicyInstruction()}
                 <div style={{ marginBottom: '15px' }}>
                   <label style={labelStyle}>Ориентация</label>
                   <select value={characterForm.sexual_orientation} onChange={(e) => setCharacterForm({ ...characterForm, sexual_orientation: e.target.value })} style={inputStyle}>
-                    <option value="not_specified">Не указано</option>
-                    <option value="heterosexual">Гетеросексуал(ка)</option>
-                    <option value="homosexual">Гомосексуал(ка)</option>
-                    <option value="bisexual">Бисексуал(ка)</option>
-                    <option value="pansexual">Пансексуал(ка)</option>
-                    <option value="asexual">Асексуал(ка)</option>
-                    <option value="other">Другое</option>
-                  </select>
+  <option value="not_specified">Не указано</option>
+  <option value="heterosexual">Гетеросексуал(ка)</option>
+  <option value="homosexual">Гомосексуал(ка)</option>
+  <option value="lesbian">Лесбиянка</option>
+  <option value="gay">Гей</option>
+  <option value="bisexual">Бисексуал(ка)</option>
+  <option value="pansexual">Пансексуал(ка)</option>
+  <option value="asexual">Асексуал(ка)</option>
+  <option value="demisexual">Демисексуал(ка)</option>
+  <option value="other">Другое</option>
+</select>
                 </div>
                 <div style={{ marginBottom: '15px' }}>
                   <label style={labelStyle}>Внешность</label>
