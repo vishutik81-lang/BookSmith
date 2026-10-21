@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import PromptInspector from './components/PromptInspector'
 
 export default function App() {
   const [view, setView] = useState('library')
@@ -45,8 +46,12 @@ export default function App() {
   const [availableModels, setAvailableModels] = useState<any[]>([])
   const [aiInstruction, setAiInstruction] = useState('')
   const [isGenerating, setIsGenerating] = useState(false)
-  const [generationHistory, setGenerationHistory] = useState<{id: string, text: string, instruction: string}[]>([])
+    const [generationHistory, setGenerationHistory] = useState<any[]>([])
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
+
+  // Prompt Inspector
+  const [inspectorOpen, setInspectorOpen] = useState(false)
+  const [inspectorRecord, setInspectorRecord] = useState<any>(null)
 
   useEffect(() => {
     const loadBooks = async () => {
@@ -410,66 +415,85 @@ export default function App() {
     setShowCharacterModal(true)
   }
 
+    // === CREATIVE LATITUDE ===
   const getLatitudeInstruction = () => {
     switch (creativeLatitude) {
-      case 'strict': return 'Строго следуй инструкции автора. Не добавляй новых деталей, локаций или персонажей, не импровизируй.'
-      case 'constrained': return 'Минимальные допущения. Добавляй только то, что логически вытекает из контекста и предыстории.'
-      case 'guided': return 'Сбалансированный подход. Можешь добавлять атмосферные детали (запахи, звуки), но не меняй суть сцены.'
-      case 'open': return 'Максимальная творческая свобода. Можешь придумывать новые детали, второстепенных персонажей, неожиданные повороты, если это оживляет сцену.'
-      default: return ''
+      case 'strict':
+        return 'Строго следуй инструкции автора. Не добавляй новых деталей, локаций или персонажей, не импровизируй.'
+      case 'constrained':
+        return 'Минимальные допущения. Добавляй только то, что логически вытекает из контекста и предыстории.'
+      case 'guided':
+        return 'Сбалансированный подход. Можешь добавлять атмосферные детали (запахи, звуки), но не меняй суть сцены.'
+      case 'open':
+        return 'Максимальная творческая свобода. Можешь придумывать новые детали, второстепенных персонажей, неожиданные повороты, если это оживляет сцену.'
+      default:
+        return ''
     }
   }
 
+  // === POLICY EXPANDER (Semantic portability) ===
   const getPolicyInstruction = () => {
-    const nsfwText = policies.nsfw <= 1
-      ? 'Полностью исключи откровенность и намёки.'
-      : policies.nsfw <= 3
-        ? 'Допустимы взрослые темы, эмоциональная интимность и намёки. Запрещена порнографическая детализация.'
-        : 'Откровенный контент и эротика разрешены в рамках сюжета.'
-    const realismText = policies.realism <= 2
-      ? 'Условный реализм, фокус на действии и диалогах, без бытовых мелочей.'
-      : policies.realism <= 4
-        ? 'Высокий реализм. Раны, усталость, страх и последствия действий влияют на поведение персонажей.'
-        : 'Максимальный реализм. Физиология, психология и быт описываются с медицинской и исторической точностью.'
-    const crueltyText = policies.cruelty === 0
-      ? 'Бескровный стиль. Насилие и жестокость остаются за кадром.'
-      : policies.cruelty <= 2
-        ? 'Умеренная жестокость. Показывай последствия и боль, но без садистской детализации.'
-        : 'Жестокость, насилие и кровь могут описываться подробно, если этого требует сюжет.'
+    const nsfwText =
+      policies.nsfw <= 1
+        ? 'Полностью исключи откровенность и намёки.'
+        : policies.nsfw <= 3
+          ? 'Допустимы взрослые темы, эмоциональная интимность и намёки. Запрещена порнографическая детализация.'
+          : 'Откровенный контент и эротика разрешены в рамках сюжета.'
+
+    const realismText =
+      policies.realism <= 2
+        ? 'Условный реализм, фокус на действии и диалогах, без бытовых мелочей.'
+        : policies.realism <= 4
+          ? 'Высокий реализм. Раны, усталость, страх и последствия действий влияют на поведение персонажей.'
+          : 'Максимальный реализм. Физиология, психология и быт описываются с медицинской и исторической точностью.'
+
+    const crueltyText =
+      policies.cruelty === 0
+        ? 'Бескровный стиль. Насилие и жестокость остаются за кадром.'
+        : policies.cruelty <= 2
+          ? 'Умеренная жестокость. Показывай последствия и боль, но без садистской детализации.'
+          : 'Жестокость, насилие и кровь могут описываться подробно, если этого требует сюжет.'
+
     return `- Откровенность (NSFW): ${nsfwText}\n- Реализм: ${realismText}\n- Жестокость: ${crueltyText}`
   }
 
-  // === ОБНОВЛЕНО: Промпт теперь использует ТОЛЬКО персонажей сцены ===
-  const handleGenerateAI = async () => {
-    if (!aiInstruction.trim() || !activeScene) return
-    setIsGenerating(true)
-    try {
-      // Берём персонажей СЦЕНЫ, а не всех из книги
-      const charactersContext = sceneCharacters.length > 0
-        ? 'Персонажи в этой сцене:\n' + sceneCharacters.map((sc: any) => {
-            const c = sc.characters
-            const roleLabel = sc.role === 'pov' ? 'POV' : sc.role === 'mentioned' ? 'упоминается' : 'присутствует'
-            const parts = [`• ${c.name} (${roleLabel})`]
-            if (c.gender && c.gender !== 'not_specified') parts.push(`Пол: ${c.gender}`)
-            if (c.race && c.race !== 'human') parts.push(`Раса: ${c.race}`)
-            if (c.sexual_orientation && c.sexual_orientation !== 'not_specified') parts.push(`Ориентация: ${c.sexual_orientation}`)
-            if (c.appearance) parts.push(`Внешность: ${c.appearance}`)
-            if (c.personality) parts.push(`Характер: ${c.personality}`)
-            if (c.description) parts.push(`Роль в сюжете: ${c.description}`)
-            return parts.join('. ')
-          }).join('\n')
-        : 'В этой сцене пока нет привязанных персонажей. Используй только тех, кто упомянут в инструкции автора.'
+  // === CONTEXT BUILDER + PROMPT RENDERER ===
+  // Единственное место, где собирается промпт.
+  // Используется и для генерации, и для инспектора — расхождений быть не может.
+  const buildPromptContext = () => {
+    const charactersContext =
+      sceneCharacters.length > 0
+        ? 'Персонажи в этой сцене:\n' +
+          sceneCharacters
+            .map((sc: any) => {
+              const c = sc.characters
+              const roleLabel =
+                sc.role === 'pov' ? 'POV' : sc.role === 'mentioned' ? 'упоминается' : 'присутствует'
+              const parts = [`• ${c?.name || 'Без имени'} (${roleLabel})`]
+              if (c?.gender && c.gender !== 'not_specified') parts.push(`Пол: ${c.gender}`)
+              if (c?.race && c.race !== 'human') parts.push(`Раса: ${c.race}`)
+              if (c?.sexual_orientation && c.sexual_orientation !== 'not_specified')
+                parts.push(`Ориентация: ${c.sexual_orientation}`)
+              if (c?.appearance) parts.push(`Внешность: ${c.appearance}`)
+              if (c?.personality) parts.push(`Характер: ${c.personality}`)
+              if (c?.description) parts.push(`Роль в сюжете: ${c.description}`)
+              return parts.join('. ')
+            })
+            .join('\n')
+        : 'В этой сцене пока нет привязанных персонажей. Оперируй только теми, кто упомянут в инструкции автора.'
 
-      const worldSection = [
-        worldNotes.setting && `Место действия: ${worldNotes.setting}`,
-        worldNotes.time_period && `Время: ${worldNotes.time_period}`,
-        worldNotes.rules && `Правила мира: ${worldNotes.rules}`,
-        worldNotes.important_events && `Важные события: ${worldNotes.important_events}`,
-        worldNotes.tone && `Тон и стиль: ${worldNotes.tone}`,
-        worldNotes.custom_notes && `Дополнительно: ${worldNotes.custom_notes}`
-      ].filter(Boolean).join('\n')
+    const worldSection = [
+      worldNotes.setting && `Место действия: ${worldNotes.setting}`,
+      worldNotes.time_period && `Время: ${worldNotes.time_period}`,
+      worldNotes.rules && `Правила мира: ${worldNotes.rules}`,
+      worldNotes.important_events && `Важные события: ${worldNotes.important_events}`,
+      worldNotes.tone && `Тон и стиль: ${worldNotes.tone}`,
+      worldNotes.custom_notes && `Дополнительно: ${worldNotes.custom_notes}`,
+    ]
+      .filter(Boolean)
+      .join('\n')
 
-     const prompt = `Ты — ИИ-соавтор художественной литературы. Твоя задача — создать НОВЫЙ ВАРИАНТ сцены на основе инструкции автора.
+    const prompt = `Ты — ИИ-соавтор художественной литературы. Твоя задача — создать НОВЫЙ ВАРИАНТ сцены на основе инструкции автора, а не продолжить существующий текст.
 
 === МИР ПРОИЗВЕДЕНИЯ ===
 ${worldSection || '(мир не описан)'}
@@ -478,11 +502,11 @@ ${worldSection || '(мир не описан)'}
 ${charactersContext}
 
 === ПРЕДЫСТОРИЯ СЦЕНЫ ===
-${activeScene.context_before || '(не указана)'}
+${activeScene?.context_before || '(не указана)'}
 
-=== ТЕКУЩИЙ ТЕКСТ СЦЕНЫ (для контекста, НЕ продолжай его) ===
+=== ТЕКУЩИЙ ТЕКСТ СЦЕНЫ (только как контекст, НЕ продолжай его) ===
 """
-${activeScene.text || '(сцена пока пустая)'}
+${activeScene?.text || '(сцена пока пустая)'}
 """
 
 === ИНСТРУКЦИЯ АВТОРА ===
@@ -494,27 +518,104 @@ ${getLatitudeInstruction()}
 === ПОЛИТИКИ КОНТЕНТА ===
 ${getPolicyInstruction()}
 
-=== КРИТИЧЕСКИЕ ТРЕБОВАНИЯ ===
-1. Создай НОВЫЙ ВАРИАНТ сцены, а не продолжение существующего текста.
-2. Строго соблюдай имена персонажей — не изменяй их (например, "Энн", а не "Анна").
+=== ТРЕБОВАНИЯ ===
+1. Создай самостоятельный вариант сцены, а не продолжение текста выше.
+2. Строго соблюдай имена персонажей из списка (например, «Энн», а не «Анна»).
 3. Следуй инструкции автора по действию — если сказано "сидит в таверне", значит сцена начинается с этого.
-4. НЕ добавляй в сцену персонажей, которых нет в списке "Персонажи сцены".
-5. НЕ назначай имена второстепенным персонажам, если их имена не указаны в списке.
-6. НЕ используй неологизмы, иностранные слова или иероглифы в русском тексте.
-7. Следуй тону и стилю, указанному в описании мира.
-8. Учитывай предысторию сцены для логической связности.
-9. Пиши художественно, без объяснений и мета-комментариев.
-10. Только готовый текст, без заголовков и подписей.`
+4. Не привлекай персонажей книги, которых нет в списке «Персонажи сцены».
+5. Временных второстепенных персонажей (прохожие, официантки, пираты) придумывать разрешено в рамках режима генерации.
+6. Учитывай предысторию сцены для логической связности.
+7. Следуй тону, стилю и правилам мира. Не допускай анахронизмов, противоречащих эпохе.
+8. Пиши на русском языке, без иностранных вставок, иероглифов и мета-комментариев.
+9. Только художественный текст, без заголовков, пояснений и подписей.`
 
-      const res = await fetch('/api/generate', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ prompt, modelId: selectedModel }) })
+    const snapshot = {
+      sceneId: activeScene?.id || '',
+      sceneTitle: activeScene?.title || '',
+      sceneTextLength: (activeScene?.text || '').length,
+      contextBefore: activeScene?.context_before || '',
+      characters: sceneCharacters.map((sc: any) => ({
+        id: sc.character_id,
+        name: sc.characters?.name || 'Без имени',
+        role: sc.role,
+      })),
+      worldNotes: { ...worldNotes },
+      latitude: creativeLatitude,
+      policies: { ...policies },
+      instruction: aiInstruction,
+      modelId: selectedModel,
+    }
+
+    return { prompt, snapshot }
+  }
+
+  // === PROMPT INSPECTOR ===
+  const openPromptInspector = (mode: 'sent' | 'preview' = 'sent') => {
+    // Показываем РЕАЛЬНЫЙ промпт выбранного варианта
+    if (mode === 'sent' && activeHistory?.prompt) {
+      setInspectorRecord({
+        kind: 'sent',
+        createdAt: activeHistory.createdAt,
+        prompt: activeHistory.prompt,
+        modelId: activeHistory.modelId,
+        ...activeHistory.snapshot,
+      })
+      setInspectorOpen(true)
+      return
+    }
+
+    // Иначе — честный предпросмотр текущего состояния
+    if (!activeScene) {
+      alert('Сначала выберите сцену.')
+      return
+    }
+
+    const { prompt, snapshot } = buildPromptContext()
+    setInspectorRecord({
+      kind: 'preview',
+      createdAt: Date.now(),
+      prompt,
+      ...snapshot,
+    })
+    setInspectorOpen(true)
+  }
+
+  // === GENERATION ===
+  const handleGenerateAI = async () => {
+    if (!aiInstruction.trim() || !activeScene) return
+    setIsGenerating(true)
+
+    try {
+      const { prompt, snapshot } = buildPromptContext()
+
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, modelId: selectedModel }),
+      })
+
       const data = await res.json()
+
       if (data.text && !data.text.startsWith('Ошибка:')) {
-        const newEntry = { id: Date.now().toString(), text: data.text, instruction: aiInstruction }
-        setGenerationHistory(prev => [newEntry, ...prev].slice(0, 5))
+        const newEntry = {
+          id: Date.now().toString(),
+          text: data.text,
+          instruction: aiInstruction,
+          prompt,
+          modelId: selectedModel,
+          createdAt: Date.now(),
+          snapshot,
+        }
+        setGenerationHistory((prev) => [newEntry, ...prev].slice(0, 5))
         setActiveHistoryId(newEntry.id)
-      } else { alert('Ошибка ИИ: ' + (data.text || data.error || 'Неизвестная ошибка')) }
-    } catch (error: any) { alert('Ошибка соединения: ' + error.message) }
-    finally { setIsGenerating(false) }
+      } else {
+        alert('Ошибка ИИ: ' + (data.text || data.error || 'Неизвестная ошибка'))
+      }
+    } catch (error: any) {
+      alert('Ошибка соединения: ' + error.message)
+    } finally {
+      setIsGenerating(false)
+    }
   }
 
   const insertHistoryToScene = () => {
@@ -908,6 +1009,43 @@ ${getPolicyInstruction()}
                 <button onClick={handleGenerateAI} disabled={isGenerating || !aiInstruction.trim()} style={{ width: '100%', padding: '10px', background: isGenerating ? '#999' : '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: isGenerating ? 'wait' : 'pointer', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '15px' }}>
                   {isGenerating ? '✨ Генерация...' : '✨ Сгенерировать'}
                 </button>
+                                {/* === PROMPT INSPECTOR === */}
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
+                  <button
+                    onClick={() => openPromptInspector('sent')}
+                    title="Показать промпт, который реально создал выбранный вариант"
+                    style={{
+                      flex: 1,
+                      padding: '7px 6px',
+                      background: '#fdfbf7',
+                      border: '1px solid #7a4b3a',
+                      color: '#7a4b3a',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem',
+                      fontFamily: 'sans-serif',
+                    }}
+                  >
+                    🔍 Промпт варианта
+                  </button>
+                  <button
+                    onClick={() => openPromptInspector('preview')}
+                    title="Показать промпт, который будет отправлен сейчас"
+                    style={{
+                      flex: 1,
+                      padding: '7px 6px',
+                      background: '#fdfbf7',
+                      border: '1px solid #dcd3c1',
+                      color: '#7a6b5d',
+                      borderRadius: '4px',
+                      cursor: 'pointer',
+                      fontSize: '0.78rem',
+                      fontFamily: 'sans-serif',
+                    }}
+                  >
+                    👁 Текущий промпт
+                  </button>
+                </div>
 
                 {generationHistory.length > 0 && (
                   <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
@@ -934,8 +1072,14 @@ ${getPolicyInstruction()}
               </div>
             </aside>
           </div>
-        </div>
+               </div>
       )}
+
+      <PromptInspector
+        open={inspectorOpen}
+        record={inspectorRecord}
+        onClose={() => setInspectorOpen(false)}
+      />
     </div>
   )
 }
