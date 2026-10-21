@@ -554,7 +554,6 @@ ${getPolicyInstruction()}
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
           setObservations(parsed)
-          setShowObservations(true)
         } else {
           throw new Error('No JSON found')
         }
