@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import CharacterGraph from './components/CharacterGraph'
 import PromptInspector from './components/PromptInspector'
 
 export default function App() {
@@ -38,6 +39,7 @@ export default function App() {
   const [showSceneChars, setShowSceneChars] = useState(true)
 
   const [showSettings, setShowSettings] = useState(false)
+    const [showGraph, setShowGraph] = useState(false)
   const [creativeLatitude, setCreativeLatitude] = useState('guided')
   const [policies, setPolicies] = useState({ nsfw: 2, realism: 3, cruelty: 2 })
 
@@ -787,6 +789,9 @@ ${getPolicyInstruction()}
               <button onClick={() => setView('library')} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>← Библиотека</button>
               <button onClick={() => setView('characters')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>👥 Персонажи</button>
               <button onClick={() => setView('world')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>🌍 Мир</button>
+                         <button onClick={() => setShowGraph(true)} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>
+                🕸️ Граф
+              </button>
             </div>
             {editingBookId === activeBook.id ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem' }}>
@@ -1074,6 +1079,9 @@ ${getPolicyInstruction()}
       )}
 
       <PromptInspector open={inspectorOpen} record={inspectorRecord} onClose={() => setInspectorOpen(false)} />
+            {showGraph && activeBookId && (
+        <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
+      )}
     </div>
   )
 }
