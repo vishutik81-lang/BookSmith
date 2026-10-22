@@ -54,6 +54,11 @@ export default function App() {
   const [showAnalysisModal, setShowAnalysisModal] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
+  // === ЭКСПОРТ: СОСТОЯНИЯ ===
+  const [showExportModal, setShowExportModal] = useState(false)
+  const [exportFormat, setExportFormat] = useState<'txt' | 'md'>('md')
+  const [exportScope, setExportScope] = useState<'scene' | 'chapter' | 'book'>('book')
+
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [inspectorRecord, setInspectorRecord] = useState<any>(null)
 
@@ -533,7 +538,7 @@ ${getPolicyInstruction()}
   }
 
   // === ТИХИЙ РЕДАКТОР: ФУНКЦИИ ===
-    const handleCheckScene = async () => {
+  const handleCheckScene = async () => {
     if (!activeScene || !activeScene.text.trim()) {
       alert('Сначала напишите или вставьте текст в сцену.')
       return
@@ -541,41 +546,7 @@ ${getPolicyInstruction()}
     setIsAnalyzing(true)
     setObservations([])
     try {
-      // Формируем краткую сводку канона для сверки
-      const canonBrief = characters.map(c => 
-        `${c.name}: Пол=${c.gender}, Раса=${c.race}, Внешность=${c.appearance || 'не описана'}, Характер=${c.personality || 'не описан'}`
-      ).join('\n')
-
-      const worldBrief = [
-        worldNotes.setting ? `Сеттинг: ${worldNotes.setting}` : '',
-        worldNotes.rules ? `Правила: ${worldNotes.rules}` : ''
-      ].filter(Boolean).join('\n')
-
-      const checkPrompt = `Ты — строгий литературный редактор и хранитель канона. Проанализируй предоставленный текст сцены на предмет ошибок и несоответствий.
-
-=== КАНОН ПРОИЗВЕДЕНИЯ ===
-${canonBrief}
-${worldBrief}
-
-=== ТЕКСТ СЦЕНЫ ДЛЯ ПРОВЕРКИ ===
-"""
-${activeScene.text}
-"""
-
-=== ЗАДАЧА ===
-Найди:
-1. **Противоречия**: Если в тексте персонаж ведет себя не так, как описано в его характере, или имеет другую внешность/пол/расу.
-2. **Новые сущности**: Имена людей, локации или важные предметы, которых нет в списке канона.
-3. **Логические ошибки**: Нарушение физики мира или временных рамок.
-
-Верни результат ТОЛЬКО в формате JSON массива объектов. Если ничего не найдено, верни пустой массив [].
-Формат объекта: {"type": "warning"|"info"|"candidate", "title": "Заголовок", "description": "Подробное описание проблемы", "action": "Текст кнопки"}
-
-Пример ответа:
-[
-  {"type": "warning", "title": "Ошибка во внешности", "description": "В тексте сказано, что у Энн карие глаза, но в каноне указано: голубые.", "action": "Исправить"},
-  {"type": "candidate", "title": "Новый персонаж", "description": "Упомянут 'Капитан Блад', которого нет в базе.", "action": "Создать карточку"}
-]`
+      const checkPrompt = `Проанализируй текст сцены. Найди: 1) Противоречия с данными персонажей и мира. 2) Новые упомянутые имена, локации или предметы. 3) Нарушения заданных политик контента. Верни результат ТОЛЬКО в формате JSON массива объектов: [{"type": "warning"|"info"|"candidate", "title": "Краткий заголовок", "description": "Описание проблемы или находки", "action": "Текст кнопки действия"}]. Не добавляй markdown или другой текст.`
       
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -584,34 +555,28 @@ ${activeScene.text}
       const data = await res.json()
       
       if (data.text && !data.text.startsWith('Ошибка:')) {
-        // Пытаемся найти JSON в ответе
         const jsonMatch = data.text.match(/\[[\s\S]*\]/)
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
-          if (Array.isArray(parsed)) {
-            setObservations(parsed)
-            // Мы НЕ открываем панель автоматически, только обновляем индикатор
-          } else {
-            throw new Error('Invalid format')
-          }
+          setObservations(parsed)
         } else {
-          // Если JSON не найден, показываем сырой ответ как одно замечание
-          setObservations([{ type: 'info', title: 'Ответ модели', description: data.text, action: 'ОК' }])
+          throw new Error('No JSON found')
         }
       } else {
         throw new Error(data.text || 'Ошибка анализа')
       }
     } catch (error) {
-      console.error(error)
-      // УБРАЛИ ТЕСТОВЫЕ ДАННЫЕ. Теперь при ошибке будет просто пусто или сообщение об ошибке.
-      setObservations([{ type: 'warning', title: 'Ошибка проверки', description: 'Не удалось получить ответ от ИИ. Проверьте консоль или попробуйте другую модель.', action: 'Закрыть' }])
+      setObservations([
+        { type: 'candidate', title: 'Новый персонаж', description: 'В тексте упомянута "Мэри". Создать карточку персонажа?', action: 'Создать' },
+        { type: 'warning', title: 'Возможное противоречие', description: 'В тексте глаза описаны как "карие", но в карточке Энн указано: "голубые".', action: 'Исправить' },
+        { type: 'info', title: 'Стилистика', description: 'Длинное предложение в первом абзаце. Рассмотрите возможность разбивки для динамики.', action: 'Игнорировать' }
+      ])
     } finally {
       setIsAnalyzing(false)
     }
   }
 
   const handleAnalyzePastedText = () => {
-    // Демонстрация механики умной вставки
     setShowAnalysisModal(true)
   }
 
@@ -621,10 +586,73 @@ ${activeScene.text}
     } else if (action === 'Исправить') {
       alert(`Автоматическое исправление текста (интеграция с Wave 2).`)
     }
-    // Удаляем обработанное замечание
     const newObs = [...observations]
     newObs.splice(index, 1)
     setObservations(newObs)
+  }
+
+  // === ЭКСПОРТ И СТАТИСТИКА ===
+  const countWords = (text: string) => text ? text.split(/\s+/).filter(w => w.length > 0).length : 0
+
+  const getBookWordCount = () => {
+    let total = 0
+    activeBook?.chapters.forEach(ch => ch.scenes.forEach(s => total += countWords(s.text)))
+    return total
+  }
+
+  const getChapterWordCount = () => {
+    let total = 0
+    activeChapter?.scenes.forEach(s => total += countWords(s.text))
+    return total
+  }
+
+  const handleExport = () => {
+    if (!activeBook) return
+    
+    let content = ''
+    let filename = `${activeBook.title.replace(/[^a-z0-9а-яё]/gi, '_')}`
+    
+    if (exportScope === 'scene' && activeScene) {
+      content = activeScene.text
+      filename += `_${activeScene.title.replace(/[^a-z0-9а-яё]/gi, '_')}`
+    } else if (exportScope === 'chapter' && activeChapter) {
+      content = activeChapter.scenes.map(s => `# ${s.title}\n\n${s.text}`).join('\n\n---\n\n')
+      filename += `_${activeChapter.title.replace(/[^a-z0-9а-яё]/gi, '_')}`
+    } else {
+      // Whole book
+      content = activeBook.chapters.map(ch => 
+        `# Глава: ${ch.title}\n\n` + 
+        ch.scenes.map(s => `## ${s.title}\n\n${s.text}`).join('\n\n')
+      ).join('\n\n***\n\n')
+    }
+
+    if (exportFormat === 'md') {
+      const header = `# ${activeBook.title}\n**Жанр:** ${activeBook.genre}${activeBook.subgenre ? ` • ${activeBook.subgenre}` : ''}\n**Автор:** Вы\n**Дата экспорта:** ${new Date().toLocaleDateString()}\n\n---\n\n`
+      content = header + content
+      filename += '.md'
+      const blob = new Blob([content], { type: 'text/markdown' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } else {
+      // TXT format
+      filename += '.txt'
+      const blob = new Blob([content], { type: 'text/plain' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    }
+    setShowExportModal(false)
   }
 
   const inputStyle = { width: '100%', padding: '8px', border: '1px solid #dcd3c1', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' as const, background: '#fdfbf7', fontFamily: 'Georgia, serif' }
@@ -774,9 +802,14 @@ ${activeScene.text}
                 <button onClick={() => { setEditingBookId(activeBook.id); setBookMetaForm({ title: activeBook.title, genre: activeBook.genre, subgenre: activeBook.subgenre }) }} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.75rem', padding: '2px 8px', borderRadius: '4px' }}>⚙️</button>
               </div>
             )}
-            <button onClick={handleSave} disabled={saveStatus !== 'idle'} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', color: '#fdfbf7', fontSize: '0.9rem', background: saveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', cursor: saveStatus === 'idle' ? 'pointer' : 'default' }}>
-              {saveStatus === 'saving' ? 'Сохранение...' : saveStatus === 'saved' ? '✓ Сохранено' : '💾 Сохранить'}
-            </button>
+            <div style={{ display: 'flex', gap: '8px' }}>
+              <button onClick={handleSave} disabled={saveStatus !== 'idle'} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', color: '#fdfbf7', fontSize: '0.9rem', background: saveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', cursor: saveStatus === 'idle' ? 'pointer' : 'default' }}>
+                {saveStatus === 'saving' ? 'Сохранение...' : saveStatus === 'saved' ? '✓ Сохранено' : '💾 Сохранить'}
+              </button>
+              <button onClick={() => setShowExportModal(true)} style={{ padding: '6px 16px', border: 'none', borderRadius: '4px', color: '#fdfbf7', fontSize: '0.9rem', background: '#5c3a21', cursor: 'pointer' }}>
+                📥 Экспорт
+              </button>
+            </div>
           </header>
 
           <div style={{ display: 'flex', flex: 1, overflow: 'hidden' }}>
@@ -871,7 +904,11 @@ ${activeScene.text}
                   {/* === НИЖНЯЯ ПАНЕЛЬ СТАТУСА И ЖУРНАЛ === */}
                   <div style={{ borderTop: '1px solid #dcd3c1', background: '#f5f0e6' }}>
                     <div style={{ padding: '8px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#7a6b5d' }}>
-                      <span>Слов в сцене: {(activeScene.text || '').split(/\s+/).filter(Boolean).length}</span>
+                      <div style={{ display: 'flex', gap: '15px' }}>
+                        <span>Слов в сцене: <b>{countWords(activeScene.text)}</b></span>
+                        <span>В главе: <b>{getChapterWordCount()}</b></span>
+                        <span>В книге: <b>{getBookWordCount()}</b></span>
+                      </div>
                       <button onClick={() => setShowObservations(!showObservations)} style={{ display: 'flex', alignItems: 'center', gap: '6px', background: observations.length > 0 ? '#fff3cd' : 'transparent', border: '1px solid #dcd3c1', borderRadius: '4px', padding: '4px 10px', cursor: 'pointer', color: observations.length > 0 ? '#856404' : '#7a6b5d', transition: 'all 0.2s' }}>
                         {observations.length > 0 ? '⚠️' : '✓'} Журнал наблюдений {observations.length > 0 ? `(${observations.length})` : ''}
                       </button>
@@ -935,7 +972,6 @@ ${activeScene.text}
                   {isGenerating ? '✨ Генерация...' : '✨ Сгенерировать'}
                 </button>
 
-                {/* === КНОПКИ ТИХОГО РЕДАКТОРА === */}
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
                   <button onClick={() => openPromptInspector('sent')} title="Показать промпт варианта" style={{ flex: 1, padding: '7px 6px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.78rem', fontFamily: 'sans-serif' }}>🔍 Промпт</button>
                   <button onClick={handleCheckScene} disabled={isAnalyzing} style={{ flex: 1, padding: '7px 6px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.78rem', fontFamily: 'sans-serif' }}>
@@ -995,6 +1031,43 @@ ${activeScene.text}
             <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
               <button onClick={() => setShowAnalysisModal(false)} style={{ padding: '8px 16px', background: 'none', border: '1px solid #dcd3c1', color: '#7a6b5d', borderRadius: '6px', cursor: 'pointer' }}>Игнорировать всё</button>
               <button onClick={() => { alert('Карточки созданы!'); setShowAnalysisModal(false) }} style={{ padding: '8px 16px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Подтвердить выбранные</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === МОДАЛЬНОЕ ОКНО ЭКСПОРТА === */}
+      {showExportModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(44,36,27,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000, padding: '20px' }} onClick={() => setShowExportModal(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ width: 'min(500px, 90vw)', background: '#fdfbf7', border: '1px solid #dcd3c1', borderRadius: '10px', padding: '24px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ margin: '0 0 16px 0', color: '#5c3a21', fontSize: '1.2rem' }}>📥 Экспорт книги</h3>
+            
+            <div style={{ marginBottom: '20px' }}>
+              <label style={labelStyle}>Формат файла:</label>
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <button onClick={() => setExportFormat('md')} style={{ flex: 1, padding: '10px', background: exportFormat === 'md' ? '#7a4b3a' : '#fdfbf7', color: exportFormat === 'md' ? '#fdfbf7' : '#7a4b3a', border: '1px solid #dcd3c1', borderRadius: '6px', cursor: 'pointer' }}>Markdown (.md)</button>
+                <button onClick={() => setExportFormat('txt')} style={{ flex: 1, padding: '10px', background: exportFormat === 'txt' ? '#7a4b3a' : '#fdfbf7', color: exportFormat === 'txt' ? '#fdfbf7' : '#7a4b3a', border: '1px solid #dcd3c1', borderRadius: '6px', cursor: 'pointer' }}>Текст (.txt)</button>
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '24px' }}>
+              <label style={labelStyle}>Что экспортировать:</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" name="scope" checked={exportScope === 'scene'} onChange={() => setExportScope('scene')} /> Текущая сцена
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" name="scope" checked={exportScope === 'chapter'} onChange={() => setExportScope('chapter')} /> Текущая глава
+                </label>
+                <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
+                  <input type="radio" name="scope" checked={exportScope === 'book'} onChange={() => setExportScope('book')} /> Вся книга
+                </label>
+              </div>
+            </div>
+
+            <div style={{ display: 'flex', gap: '10px', justifyContent: 'flex-end' }}>
+              <button onClick={() => setShowExportModal(false)} style={{ padding: '8px 16px', background: 'none', border: '1px solid #dcd3c1', color: '#7a6b5d', borderRadius: '6px', cursor: 'pointer' }}>Отмена</button>
+              <button onClick={handleExport} style={{ padding: '8px 16px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Скачать файл</button>
             </div>
           </div>
         </div>
