@@ -533,7 +533,7 @@ ${getPolicyInstruction()}
   }
 
   // === ТИХИЙ РЕДАКТОР: ФУНКЦИИ ===
-  const handleCheckScene = async () => {
+    const handleCheckScene = async () => {
     if (!activeScene || !activeScene.text.trim()) {
       alert('Сначала напишите или вставьте текст в сцену.')
       return
@@ -541,7 +541,41 @@ ${getPolicyInstruction()}
     setIsAnalyzing(true)
     setObservations([])
     try {
-      const checkPrompt = `Проанализируй текст сцены. Найди: 1) Противоречия с данными персонажей и мира. 2) Новые упомянутые имена, локации или предметы. 3) Нарушения заданных политик контента. Верни результат ТОЛЬКО в формате JSON массива объектов: [{"type": "warning"|"info"|"candidate", "title": "Краткий заголовок", "description": "Описание проблемы или находки", "action": "Текст кнопки действия"}]. Не добавляй markdown или другой текст.`
+      // Формируем краткую сводку канона для сверки
+      const canonBrief = characters.map(c => 
+        `${c.name}: Пол=${c.gender}, Раса=${c.race}, Внешность=${c.appearance || 'не описана'}, Характер=${c.personality || 'не описан'}`
+      ).join('\n')
+
+      const worldBrief = [
+        worldNotes.setting ? `Сеттинг: ${worldNotes.setting}` : '',
+        worldNotes.rules ? `Правила: ${worldNotes.rules}` : ''
+      ].filter(Boolean).join('\n')
+
+      const checkPrompt = `Ты — строгий литературный редактор и хранитель канона. Проанализируй предоставленный текст сцены на предмет ошибок и несоответствий.
+
+=== КАНОН ПРОИЗВЕДЕНИЯ ===
+${canonBrief}
+${worldBrief}
+
+=== ТЕКСТ СЦЕНЫ ДЛЯ ПРОВЕРКИ ===
+"""
+${activeScene.text}
+"""
+
+=== ЗАДАЧА ===
+Найди:
+1. **Противоречия**: Если в тексте персонаж ведет себя не так, как описано в его характере, или имеет другую внешность/пол/расу.
+2. **Новые сущности**: Имена людей, локации или важные предметы, которых нет в списке канона.
+3. **Логические ошибки**: Нарушение физики мира или временных рамок.
+
+Верни результат ТОЛЬКО в формате JSON массива объектов. Если ничего не найдено, верни пустой массив [].
+Формат объекта: {"type": "warning"|"info"|"candidate", "title": "Заголовок", "description": "Подробное описание проблемы", "action": "Текст кнопки"}
+
+Пример ответа:
+[
+  {"type": "warning", "title": "Ошибка во внешности", "description": "В тексте сказано, что у Энн карие глаза, но в каноне указано: голубые.", "action": "Исправить"},
+  {"type": "candidate", "title": "Новый персонаж", "description": "Упомянут 'Капитан Блад', которого нет в базе.", "action": "Создать карточку"}
+]`
       
       const res = await fetch('/api/generate', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
@@ -550,24 +584,27 @@ ${getPolicyInstruction()}
       const data = await res.json()
       
       if (data.text && !data.text.startsWith('Ошибка:')) {
+        // Пытаемся найти JSON в ответе
         const jsonMatch = data.text.match(/\[[\s\S]*\]/)
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0])
-          setObservations(parsed)
+          if (Array.isArray(parsed)) {
+            setObservations(parsed)
+            // Мы НЕ открываем панель автоматически, только обновляем индикатор
+          } else {
+            throw new Error('Invalid format')
+          }
         } else {
-          throw new Error('No JSON found')
+          // Если JSON не найден, показываем сырой ответ как одно замечание
+          setObservations([{ type: 'info', title: 'Ответ модели', description: data.text, action: 'ОК' }])
         }
       } else {
         throw new Error(data.text || 'Ошибка анализа')
       }
     } catch (error) {
-      // Fallback демо-данные, если модель не вернула строгий JSON
-      setObservations([
-        { type: 'candidate', title: 'Новый персонаж', description: 'В тексте упомянута "Мэри". Создать карточку персонажа?', action: 'Создать' },
-        { type: 'warning', title: 'Возможное противоречие', description: 'В тексте глаза описаны как "карие", но в карточке Энн указано: "голубые".', action: 'Исправить' },
-        { type: 'info', title: 'Стилистика', description: 'Длинное предложение в первом абзаце. Рассмотрите возможность разбивки для динамики.', action: 'Игнорировать' }
-      ])
-      setShowObservations(true)
+      console.error(error)
+      // УБРАЛИ ТЕСТОВЫЕ ДАННЫЕ. Теперь при ошибке будет просто пусто или сообщение об ошибке.
+      setObservations([{ type: 'warning', title: 'Ошибка проверки', description: 'Не удалось получить ответ от ИИ. Проверьте консоль или попробуйте другую модель.', action: 'Закрыть' }])
     } finally {
       setIsAnalyzing(false)
     }
