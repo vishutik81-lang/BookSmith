@@ -26,14 +26,66 @@ app.get('/api/models', (req, res) => {
 });
 
 // 3. Генерация текста
+// === ГЕНЕРАЦИЯ ТЕКСТА ===
+import { generateText, AVAILABLE_MODELS, getRequestLogs, getStats } from './openrouter.js';
+
 app.post('/api/generate', async (req, res) => {
   try {
     const { prompt, modelId } = req.body;
-    const result = await generateText(prompt, modelId);
-    res.json(result);
+    
+    if (!prompt || !modelId) {
+      return res.status(400).json({ error: 'Промпт и modelId обязательны' });
+    }
+    
+    const result = await generateText(modelId, prompt);
+    
+    res.json({
+      text: result.text,
+      usage: result.usage,
+      provider: result.provider,
+      duration: result.duration,
+    });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('Ошибка генерации:', error);
+    res.status(500).json({ 
+      error: error.message,
+      text: `Ошибка: ${error.message}` 
+    });
   }
+});
+
+// === ПОЛУЧЕНИЕ СПИСКА МОДЕЛЕЙ ===
+app.get('/api/models', (req, res) => {
+  // Группируем модели по провайдерам
+  const grouped = {};
+  AVAILABLE_MODELS.forEach(model => {
+    if (!grouped[model.provider]) {
+      grouped[model.provider] = {
+        provider: model.provider,
+        name: model.provider.charAt(0).toUpperCase() + model.provider.slice(1),
+        models: [],
+      };
+    }
+    grouped[model.provider].models.push({
+      id: model.id,
+      name: model.name,
+      description: model.description,
+    });
+  });
+  
+  res.json({ providers: Object.values(grouped) });
+});
+
+// === МОНИТОРИНГ: ЛОГИ ЗАПРОСОВ ===
+app.get('/api/monitoring/logs', (req, res) => {
+  const logs = getRequestLogs();
+  res.json({ logs: logs.slice(-50) }); // Последние 50 записей
+});
+
+// === МОНИТОРИНГ: СТАТИСТИКА ===
+app.get('/api/monitoring/stats', (req, res) => {
+  const stats = getStats();
+  res.json({ stats });
 });
 
 // 4. Создание нового проекта + глава + сцена (всё сразу)
