@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import MonitoringPanel from './components/MonitoringPanel'
 import CharacterGraph from './components/CharacterGraph'
 import PromptInspector from './components/PromptInspector'
 
@@ -330,26 +331,42 @@ export default function App() {
   }
 
   const loadModels = async () => {
-    try {
-      const res = await fetch('/api/models')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      const modelsList = Array.isArray(data) ? data : (data.models || [])
-      if (modelsList.length > 0) {
-        setAvailableModels(modelsList)
-        if (!modelsList.find((m: any) => m.id === selectedModel)) { setSelectedModel(modelsList[0].id); localStorage.setItem('selectedAIModel', modelsList[0].id) }
-      } else { throw new Error('Список моделей пуст') }
-    } catch (error) {
-      console.warn('Fallback модели:', error)
-      const fallback = [
-        { id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5 (2.6B)' },
-        { id: 'thinkingmachines/inkling-small:free', name: 'Inkling Small' },
-        { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra (550B)' }
-      ]
-      setAvailableModels(fallback)
-      if (!fallback.find((m: any) => m.id === selectedModel)) { setSelectedModel(fallback[0].id); localStorage.setItem('selectedAIModel', fallback[0].id) }
+  try {
+    const res = await fetch('/api/models')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    
+    if (data.providers && data.providers.length > 0) {
+      // Сохраняем структуру провайдеров для отображения
+      setAvailableProviders(data.providers)
+      
+      // Устанавливаем первую модель как дефолтную
+      const firstModel = data.providers[0].models[0]
+      if (!localStorage.getItem('selectedAIModel')) {
+        setSelectedModel(firstModel.id)
+        localStorage.setItem('selectedAIModel', firstModel.id)
+      }
+    } else {
+      throw new Error('Список провайдеров пуст')
+    }
+  } catch (error) {
+    console.warn('Fallback модели:', error)
+    const fallback = [
+      {
+        provider: 'openrouter',
+        name: 'OpenRouter',
+        models: [
+          { id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5 (2.6B)', description: 'Fallback модель' },
+        ],
+      },
+    ]
+    setAvailableProviders(fallback)
+    if (!localStorage.getItem('selectedAIModel')) {
+      setSelectedModel(fallback[0].models[0].id)
+      localStorage.setItem('selectedAIModel', fallback[0].models[0].id)
     }
   }
+}
 
   const handleSaveCharacter = async () => {
     if (!characterForm.name.trim()) { alert('Имя обязательно'); return }
@@ -965,17 +982,48 @@ ${getPolicyInstruction()}
                 </div>
 
                 <div style={{ marginBottom: '10px' }}>
-                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Модель:</label>
-                  <select value={selectedModel} onChange={(e) => { setSelectedModel(e.target.value); localStorage.setItem('selectedAIModel', e.target.value) }} style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #dcd3c1', fontSize: '0.85rem', background: '#fdfbf7', boxSizing: 'border-box' }}>
-                    {availableModels.map((model: any) => <option key={model.id} value={model.id}>{model.name}</option>)}
-                  </select>
-                </div>
+  <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Модель:</label>
+  <select 
+    value={selectedModel} 
+    onChange={(e) => { 
+      setSelectedModel(e.target.value)
+      localStorage.setItem('selectedAIModel', e.target.value) 
+    }} 
+    style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #dcd3c1', fontSize: '0.85rem', background: '#fdfbf7', boxSizing: 'border-box' }}
+  >
+    {availableProviders.map((provider: any) => (
+      <optgroup key={provider.provider} label={`── ${provider.name} ──`}>
+        {provider.models.map((model: any) => (
+          <option key={`${provider.provider}-${model.id}`} value={model.id}>
+            {model.name}
+          </option>
+        ))}
+      </optgroup>
+    ))}
+  </select>
+</div>
 
                 <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} placeholder="Например: Опиши, как Энн замечает незнакомку..." style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', marginBottom: '10px', boxSizing: 'border-box', background: '#fdfbf7', fontFamily: 'sans-serif', fontSize: '0.9rem', resize: 'none' }} />
 
                 <button onClick={handleGenerateAI} disabled={isGenerating || !aiInstruction.trim()} style={{ width: '100%', padding: '10px', background: isGenerating ? '#999' : '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: isGenerating ? 'wait' : 'pointer', fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '10px' }}>
                   {isGenerating ? '✨ Генерация...' : '✨ Сгенерировать'}
                 </button>
+                <button 
+  onClick={() => setShowMonitoring(true)} 
+  style={{ 
+    width: '100%', 
+    padding: '8px', 
+    background: '#fdfbf7', 
+    border: '1px solid #dcd3c1', 
+    color: '#7a4b3a', 
+    borderRadius: '4px', 
+    cursor: 'pointer', 
+    fontSize: '0.85rem',
+    marginTop: '10px'
+  }}
+>
+  📊 Мониторинг API
+</button>
 
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '14px' }}>
                   <button onClick={() => openPromptInspector('sent')} title="Показать промпт варианта" style={{ flex: 1, padding: '7px 6px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.78rem', fontFamily: 'sans-serif' }}>🔍 Промпт</button>
@@ -1082,6 +1130,7 @@ ${getPolicyInstruction()}
             {showGraph && activeBookId && (
         <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
       )}
+      {showMonitoring && <MonitoringPanel onClose={() => setShowMonitoring(false)} />}
     </div>
   )
 }
