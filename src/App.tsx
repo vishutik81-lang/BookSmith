@@ -1126,11 +1126,18 @@ ${getPolicyInstruction()}
         </div>
       )}
 
-      <PromptInspector open={inspectorOpen} record={inspectorRecord} onClose={() => setInspectorOpen(false)} />
-            {showGraph && activeBookId && (
+      {/* === МОДАЛЬНОЕ ОКНО ГРАФА === */}
+      {showGraph && activeBookId && (
         <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
       )}
-      {showMonitoring && <MonitoringPanel onClose={() => setShowMonitoring(false)} />}
+
+      {/* === МОДАЛЬНОЕ ОКНО МОНИТОРИНГА === */}
+      {showMonitoring && (
+        <MonitoringPanel onClose={() => setShowMonitoring(false)} />
+      )}
+
+      {/* === PROMPT INSPECTOR === */}
+      <PromptInspector open={inspectorOpen} record={inspectorRecord} onClose={() => setInspectorOpen(false)} />
     </div>
   )
 }
