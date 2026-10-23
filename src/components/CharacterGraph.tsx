@@ -9,13 +9,53 @@ type GraphProps = {
 }
 
 const RELATION_COLORS: Record<string, string> = {
-  ally: '#5c7a5c',      // Зеленый
-  enemy: '#dc2626',     // Красный
-  family: '#7a4b3a',    // Коричневый
-  romantic: '#db2777',  // Розовый
-  rival: '#d97706',     // Оранжевый
-  mentor: '#2563eb',    // Синий
-  default: '#7a6b5d'    // Серый
+  ally: '#5c7a5c',         // Зеленый
+  enemy: '#dc2626',        // Красный
+  romantic: '#db2777',     // Розовый
+  secret_lover: '#a21caf', // Фиолетовый
+  rival: '#d97706',        // Оранжевый
+  mentor: '#2563eb',       // Синий
+  family: '#7a4b3a',       // Коричневый
+  childhood_friend: '#0891b2', // Бирюзовый
+  betrayed: '#7f1d1d',     // Темно-красный
+  debtor: '#65a30d',       // Салатовый
+  default: '#7a6b5d'       // Серый
+}
+
+const TYPE_NAMES: Record<string, string> = {
+  ally: "Союзник", enemy: "Враг", romantic: "Романтический интерес",
+  mentor: "Наставник / Ученик", rival: "Соперник", family: "Семья",
+  debtor: "Должник / Кредитор", secret_lover: "Тайная любовь",
+  betrayed: "Предательство", childhood_friend: "Друг детства", default: "Знакомый"
+}
+
+const getLevelName = (strength: number) => {
+  if (strength <= 3) return "Начальная / Слабая"
+  if (strength <= 6) return "Устойчивая / Средняя"
+  if (strength <= 8) return "Глубокая / Сильная"
+  return "Фатальная / Экстремальная"
+}
+
+const getBehaviorHint = (type: string, strength: number) => {
+  if (type === 'enemy' || type === 'betrayed') {
+    return strength >= 7 
+      ? "Тон предельно холодный, язвительный или агрессивный. Физическая дистанция максимальна." 
+      : "Скрытое недоверие, колкие замечания, постоянная проверка на прочность."
+  } else if (type === 'romantic' || type === 'secret_lover') {
+    return strength >= 7 
+      ? "Скрытая нежность, задерживающиеся взгляды, интуитивное понимание. Физический контакт осторожен, но значим." 
+      : "Осторожное любопытство, легкий флирт, желание узнать человека лучше, но с оглядкой."
+  } else if (type === 'ally' || type === 'childhood_friend') {
+    return strength >= 7 
+      ? "Безоговорочное доверие, готовность пойти на риск ради другого, интуитивное понимание с полуслова." 
+      : "Взаимовыгодное сотрудничество, вежливость, базовое уважение."
+  } else if (type === 'rival') {
+    return strength >= 7 
+      ? "Ожесточенная борьба, желание доказать превосходство любой ценой." 
+      : "Профессиональная конкуренция, подтекст в диалогах, взаимное уважение сквозь соперничество."
+  } else {
+    return `Учитывайте уровень связи (${strength}/10) при описании их взаимодействия.`
+  }
 }
 
 export default function CharacterGraph({ projectId, onClose }: GraphProps) {
@@ -36,7 +76,6 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
       const data = await res.json()
       
       if (data.characters) {
-        // Распределяем узлы по кругу для старта
         const radius = 200
         const centerX = 400
         const centerY = 300
@@ -74,11 +113,9 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
 
   const handleMouseMove = (e: React.MouseEvent) => {
     if (!draggingId || !svgRef.current) return
-    
     const rect = svgRef.current.getBoundingClientRect()
     const x = e.clientX - rect.left
     const y = e.clientY - rect.top
-    
     setNodes(nodes.map(n => n.id === draggingId ? { ...n, x, y } : n))
   }
 
@@ -97,9 +134,11 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
       if (data.success) {
         await loadGraph()
         setShowAddModal(false)
+      } else {
+        alert('Ошибка: ' + data.error)
       }
-    } catch (error) {
-      alert('Ошибка: ' + error)
+    } catch (error: any) {
+      alert('Ошибка: ' + error.message)
     }
   }
 
@@ -111,9 +150,11 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
       if (data.success) {
         setLinks(links.filter(l => l.id !== id))
         setSelectedLink(null)
+      } else {
+        alert('Ошибка: ' + data.error)
       }
-    } catch (error) {
-      alert('Ошибка: ' + error)
+    } catch (error: any) {
+      alert('Ошибка: ' + error.message)
     }
   }
 
@@ -143,17 +184,17 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
               const isSelected = selectedLink?.id === link.id
               
               return (
-                <g key={link.id} onClick={() => setSelectedLink(link)} style={{ cursor: 'pointer' }}>
+                <g key={link.id} onClick={(e) => { e.stopPropagation(); setSelectedLink(link) }} style={{ cursor: 'pointer' }}>
                   <line 
                     x1={source.x} y1={source.y} 
                     x2={target.x} y2={target.y} 
                     stroke={color} 
-                    strokeWidth={isSelected ? 4 : link.strength / 2} 
+                    strokeWidth={isSelected ? 5 : (link.strength / 2) + 1} 
                     opacity={isSelected ? 1 : 0.6}
                   />
                   {isSelected && (
-                    <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2 - 10} textAnchor="middle" fill="#5c3a21" fontSize="12" fontWeight="bold">
-                      {link.type} ({link.strength}/10)
+                    <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2 - 10} textAnchor="middle" fill="#5c3a21" fontSize="12" fontWeight="bold" style={{ textShadow: '0 1px 2px white' }}>
+                      {TYPE_NAMES[link.type] || link.type} ({link.strength}/10)
                     </text>
                   )}
                 </g>
@@ -163,8 +204,8 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
             {/* Nodes */}
             {nodes.map(node => (
               <g key={node.id} onMouseDown={(e) => handleMouseDown(e, node.id)} style={{ cursor: 'grab' }}>
-                <circle cx={node.x} cy={node.y} r={20} fill="#7a4b3a" stroke="#5c3a21" strokeWidth={2} />
-                <text x={node.x} y={node.y + 35} textAnchor="middle" fill="#2c241b" fontSize="14" fontWeight="bold">
+                <circle cx={node.x} cy={node.y} r={22} fill="#7a4b3a" stroke="#5c3a21" strokeWidth={2} />
+                <text x={node.x} y={node.y + 38} textAnchor="middle" fill="#2c241b" fontSize="14" fontWeight="bold" style={{ textShadow: '0 1px 2px rgba(255,255,255,0.8)' }}>
                   {node.name}
                 </text>
               </g>
@@ -173,11 +214,28 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
 
           {/* INFO PANEL FOR SELECTED LINK */}
           {selectedLink && (
-            <div style={{ position: 'absolute', top: '20px', right: '20px', width: '250px', background: '#fdfbf7', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '15px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
-              <h4 style={{ margin: '0 0 10px 0', color: '#5c3a21' }}>Связь: {selectedLink.type}</h4>
-              <p style={{ fontSize: '0.85rem', color: '#4a3f35', margin: '5px 0' }}>Сила: {selectedLink.strength}/10</p>
-              <p style={{ fontSize: '0.85rem', color: '#4a3f35', margin: '5px 0' }}>{selectedLink.description || 'Нет описания'}</p>
-              <button onClick={() => handleDeleteRelation(selectedLink.id)} style={{ marginTop: '10px', width: '100%', padding: '6px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>🗑️ Удалить связь</button>
+            <div style={{ position: 'absolute', top: '20px', right: '20px', width: '300px', background: '#fdfbf7', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '16px', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}>
+              <h4 style={{ margin: '0 0 12px 0', color: '#5c3a21', fontSize: '1rem' }}>
+                Связь: {TYPE_NAMES[selectedLink.type] || selectedLink.type}
+              </h4>
+              
+              <div style={{ fontSize: '0.85rem', color: '#4a3f35', marginBottom: '12px', lineHeight: '1.5', background: '#f5f0e6', padding: '12px', borderRadius: '6px' }}>
+                <div style={{ marginBottom: '6px' }}><b>Уровень:</b> {getLevelName(selectedLink.strength)} ({selectedLink.strength}/10)</div>
+                {selectedLink.description && (
+                  <div style={{ marginTop: '8px', fontStyle: 'italic', color: '#7a4b3a', borderTop: '1px dashed #dcd3c1', paddingTop: '8px' }}>
+                    "{selectedLink.description}"
+                  </div>
+                )}
+              </div>
+
+              <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginBottom: '12px', lineHeight: '1.4', background: '#fffbeb', padding: '10px', borderRadius: '6px', border: '1px solid #fde68a' }}>
+                <b style={{ color: '#92400e' }}>💡 Как это увидит ИИ:</b><br/>
+                <i>{getBehaviorHint(selectedLink.type, selectedLink.strength)}</i>
+              </div>
+
+              <button onClick={() => handleDeleteRelation(selectedLink.id)} style={{ width: '100%', padding: '8px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem', fontWeight: 'bold' }}>
+                🗑️ Удалить связь
+              </button>
             </div>
           )}
         </div>
@@ -213,46 +271,50 @@ function AddRelationModal({ nodes, onClose, onSubmit }: { nodes: Node[], onClose
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000 }} onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} style={{ background: '#fdfbf7', padding: '24px', borderRadius: '10px', width: '400px' }}>
-        <h3 style={{ marginTop: 0, color: '#5c3a21' }}>Новая связь</h3>
-        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 4000 }} onClick={onClose}>
+      <div onClick={(e) => e.stopPropagation()} style={{ background: '#fdfbf7', padding: '24px', borderRadius: '10px', width: 'min(450px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+        <h3 style={{ marginTop: 0, color: '#5c3a21', marginBottom: '16px' }}>Новая связь</h3>
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>От кого:</label>
-            <select value={source} onChange={(e) => setSource(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '4px' }}>
-              <option value="">Выберите...</option>
+            <select value={source} onChange={(e) => setSource(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
+              <option value="">Выберите персонажа...</option>
               {nodes.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
             </select>
           </div>
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>К кому:</label>
-            <select value={target} onChange={(e) => setTarget(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '4px' }}>
-              <option value="">Выберите...</option>
+            <select value={target} onChange={(e) => setTarget(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
+              <option value="">Выберите персонажа...</option>
               {nodes.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
             </select>
           </div>
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Тип связи:</label>
-            <select value={type} onChange={(e) => setType(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '4px' }}>
+            <select value={type} onChange={(e) => setType(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
               <option value="ally">Союзник</option>
               <option value="enemy">Враг</option>
-              <option value="family">Семья</option>
-              <option value="romantic">Романтика</option>
+              <option value="romantic">Романтический интерес</option>
+              <option value="secret_lover">Тайная любовь</option>
               <option value="rival">Соперник</option>
-              <option value="mentor">Наставник</option>
+              <option value="mentor">Наставник / Ученик</option>
+              <option value="family">Семья</option>
+              <option value="childhood_friend">Друг детства</option>
+              <option value="betrayed">Предательство</option>
+              <option value="debtor">Должник / Кредитор</option>
             </select>
           </div>
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Сила (1-10): {strength}</label>
-            <input type="range" min="1" max="10" value={strength} onChange={(e) => setStrength(Number(e.target.value))} style={{ width: '100%' }} />
+            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Сила связи: <span style={{ color: '#7a4b3a' }}>{strength}/10 ({getLevelName(strength)})</span></label>
+            <input type="range" min="1" max="10" value={strength} onChange={(e) => setStrength(Number(e.target.value))} style={{ width: '100%', marginTop: '4px' }} />
           </div>
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Описание:</label>
-            <textarea value={desc} onChange={(e) => setDesc(e.target.value)} style={{ width: '100%', minHeight: '60px', marginTop: '4px' }} />
+            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Описание (необязательно):</label>
+            <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Например: 'Спасла жизнь в таверне'" style={{ width: '100%', minHeight: '60px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', padding: '8px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
           </div>
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: '8px', background: 'transparent', border: '1px solid #dcd3c1', borderRadius: '4px', cursor: 'pointer' }}>Отмена</button>
-            <button type="submit" style={{ flex: 1, padding: '8px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }}>Создать</button>
+            <button type="button" onClick={onClose} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid #dcd3c1', borderRadius: '6px', cursor: 'pointer', color: '#7a6b5d', fontWeight: 'bold' }}>Отмена</button>
+            <button type="submit" style={{ flex: 1, padding: '10px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Создать связь</button>
           </div>
         </form>
       </div>
