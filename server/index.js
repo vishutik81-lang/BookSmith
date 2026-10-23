@@ -214,6 +214,79 @@ app.post('/api/projects/:projectId/world-notes', async (req, res) => {
     res.json({ notes: data });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
+// === 10. GRAPH RELATIONS (Граф связей) ===
+
+app.get('/api/projects/:projectId/relations', async (req, res) => {
+  try {
+    const { projectId } = req.params;
+    
+    // 1. Получаем всех персонажей этого проекта
+    const { data: chars, error: charsError } = await supabase
+      .from('characters')
+      .select('id, name')
+      .eq('project_id', projectId);
+      
+    if (charsError) throw charsError;
+
+    // 2. Получаем связи между этими персонажами
+    let relations = [];
+    if (chars && chars.length > 0) {
+      const charIds = chars.map(c => c.id);
+      const { data: rels, error: relsError } = await supabase
+        .from('character_relations')
+        .select('*')
+        .in('source_id', charIds)
+        .in('target_id', charIds);
+        
+      if (relsError) throw relsError;
+      relations = rels || [];
+    }
+
+    res.json({ characters: chars || [], relations: relations });
+  } catch (err) {
+    console.error('Ошибка загрузки связей:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/relations', async (req, res) => {
+  try {
+    const { source_id, target_id, type, strength, description } = req.body;
+    const { data, error } = await supabase
+      .from('character_relations')
+      .upsert([{ 
+        source_id, 
+        target_id, 
+        type, 
+        strength: strength || 5, 
+        description: description || '' 
+      }], { onConflict: 'source_id,target_id,type' })
+      .select()
+      .single();
+      
+    if (error) throw error;
+    res.json({ success: true, relation: data });
+  } catch (err) {
+    console.error('Ошибка создания связи:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/relations/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { error } = await supabase
+      .from('character_relations')
+      .delete()
+      .eq('id', id);
+      
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Ошибка удаления связи:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // 10. Catch-all for React
 app.get('*', (req, res) => {
