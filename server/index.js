@@ -3,7 +3,6 @@ import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { supabase } from './supabase.js';
-// Убрали getRequestLogs и getStats, чтобы избежать ошибок, если их нет в openrouter.js
 import { generateText, AVAILABLE_MODELS } from './openrouter.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -12,115 +11,215 @@ const __dirname = dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(join(__dirname, '../dist')));
 
-// 1. Проверка здоровья
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'BookSmith server is running' });
-});
+// 1. Health check
+app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
 
-// 2. Список моделей
-app.get('/api/models', (req, res) => {
-  res.json({ models: AVAILABLE_MODELS });
-});
+// 2. Models
+app.get('/api/models', (req, res) => res.json({ models: AVAILABLE_MODELS }));
 
-// 3. Генерация текста
+// 3. Generate
 app.post('/api/generate', async (req, res) => {
   try {
     const { prompt, modelId } = req.body;
     const result = await generateText(prompt, modelId);
     res.json(result);
   } catch (error) {
-    console.error('Ошибка генерации:', error);
     res.status(500).json({ error: error.message });
   }
 });
 
-// 4. Создание нового проекта + глава + сцена
+// 4. Projects
+app.get('/api/projects', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+    if (error) throw error;
+    res.json({ projects: data || [] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.post('/api/projects', async (req, res) => {
   try {
     const { title, description, genre, subgenre } = req.body;
-    
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .insert([{ title, description, genre, subgenre }])
-      .select()
-      .single();
-    if (projectError) throw projectError;
+    const { data: project, error: pErr } = await supabase.from('projects').insert([{ title, description, genre: genre || 'Не указан', subgenre: subgenre || '' }]).select().single();
+    if (pErr) throw pErr;
 
-    const { data: chapter, error: chapterError } = await supabase
-      .from('chapters')
-      .insert([{ project_id: project.id, title: 'Глава 1', sort_order: 0 }])
-      .select()
-      .single();
-    if (chapterError) throw chapterError;
+    const { data: chapter, error: cErr } = await supabase.from('chapters').insert([{ project_id: project.id, title: 'Глава 1', sort_order: 0 }]).select().single();
+    if (cErr) throw cErr;
 
-    const { data: scene, error: sceneError } = await supabase
-      .from('scenes')
-      .insert([{ chapter_id: chapter.id, title: 'Сцена 1', body: '', context_before: '', sort_order: 0 }])
-      .select()
-      .single();
-    if (sceneError) throw sceneError;
+    const { data: scene, error: sErr } = await supabase.from('scenes').insert([{ chapter_id: chapter.id, title: 'Сцена 1', body: '', context_before: '', sort_order: 0 }]).select().single();
+    if (sErr) throw sErr;
 
-    res.json({
-      message: 'Проект создан!',
-      project: { ...project, chapters: [{ ...chapter, scenes: [scene] }] }
-    });
-  } catch (err) {
-    console.error('Ошибка создания проекта:', err);
-    res.status(500).json({ error: err.message });
-  }
+    res.json({ message: 'OK', project: { ...project, chapters: [{ ...chapter, scenes: [scene] }] } });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 5. Получение всех проектов
-app.get('/api/projects', async (req, res) => {
+app.patch('/api/projects/:id', async (req, res) => {
   try {
-    const { data: projects, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('created_at', { ascending: false });
+    const { title, genre, subgenre } = req.body;
+    const { data, error } = await supabase.from('projects').update({ title, genre, subgenre }).eq('id', req.params.id).select().single();
     if (error) throw error;
-    res.json({ projects: projects || [] });
-  } catch (err) {
-    console.error('Ошибка загрузки проектов:', err);
-    res.status(500).json({ error: err.message });
-  }
+    res.json({ success: true, project: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 6. Обновление сцены (сохранение текста)
+app.delete('/api/projects/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('projects').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 5. Chapters
+app.post('/api/projects/:projectId/chapters', async (req, res) => {
+  try {
+    const { title, sort_order } = req.body;
+    const { data, error } = await supabase.from('chapters').insert([{ project_id: req.params.projectId, title: title || 'Новая глава', sort_order: sort_order || 0 }]).select().single();
+    if (error) throw error;
+    res.json({ success: true, chapter: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/chapters/:id', async (req, res) => {
+  try {
+    const { title } = req.body;
+    const { data, error } = await supabase.from('chapters').update({ title }).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json({ success: true, chapter: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 6. Scenes
+app.post('/api/chapters/:chapterId/scenes', async (req, res) => {
+  try {
+    const { title, body, sort_order } = req.body;
+    const { data, error } = await supabase.from('scenes').insert([{ chapter_id: req.params.chapterId, title: title || 'Новая сцена', body: body || '', context_before: '', sort_order: sort_order || 0 }]).select().single();
+    if (error) throw error;
+    res.json({ success: true, scene: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 app.patch('/api/scenes/:id', async (req, res) => {
   try {
-    const { id } = req.params;
     const { body, context_before, title } = req.body;
-    
     const updateData = {};
     if (body !== undefined) updateData.body = body;
     if (context_before !== undefined) updateData.context_before = context_before;
     if (title !== undefined) updateData.title = title;
-
-    const { data, error } = await supabase
-      .from('scenes')
-      .update(updateData)
-      .eq('id', id)
-      .select();
-      
+    
+    const { data, error } = await supabase.from('scenes').update(updateData).eq('id', req.params.id).select();
     if (error) throw error;
     res.json({ success: true, scene: data[0] });
-  } catch (err) {
-    console.error('Ошибка обновления сцены:', err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 7. Отдача фронтенда (Catch-all для React Router)
+app.patch('/api/scenes/title/:id', async (req, res) => {
+  try {
+    const { title } = req.body;
+    const { data, error } = await supabase.from('scenes').update({ title }).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json({ success: true, scene: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 7. Characters
+app.get('/api/projects/:projectId/characters', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('characters').select('*').eq('project_id', req.params.projectId);
+    if (error) throw error;
+    res.json({ characters: data || [] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/projects/:projectId/characters', async (req, res) => {
+  try {
+    const { name, description, role, appearance, personality, sexual_orientation, gender, race } = req.body;
+    const { data, error } = await supabase.from('characters').insert([{ project_id: req.params.projectId, name: name.trim(), description: description || '', role: role || 'secondary', appearance: appearance || '', personality: personality || '', sexual_orientation: sexual_orientation || '', gender: gender || 'not_specified', race: race || 'human' }]).select().single();
+    if (error) throw error;
+    res.json({ character: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.patch('/api/characters/:id', async (req, res) => {
+  try {
+    const { name, description, role, appearance, personality, sexual_orientation, gender, race } = req.body;
+    const updateData = {};
+    if (name !== undefined) updateData.name = name.trim();
+    if (description !== undefined) updateData.description = description;
+    if (role !== undefined) updateData.role = role;
+    if (appearance !== undefined) updateData.appearance = appearance;
+    if (personality !== undefined) updateData.personality = personality;
+    if (sexual_orientation !== undefined) updateData.sexual_orientation = sexual_orientation;
+    if (gender !== undefined) updateData.gender = gender;
+    if (race !== undefined) updateData.race = race;
+
+    const { data, error } = await supabase.from('characters').update(updateData).eq('id', req.params.id).select().single();
+    if (error) throw error;
+    res.json({ character: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/characters/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('characters').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 8. Scene Characters
+app.get('/api/scenes/:sceneId/characters', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('scene_characters').select('*, characters(*)').eq('scene_id', req.params.sceneId);
+    if (error) throw error;
+    res.json({ characters: data || [] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/scenes/:sceneId/characters', async (req, res) => {
+  try {
+    const { character_id, role } = req.body;
+    const { data, error } = await supabase.from('scene_characters').insert([{ scene_id: req.params.sceneId, character_id, role: role || 'present' }]).select().single();
+    if (error) throw error;
+    res.json({ success: true, link: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.delete('/api/scenes/:sceneId/characters/:characterId', async (req, res) => {
+  try {
+    const { error } = await supabase.from('scene_characters').delete().eq('scene_id', req.params.sceneId).eq('character_id', req.params.characterId);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 9. World Notes
+app.get('/api/projects/:projectId/world-notes', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('world_notes').select('*').eq('project_id', req.params.projectId).single();
+    if (error && error.code !== 'PGRST116') throw error;
+    res.json({ notes: data || null });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/projects/:projectId/world-notes', async (req, res) => {
+  try {
+    const { setting, time_period, rules, important_events, tone, custom_notes } = req.body;
+    const { data, error } = await supabase.from('world_notes').upsert([{ project_id: req.params.projectId, setting: setting || '', time_period: time_period || '', rules: rules || '', important_events: important_events || '', tone: tone || '', custom_notes: custom_notes || '', updated_at: new Date().toISOString() }], { onConflict: 'project_id' }).select().single();
+    if (error) throw error;
+    res.json({ notes: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// 10. Catch-all for React
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
 });
 
-// 8. Запуск сервера
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server running on http://0.0.0.0:${PORT}`);
+  console.log(`🚀 Server running on port ${PORT}`);
 });
