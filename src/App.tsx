@@ -632,11 +632,20 @@ ${getPolicyInstruction()}
       {!loading && view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
           <header style={{ height: '50px', borderBottom: '1px solid #dcd3c1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px', background: '#f5f0e6' }}>
-            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
-              <button onClick={() => setView('library')} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem' }}>←</button>
-              <button onClick={() => setView('characters')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>👥</button>
-              <button onClick={() => setView('world')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>🌍</button>
-              <button onClick={() => setShowGraph(true)} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.85rem', padding: '4px 10px', borderRadius: '4px' }}>🕸️ Граф</button>
+                       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              <button onClick={() => setView('library')} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1rem', padding: '4px 8px' }}>← Назад</button>
+              
+              <button onClick={() => setView('characters')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '4px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                Персонажи
+              </button>
+              
+              <button onClick={() => setView('world')} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '4px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                Мир книги
+              </button>
+              
+              <button onClick={() => setShowGraph(true)} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.8rem', padding: '6px 12px', borderRadius: '4px', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                 Граф связей
+              </button>
             </div>
             {editingBookId === activeBook.id ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
