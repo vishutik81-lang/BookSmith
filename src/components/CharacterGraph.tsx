@@ -29,6 +29,9 @@ const TYPE_NAMES: Record<string, string> = {
   betrayed: "Предательство", childhood_friend: "Друг детства", default: "Знакомый"
 }
 
+// Текст для всплывающей подсказки
+const STRENGTH_TOOLTIP = "Шкала силы связи:\n• 1-3: Начальная / Слабая\n• 4-6: Устойчивая / Средняя\n• 7-8: Глубокая / Сильная\n• 9-10: Фатальная / Экстремальная"
+
 const getLevelName = (strength: number) => {
   if (strength <= 3) return "Начальная / Слабая"
   if (strength <= 6) return "Устойчивая / Средняя"
@@ -193,7 +196,16 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
                     opacity={isSelected ? 1 : 0.6}
                   />
                   {isSelected && (
-                    <text x={(source.x + target.x) / 2} y={(source.y + target.y) / 2 - 10} textAnchor="middle" fill="#5c3a21" fontSize="12" fontWeight="bold" style={{ textShadow: '0 1px 2px white' }}>
+                    <text 
+                      x={(source.x + target.x) / 2} 
+                      y={(source.y + target.y) / 2 - 10} 
+                      textAnchor="middle" 
+                      fill="#5c3a21" 
+                      fontSize="12" 
+                      fontWeight="bold" 
+                      style={{ textShadow: '0 1px 2px white', cursor: 'help' }}
+                      title={STRENGTH_TOOLTIP}
+                    >
                       {TYPE_NAMES[link.type] || link.type} ({link.strength}/10)
                     </text>
                   )}
@@ -220,7 +232,9 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
               </h4>
               
               <div style={{ fontSize: '0.85rem', color: '#4a3f35', marginBottom: '12px', lineHeight: '1.5', background: '#f5f0e6', padding: '12px', borderRadius: '6px' }}>
-                <div style={{ marginBottom: '6px' }}><b>Уровень:</b> {getLevelName(selectedLink.strength)} ({selectedLink.strength}/10)</div>
+                <div style={{ marginBottom: '6px', cursor: 'help' }} title={STRENGTH_TOOLTIP}>
+                  <b>Уровень:</b> {getLevelName(selectedLink.strength)} (<span style={{ borderBottom: '1px dashed #7a4b3a' }}>{selectedLink.strength}/10</span> ℹ️)
+                </div>
                 {selectedLink.description && (
                   <div style={{ marginTop: '8px', fontStyle: 'italic', color: '#7a4b3a', borderTop: '1px dashed #dcd3c1', paddingTop: '8px' }}>
                     "{selectedLink.description}"
@@ -275,20 +289,31 @@ function AddRelationModal({ nodes, onClose, onSubmit }: { nodes: Node[], onClose
       <div onClick={(e) => e.stopPropagation()} style={{ background: '#fdfbf7', padding: '24px', borderRadius: '10px', width: 'min(450px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
         <h3 style={{ marginTop: 0, color: '#5c3a21', marginBottom: '16px' }}>Новая связь</h3>
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-          <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>От кого:</label>
-            <select value={source} onChange={(e) => setSource(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
-              <option value="">Выберите персонажа...</option>
-              {nodes.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
-            </select>
-          </div>
-          <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>К кому:</label>
-            <select value={target} onChange={(e) => setTarget(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
-              <option value="">Выберите персонажа...</option>
-              {nodes.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
-            </select>
-          </div>
+          
+          {/* ПРОВЕРКА НА ЗАГРУЗКУ ПЕРСОНАЖЕЙ */}
+          {nodes.length === 0 ? (
+            <div style={{ padding: '15px', background: '#fffbeb', border: '1px solid #fde68a', borderRadius: '6px', color: '#92400e', textAlign: 'center' }}>
+              ⏳ Загрузка персонажей или в книге пока нет созданных персонажей.
+            </div>
+          ) : (
+            <>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>От кого:</label>
+                <select value={source} onChange={(e) => setSource(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
+                  <option value="">Выберите персонажа...</option>
+                  {nodes.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>К кому:</label>
+                <select value={target} onChange={(e) => setTarget(e.target.value)} required style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
+                  <option value="">Выберите персонажа...</option>
+                  {nodes.map(n => <option key={n.id} value={n.id}>{n.name}</option>)}
+                </select>
+              </div>
+            </>
+          )}
+
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Тип связи:</label>
             <select value={type} onChange={(e) => setType(e.target.value)} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
@@ -304,17 +329,23 @@ function AddRelationModal({ nodes, onClose, onSubmit }: { nodes: Node[], onClose
               <option value="debtor">Должник / Кредитор</option>
             </select>
           </div>
+          
+          {/* ДОБАВЛЕНА ВСПЛЫВАЮЩАЯ ПОДСКАЗКА (title) */}
           <div>
-            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Сила связи: <span style={{ color: '#7a4b3a' }}>{strength}/10 ({getLevelName(strength)})</span></label>
-            <input type="range" min="1" max="10" value={strength} onChange={(e) => setStrength(Number(e.target.value))} style={{ width: '100%', marginTop: '4px' }} />
+            <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21', cursor: 'help' }} title={STRENGTH_TOOLTIP}>
+              Сила связи: <span style={{ color: '#7a4b3a', borderBottom: '1px dashed #7a4b3a' }}>{strength}/10 ({getLevelName(strength)}) ℹ️</span>
+            </label>
+            <input type="range" min="1" max="10" value={strength} onChange={(e) => setStrength(Number(e.target.value))} style={{ width: '100%', marginTop: '4px', cursor: 'pointer' }} />
           </div>
+          
           <div>
             <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Описание (необязательно):</label>
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)} placeholder="Например: 'Спасла жизнь в таверне'" style={{ width: '100%', minHeight: '60px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', padding: '8px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
           </div>
+          
           <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-            <button type="button" onClick={onClose} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid #dcd3c1', borderRadius: '6px', cursor: 'pointer', color: '#7a6b5d', fontWeight: 'bold' }}>Отмена</button>
-            <button type="submit" style={{ flex: 1, padding: '10px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Создать связь</button>
+            <button type="button" onClick={onClose} disabled={nodes.length === 0} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid #dcd3c1', borderRadius: '6px', cursor: nodes.length === 0 ? 'not-allowed' : 'pointer', color: '#7a6b5d', fontWeight: 'bold', opacity: nodes.length === 0 ? 0.5 : 1 }}>Отмена</button>
+            <button type="submit" disabled={nodes.length === 0} style={{ flex: 1, padding: '10px', background: nodes.length === 0 ? '#999' : '#7a4b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: nodes.length === 0 ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>Создать связь</button>
           </div>
         </form>
       </div>
