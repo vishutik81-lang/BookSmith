@@ -51,6 +51,7 @@ export default function App() {
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
 
   const [observations, setObservations] = useState<any[]>([])
+    const [relations, setRelations] = useState<any[]>([])
   const [showObservations, setShowObservations] = useState(false)
   const [showAnalysisModal, setShowAnalysisModal] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
@@ -87,10 +88,23 @@ export default function App() {
     loadModels()
   }, [])
 
-  useEffect(() => {
+   useEffect(() => {
     if (activeSceneId) loadSceneCharacters(activeSceneId)
     else setSceneCharacters([])
-  }, [activeSceneId])
+    
+    if (activeBookId) loadRelations(activeBookId)
+    else setRelations([])
+  }, [activeSceneId, activeBookId])
+
+  const loadRelations = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/relations`)
+      const data = await res.json()
+      if (data.relations) setRelations(data.relations)
+    } catch (error) { 
+      console.error('Ошибка загрузки связей:', error) 
+    }
+  }
 
   const activeBook = books.find(b => b.id === activeBookId)
   const activeChapter = activeBook?.chapters.find(c => c.id === activeChapterId)
@@ -388,7 +402,43 @@ export default function App() {
     return `- Откровенность: ${nsfwTexts[policies.nsfw] || nsfwTexts[0]}\n- Реализм: ${realismTexts[policies.realism] || realismTexts[0]}\n- Жестокость: ${crueltyTexts[policies.cruelty] || crueltyTexts[0]}`
   }
 
+    // === RELATIONSHIP EXPANDER ===
+  const expandRelationship = (type: string, strength: number) => {
+    const level = strength <= 3 ? "Начальная/Слабая" : strength <= 6 ? "Устойчивая/Средняя" : strength <= 8 ? "Глубокая/Сильная" : "Фатальная/Экстремальная"
+    
+    const typeNames: Record<string, string> = {
+      ally: "Союзник", enemy: "Враг", romantic: "Романтический интерес",
+      mentor: "Наставник / Ученик", rival: "Соперник", family: "Семья",
+      debtor: "Должник / Кредитор", secret_lover: "Тайная любовь",
+      betrayed: "Предательство", childhood_friend: "Друг детства", default: "Знакомый"
+    }
+    const typeName = typeNames[type] || typeNames.default
+
+    let behaviorHint = ""
+    if (type === 'enemy' || type === 'betrayed') {
+      behaviorHint = strength >= 7 
+        ? "Тон предельно холодный, язвительный или агрессивный. Физическая дистанция максимальна. Любые попытки сближения встречают жесткий отпор." 
+        : "Скрытое недоверие, колкие замечания, постоянная проверка на прочность."
+    } else if (type === 'romantic' || type === 'secret_lover') {
+      behaviorHint = strength >= 7 
+        ? "Скрытая нежность, задерживающиеся взгляды, интуитивное понимание. Физический контакт осторожен, но крайне значим." 
+        : "Осторожное любопытство, легкий флирт, желание узнать человека лучше, но с оглядкой."
+    } else if (type === 'ally' || type === 'childhood_friend') {
+      behaviorHint = strength >= 7 
+        ? "Безоговорочное доверие, готовность пойти на риск ради другого, интуитивное понимание с полуслова." 
+        : "Взаимовыгодное сотрудничество, вежливость, базовое уважение."
+    } else if (type === 'rival') {
+      behaviorHint = strength >= 7 
+        ? "Ожесточенная борьба, желание доказать превосходство любой ценой." 
+        : "Профессиональная конкуренция, подтекст в диалогах, взаимное уважение сквозь соперничество."
+    } else {
+      behaviorHint = `Учитывайте уровень связи (${strength}/10) при описании их взаимодействия: ${level}.`
+    }
+
+    return `• [${typeName}] [Сила: ${strength}/10 — ${level}]\n  → Как отражать в тексте: ${behaviorHint}`
+  }
   const buildPromptContext = () => {
+    // 1. Формируем список персонажей сцены (ваш старый код)
     const charactersContext = sceneCharacters.length > 0
       ? 'Персонажи в этой сцене:\n' + sceneCharacters.map((sc: any) => {
           const c = sc.characters
@@ -402,50 +452,85 @@ export default function App() {
         }).join('\n')
       : 'В этой сцене пока нет привязанных персонажей.'
 
+    // 2. Формируем блок мира (ваш старый код)
     const worldSection = [
       worldNotes.setting && `Место действия: ${worldNotes.setting}`,
       worldNotes.time_period && `Время: ${worldNotes.time_period}`,
       worldNotes.rules && `Правила мира: ${worldNotes.rules}`,
-      worldNotes.tone && `Тон и стиль: ${worldNotes.tone}`
+      worldNotes.important_events && `Важные события: ${worldNotes.important_events}`,
+      worldNotes.tone && `Тон и стиль: ${worldNotes.tone}`,
+      worldNotes.custom_notes && `Дополнительно: ${worldNotes.custom_notes}`,
     ].filter(Boolean).join('\n')
 
-    const prompt = `Ты — ИИ-соавтор. Создай НОВЫЙ ВАРИАНТ сцены.
+    // === НОВОЕ: Собираем связи ТОЛЬКО для персонажей текущей сцены ===
+    const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
+    const activeRelations = relations.filter(r => 
+      sceneCharIds.includes(r.source_id) && sceneCharIds.includes(r.target_id)
+    )
 
-=== МИР ===
-${worldSection || '(не описан)'}
+    let relationshipsContext = "В этой сцене нет заранее определенных связей между персонажами. Опирайся только на инструкцию автора."
+    if (activeRelations.length > 0) {
+      relationshipsContext = activeRelations.map(r => {
+        const sourceName = sceneCharacters.find(sc => sc.character_id === r.source_id)?.characters?.name || 'Неизвестно'
+        const targetName = sceneCharacters.find(sc => sc.character_id === r.target_id)?.characters?.name || 'Неизвестно'
+        return `${sourceName} ↔ ${targetName}:\n${expandRelationship(r.type, r.strength)}`
+      }).join('\n\n')
+    }
 
-=== ПЕРСОНАЖИ ===
+    // 3. Собираем итоговый промпт
+    const prompt = `Ты — ИИ-соавтор художественной литературы. Твоя задача — создать НОВЫЙ ВАРИАНТ сцены на основе инструкции автора, а не продолжить существующий текст.
+
+=== МИР ПРОИЗВЕДЕНИЯ ===
+${worldSection || '(мир не описан)'}
+
+=== ПЕРСОНАЖИ СЦЕНЫ ===
 ${charactersContext}
 
-=== ПРЕДЫСТОРИЯ ===
+=== ДИНАМИКА ОТНОШЕНИЙ В ЭТОЙ СЦЕНЕ ===
+${relationshipsContext}
+
+=== ПРЕДЫСТОРИЯ СЦЕНЫ ===
 ${activeScene?.context_before || '(не указана)'}
 
-=== ТЕКУЩИЙ ТЕКСТ (НЕ продолжай его) ===
+=== ТЕКУЩИЙ ТЕКСТ СЦЕНЫ (только как контекст, НЕ продолжай его) ===
 """
-${activeScene?.text || '(пусто)'}
+${activeScene?.text || '(сцена пока пустая)'}
 """
 
-=== ИНСТРУКЦИЯ ===
+=== ИНСТРУКЦИЯ АВТОРА ===
 ${aiInstruction}
 
-=== РЕЖИМ ===
+=== РЕЖИМ ГЕНЕРАЦИИ ===
 ${getLatitudeInstruction()}
 
-=== ПОЛИТИКИ ===
+=== ПОЛИТИКИ КОНТЕНТА ===
 ${getPolicyInstruction()}
 
 === ТРЕБОВАНИЯ ===
-1. Создай самостоятельный вариант, а не продолжение.
-2. Строго соблюдай имена и характеристики.
-3. Пиши на русском языке, без мета-комментариев.`
+1. Создай самостоятельный вариант сцены, а не продолжение текста выше.
+2. Строго соблюдай имена персонажей из списка.
+3. Строго следуй описанной "Динамике отношений" при написании диалогов и описании взаимодействий.
+4. Не привлекай персонажей книги, которых нет в списке «Персонажи сцены».
+5. Временных второстепенных персонажей придумывать разрешено в рамках режима генерации.
+6. Учитывай предысторию сцены для логической связности.
+7. Следуй тону, стилю и правилам мира. Не допускай анахронизмов.
+8. Пиши на русском языке, без иностранных вставок, иероглифов и мета-комментариев.
+9. Только художественный текст, без заголовков, пояснений и подписей.`
 
+    // 4. Возвращаем результат и снимок состояния
     return { 
       prompt, 
       snapshot: {
-        sceneId: activeScene?.id || '', sceneTitle: activeScene?.title || '',
-        sceneTextLength: (activeScene?.text || '').length, contextBefore: activeScene?.context_before || '',
+        sceneId: activeScene?.id || '',
+        sceneTitle: activeScene?.title || '',
+        sceneTextLength: (activeScene?.text || '').length,
+        contextBefore: activeScene?.context_before || '',
         characters: sceneCharacters.map((sc: any) => ({ id: sc.character_id, name: sc.characters?.name || 'Без имени', role: sc.role })),
-        worldNotes: { ...worldNotes }, latitude: creativeLatitude, policies: { ...policies }, instruction: aiInstruction, modelId: selectedModel
+        worldNotes: { ...worldNotes },
+        latitude: creativeLatitude,
+        policies: { ...policies },
+        instruction: aiInstruction,
+        modelId: selectedModel,
       }
     }
   }
