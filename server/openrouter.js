@@ -7,22 +7,31 @@ export const AVAILABLE_MODELS = [
   { id: 'thinkingmachines/inkling-small:free', name: 'Inkling Small', provider: 'OpenRouter' },
   { id: 'nvidia/nemotron-3-ultra-550b-a55b:free', name: 'Nemotron 3 Ultra (550B)', provider: 'OpenRouter' },
   { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 (31B)', provider: 'OpenRouter' },
-  { id: 'qwen/qwen3.8-27b:free', name: 'Qwen 3.8 (27B)', provider: 'OpenRouter' },
+  { id: 'google/gemma-4-26b-a4b-it:free', name: 'Gemma 4 (26B)', provider: 'OpenRouter' },
+    { id: 'nvidia/nemotron-3.5-super-vl:free', name: 'Nemotron 3.5VL', provider: 'OpenRouter' },
+    { id: 'fish-audio/s2.1-pro-free:free', name: 'Fish-audio', provider: 'OpenRouter' },
+    { id: 'nvidia/nemotron-3-super-120b-a12b:free', name: 'Nemotron-3-super', provider: 'OpenRouter' },
   
   // AllTokens
-  { id: 'alltokens/gemma-4-31b-it:free', name: 'Gemma 4 31B (AllTokens)', provider: 'AllTokens' },
+  { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B (AllTokens)', provider: 'AllTokens' },
+   { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4GIS  (AllTokens)', provider: 'google-ai-studio' },
   
   // CloudCompute
-  { id: 'cloudcompute/dots-3-note-preview:free', name: 'Dots 3 Note Preview', provider: 'CloudCompute' },
-  { id: 'cloudcompute/gemma-4-31b-it:free', name: 'Gemma 4 31B (CloudCompute)', provider: 'CloudCompute' },
+  { id: 'dots-studio/dots-3-note-preview:free', name: 'Dots 3 Note Preview', provider: 'CloudCompute' },
+  { id: 'google/gemma-4-31b-it:free', name: 'Gemma 4 31B (CloudCompute)', provider: 'CloudCompute' },
+   { id: 'google/lyria-3-pro-preview', name: 'lyria-3-pro (CloudCompute)', provider: 'CloudCompute' },
+   { id: 'google/lyria-3-clip-preview', name: 'lyria-3-clip (CloudCompute)', provider: 'CloudCompute' },
   
   // Teamorouter
-  { id: 'teamo/deepseek-flash-free', name: 'DeepSeek Flash', provider: 'Teamorouter' },
-  { id: 'teamo/glm-5.3-flash-free', name: 'GLM 5.3 Flash', provider: 'Teamorouter' },
+  { id: 'deepseek-flash-free', name: 'DeepSeek Flash (Teamorouter)', provider: 'Teamorouter' },
+  { id: 'glm-5.3-flash-free', name: 'GLM 5.3 Flash (Teamorouter)', provider: 'Teamorouter' },
+  { id: 'deepseek-v4-flash-free', name: 'deepseek-v4 (Teamorouter)', provider: 'Teamorouter' },
+  { id: 'gpt-image-2', name: 'gpt-image-2 (Teamorouter)', provider: 'Teamorouter' },
 
   // OrcaRout
-  { id: 'orca/deepseek-v4-flash-free', name: 'DeepSeek V4 Flash', provider: 'OrcaRout' },
-  { id: 'orca/glm-5.3-flash-free', name: 'GLM 5.3 Flash (Orca)', provider: 'OrcaRout' }
+  { id: 'deepseek/deepseek-v4-flash-free', name: 'DeepSeek V4 Flash (Orca)', provider: 'OrcaRout' },
+  { id: 'z-ai/glm-5.3-flash-free', name: 'GLM 5.3 Flash (Orca)', provider: 'OrcaRout' },
+  { id: 'deepseek/deepseek-v4.1-flash-free', name: 'deepseek-v4.1 (Orca)', provider: 'OrcaRout' }
 ];
 
 // Функция для получения конфигурации провайдера по ID модели
