@@ -614,7 +614,7 @@ ${getPolicyInstruction()}
       {!loading && view === 'world' && activeBook && (
         <div style={{ padding: '40px 10%', maxWidth: '900px', margin: '0 auto' }}>
           <header style={{ marginBottom: '30px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>🌍 Мир: {activeBook.title}</h1>
+            <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>Мир: {activeBook.title}</h1>
             <div style={{ display: 'flex', gap: '10px' }}>
               <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>← К редактору</button>
               <button onClick={handleSaveWorldNotes} disabled={worldNotesSaveStatus !== 'idle'} style={{ padding: '8px 16px', background: worldNotesSaveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>{worldNotesSaveStatus === 'saving' ? '...' : '💾 Сохранить'}</button>
@@ -696,7 +696,7 @@ ${getPolicyInstruction()}
                 <>
                   <div style={{ borderBottom: '1px solid #dcd3c1', background: '#f9f5ec' }}>
                     <button onClick={() => setShowSceneChars(!showSceneChars)} style={{ width: '100%', padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7a4b3a', fontSize: '0.85rem' }}>
-                      <span>👥 Персонажи сцены ({sceneCharacters.length})</span><span>{showSceneChars ? '▲' : '▼'}</span>
+                      <span>Персонажи сцены ({sceneCharacters.length})</span><span>{showSceneChars ? '▲' : '▼'}</span>
                     </button>
                     {showSceneChars && (
                       <div style={{ padding: '0 20px 15px 20px' }}>
@@ -732,6 +732,7 @@ ${getPolicyInstruction()}
                     )}
                   </div>
 
+                  {/* 1. Блок предыстории сцены */}
                   <div style={{ borderBottom: '1px solid #dcd3c1', background: '#f9f5ec' }}>
                     <button onClick={() => setShowContextBefore(!showContextBefore)} style={{ width: '100%', padding: '8px 20px', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', justifyContent: 'space-between', alignItems: 'center', color: '#7a4b3a', fontSize: '0.85rem' }}>
                       <span>📖 {activeScene.context_before ? 'Предыстория' : 'Предыстория (пусто)'}</span><span>{showContextBefore ? '▲' : '▼'}</span>
@@ -743,8 +744,15 @@ ${getPolicyInstruction()}
                     )}
                   </div>
 
-                  <textarea value={activeScene.text} onChange={(e) => handleTextChange(e.target.value)} placeholder="Начните писать..." style={{ flex: 1, border: 'none', outline: 'none', padding: '30px 10%', fontSize: '1.2rem', lineHeight: '1.8', resize: 'none', background: 'transparent', color: '#2c241b', fontFamily: 'Georgia, serif' }} />
+                  {/* 2. Основное поле для письма */}
+                  <textarea 
+                    value={activeScene.text} 
+                    onChange={(e) => handleTextChange(e.target.value)} 
+                    placeholder="Начните писать..." 
+                    style={{ flex: 1, border: 'none', outline: 'none', padding: '30px 10%', fontSize: '1.2rem', lineHeight: '1.8', resize: 'none', background: 'transparent', color: '#2c241b', fontFamily: 'Georgia, serif' }} 
+                  />
 
+                  {/* 3. НИЖНЯЯ ПАНЕЛЬ (Статистика и Журнал) */}
                   <div style={{ borderTop: '1px solid #dcd3c1', background: '#f5f0e6' }}>
                     <div style={{ padding: '8px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: '#7a6b5d' }}>
                       <div style={{ display: 'flex', gap: '15px' }}>
@@ -756,12 +764,19 @@ ${getPolicyInstruction()}
                         {observations.length > 0 ? '⚠️' : '✓'} Журнал {observations.length > 0 ? `(${observations.length})` : ''}
                       </button>
                     </div>
+                    
+                    {/* Выпадающий список замечаний журнала */}
                     {showObservations && observations.length > 0 && (
                       <div style={{ padding: '15px 20px', borderTop: '1px solid #dcd3c1', background: '#ffffff', maxHeight: '250px', overflowY: 'auto' }}>
                         {observations.map((obs, idx) => (
                           <div key={idx} style={{ padding: '10px', background: obs.type === 'warning' ? '#fef2f2' : obs.type === 'candidate' ? '#f0fdf4' : '#fffbeb', border: `1px solid ${obs.type === 'warning' ? '#fecaca' : obs.type === 'candidate' ? '#bbf7d0' : '#fde68a'}`, borderRadius: '6px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '10px', marginBottom: '8px' }}>
-                            <div><div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{obs.title}</div><div style={{ fontSize: '0.8rem', marginTop: '4px' }}>{obs.description}</div></div>
-                            <button onClick={() => handleObservationAction(idx)} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>{obs.action}</button>
+                            <div>
+                              <div style={{ fontWeight: 'bold', fontSize: '0.85rem' }}>{obs.title}</div>
+                              <div style={{ fontSize: '0.8rem', marginTop: '4px' }}>{obs.description}</div>
+                            </div>
+                            <button onClick={() => handleObservationAction(idx)} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}>
+                              {obs.action}
+                            </button>
                           </div>
                         ))}
                       </div>
