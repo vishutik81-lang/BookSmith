@@ -62,6 +62,26 @@ export default function App() {
 
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [inspectorRecord, setInspectorRecord] = useState<any>(null)
+    // === STATE TIMELINE: СОСТОЯНИЯ ===
+  const [entityStates, setEntityStates] = useState<any[]>([])
+  const [showAddStateModal, setShowAddStateModal] = useState(false)
+  const [newStateForm, setNewStateForm] = useState({ 
+    dimension: 'physical', 
+    label: '', 
+    description: '', 
+    reality_contract: 'canon' 
+  })
+
+  const DIMENSION_NAMES: Record<string, string> = {
+    physical: "Физическое",
+    knowledge: "Знание",
+    psychology: "Психология",
+    appearance: "Внешность",
+    equipment: "Снаряжение",
+    social_status: "Соц. статус",
+    motivation: "Мотивация",
+    custom: "Свое"
+  }
 
   useEffect(() => {
     const loadBooks = async () => {
@@ -424,8 +444,47 @@ export default function App() {
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
+    const handleAddState = async () => {
+    if (!newStateForm.label.trim() || !editingCharacter) return
+    try {
+      const res = await fetch(`/api/entities/${editingCharacter.id}/states`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          project_id: activeBookId,
+          dimension: newStateForm.dimension,
+          label: newStateForm.label,
+          description: newStateForm.description,
+          reality_contract: newStateForm.reality_contract
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setEntityStates([data.state, ...entityStates])
+        setShowAddStateModal(false)
+        setNewStateForm({ dimension: 'physical', label: '', description: '', reality_contract: 'canon' })
+      } else {
+        alert('Ошибка: ' + data.error)
+      }
+    } catch (error: any) {
+      alert('Ошибка: ' + error.message)
+    }
+  }
 
-  const openCharacterModal = (character?: any) => {
+  const handleDeleteState = async (stateId: string) => {
+    if (!window.confirm('Удалить это состояние?')) return
+    try {
+      const res = await fetch(`/api/states/${stateId}`, { method: 'DELETE' })
+      const data = await res.json()
+      if (data.success) {
+        setEntityStates(entityStates.filter(s => s.id !== stateId))
+      }
+    } catch (error: any) {
+      alert('Ошибка: ' + error.message)
+    }
+  }
+
+    const openCharacterModal = async (character?: any) => {
     if (character) {
       setEditingCharacter(character)
       setCharacterForm({
@@ -433,8 +492,17 @@ export default function App() {
         appearance: character.appearance || '', personality: character.personality || '', sexual_orientation: character.sexual_orientation || '',
         gender: character.gender || 'not_specified', race: character.race || 'human'
       })
+      // Загружаем состояния для этого персонажа
+      try {
+        const res = await fetch(`/api/entities/${character.id}/states`)
+        const data = await res.json()
+        if (data.states) setEntityStates(data.states)
+      } catch (error) {
+        console.error('Ошибка загрузки состояний:', error)
+      }
     } else {
       setEditingCharacter(null)
+      setEntityStates([])
       setCharacterForm({ name: '', description: '', role: 'secondary', appearance: '', personality: '', sexual_orientation: '', gender: 'not_specified', race: 'human' })
     }
     setShowCharacterModal(true)
@@ -846,6 +914,54 @@ ${getPolicyInstruction()}
                 })()}
                 {/* === КОНЕЦ БЛОКА ОТНОШЕНИЙ === */}
 
+                                {/* === БЛОК: СОСТОЯНИЯ ПЕРСОНАЖА (STATE TIMELINE MVP) === */}
+                <div style={{ marginBottom: '15px', padding: '12px', background: '#f5f0e6', borderRadius: '6px', border: '1px solid #dcd3c1' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <label style={{ ...labelStyle, marginBottom: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      📜 Активные состояния
+                    </label>
+                    <button 
+                      onClick={() => setShowAddStateModal(true)} 
+                      style={{ padding: '4px 8px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
+                    >
+                      + Добавить
+                    </button>
+                  </div>
+                  
+                  {entityStates.length === 0 ? (
+                    <div style={{ fontSize: '0.8rem', color: '#7a6b5d', fontStyle: 'italic' }}>Нет активных состояний.</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                      {entityStates.map((state: any) => (
+                        <div key={state.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', background: '#ffffff', padding: '8px', borderRadius: '4px', border: '1px solid #e3dacc' }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginBottom: '4px' }}>
+                              <span style={{ fontSize: '0.7rem', fontWeight: 'bold', color: '#7a4b3a', background: '#fdfbf7', padding: '2px 6px', borderRadius: '3px', border: '1px solid #dcd3c1' }}>
+                                {DIMENSION_NAMES[state.dimension] || state.dimension}
+                              </span>
+                              {state.reality_contract !== 'canon' && (
+                                <span style={{ fontSize: '0.7rem', color: '#991b1b', fontStyle: 'italic' }}>({state.reality_contract})</span>
+                              )}
+                            </div>
+                            <div style={{ fontSize: '0.85rem', fontWeight: 'bold', color: '#2c241b' }}>{state.label}</div>
+                            {state.description && (
+                              <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>{state.description}</div>
+                            )}
+                          </div>
+                          <button 
+                            onClick={() => handleDeleteState(state.id)} 
+                            style={{ background: 'none', border: 'none', color: '#991b1b', cursor: 'pointer', fontSize: '1rem', padding: '0 4px' }}
+                            title="Удалить состояние"
+                          >
+                            ×
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                {/* === КОНЕЦ БЛОКА СОСТОЯНИЙ === */}
+
                 <div style={{ marginBottom: '25px' }}>
                   <label style={labelStyle}>Характер</label>
                   <textarea value={characterForm.personality} onChange={(e) => setCharacterForm({ ...characterForm, personality: e.target.value })} style={{ ...inputStyle, minHeight: '60px' }} />
@@ -1182,6 +1298,64 @@ ${getPolicyInstruction()}
 
       {showGraph && activeBookId && (
         <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
+      )}
+            {/* МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ СОСТОЯНИЯ */}
+      {showAddStateModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5000 }} onClick={() => setShowAddStateModal(false)}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fdfbf7', padding: '24px', borderRadius: '10px', width: 'min(450px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ marginTop: 0, color: '#5c3a21', marginBottom: '16px' }}>Новое состояние</h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Измерение (тег):</label>
+                <select 
+                  value={newStateForm.dimension} 
+                  onChange={(e) => setNewStateForm({ ...newStateForm, dimension: e.target.value })} 
+                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}
+                >
+                  {Object.entries(DIMENSION_NAMES).map(([key, name]) => (
+                    <option key={key} value={key}>{name}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Краткая суть (для ИИ):</label>
+                <input 
+                  type="text" 
+                  value={newStateForm.label} 
+                  onChange={(e) => setNewStateForm({ ...newStateForm, label: e.target.value })} 
+                  placeholder="Например: Ранена левая рука"
+                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', boxSizing: 'border-box' }} 
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Подробности (опционально):</label>
+                <textarea 
+                  value={newStateForm.description} 
+                  onChange={(e) => setNewStateForm({ ...newStateForm, description: e.target.value })} 
+                  placeholder="Детали, которые важны для контекста..."
+                  style={{ width: '100%', minHeight: '60px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', padding: '8px', boxSizing: 'border-box', fontFamily: 'inherit' }} 
+                />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Статус реальности:</label>
+                <select 
+                  value={newStateForm.reality_contract} 
+                  onChange={(e) => setNewStateForm({ ...newStateForm, reality_contract: e.target.value })} 
+                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}
+                >
+                  <option value="canon">Канон (Объективный факт)</option>
+                  <option value="contested">Спорно / Не подтверждено</option>
+                  <option value="dream">Сон / Галлюцинация</option>
+                  <option value="flashback">Флэшбек / Прошлое</option>
+                </select>
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button onClick={() => setShowAddStateModal(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid #dcd3c1', borderRadius: '6px', cursor: 'pointer', color: '#7a6b5d', fontWeight: 'bold' }}>Отмена</button>
+                <button onClick={handleAddState} style={{ flex: 1, padding: '10px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Сохранить</button>
+              </div>
+            </div>
+          </div>
+        </div>
       )}
 
       <PromptInspector open={inspectorOpen} record={inspectorRecord} onClose={() => setInspectorOpen(false)} />
