@@ -478,6 +478,8 @@ export default function App() {
       const data = await res.json()
       if (data.success) {
         setEntityStates([data.state, ...entityStates])
+                setAllProjectStates([data.state, ...allProjectStates])
+
         setShowAddStateModal(false)
         setNewStateForm({ dimension: 'physical', label: '', description: '', reality_contract: 'canon' })
       } else {
@@ -495,6 +497,7 @@ export default function App() {
       const data = await res.json()
       if (data.success) {
         setEntityStates(entityStates.filter(s => s.id !== stateId))
+                setAllProjectStates(allProjectStates.filter(s => s.id !== stateId))
       }
     } catch (error: any) {
       alert('Ошибка: ' + error.message)
