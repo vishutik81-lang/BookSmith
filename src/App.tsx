@@ -818,8 +818,61 @@ ${getPolicyInstruction()}
                   <div><label style={labelStyle}>Раса</label><select value={characterForm.race} onChange={(e) => setCharacterForm({ ...characterForm, race: e.target.value })} style={inputStyle}><option value="human">Человек</option><option value="elf">Эльф</option><option value="other">Другое</option></select></div>
                 </div>
                 <div style={{ marginBottom: '15px' }}><label style={labelStyle}>Ориентация</label><select value={characterForm.sexual_orientation} onChange={(e) => setCharacterForm({ ...characterForm, sexual_orientation: e.target.value })} style={inputStyle}><option value="not_specified">Не указано</option><option value="heterosexual">Гетеро</option><option value="homosexual">Гомо</option><option value="lesbian">Лесбиянка</option><option value="bisexual">Би</option><option value="other">Другое</option></select></div>
-                <div style={{ marginBottom: '15px' }}><label style={labelStyle}>Внешность</label><textarea value={characterForm.appearance} onChange={(e) => setCharacterForm({ ...characterForm, appearance: e.target.value })} style={{ ...inputStyle, minHeight: '60px' }} /></div>
-                <div style={{ marginBottom: '25px' }}><label style={labelStyle}>Характер</label><textarea value={characterForm.personality} onChange={(e) => setCharacterForm({ ...characterForm, personality: e.target.value })} style={{ ...inputStyle, minHeight: '60px' }} /></div>
+                                <div style={{ marginBottom: '15px' }}>
+                  <label style={labelStyle}>Внешность</label>
+                  <textarea value={characterForm.appearance} onChange={(e) => setCharacterForm({ ...characterForm, appearance: e.target.value })} style={{ ...inputStyle, minHeight: '60px' }} />
+                </div>
+
+                {/* === ВСТАВИТЬ ЭТОТ БЛОК СЮДА: ОТНОШЕНИЯ === */}
+                {editingCharacter && relations.length > 0 && (() => {
+                  const charRelations = relations.filter(r => 
+                    r.source_id === editingCharacter.id || r.target_id === editingCharacter.id
+                  );
+                  if (charRelations.length === 0) return null;
+
+                  return (
+                    <div style={{ marginBottom: '15px', padding: '12px', background: '#f5f0e6', borderRadius: '6px', border: '1px solid #dcd3c1' }}>
+                      <label style={{ ...labelStyle, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        🕸️ Отношения
+                      </label>
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                        {charRelations.map(r => {
+                          const otherId = r.source_id === editingCharacter.id ? r.target_id : r.source_id;
+                          const otherChar = characters.find(c => c.id === otherId);
+                          const otherName = otherChar ? otherChar.name : 'Неизвестный персонаж';
+                          
+                          return (
+                            <div key={r.id} style={{ fontSize: '0.85rem', color: '#4a3f35' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                                <span style={{ fontWeight: 'bold', color: '#2c241b' }}>{otherName}</span>
+                                <span style={{ color: '#7a4b3a', fontSize: '0.8rem' }} title={`Сила связи: ${r.strength}/10`}>
+                                  ({getRelationTypeName(r.type)}, {getRelationLevel(r.strength)} {r.strength}/10)
+                                </span>
+                              </div>
+                              {r.description && (
+                                <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#7a6b5d', marginTop: '4px', paddingLeft: '8px', borderLeft: '2px solid #dcd3c1' }}>
+                                  "{r.description}"
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      <button 
+                        onClick={() => { setShowCharacterModal(false); setShowGraph(true); }} 
+                        style={{ marginTop: '12px', width: '100%', padding: '8px', background: '#fdfbf7', border: '1px dashed #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem', fontWeight: 'bold' }}
+                      >
+                        Открыть полный граф связей →
+                      </button>
+                    </div>
+                  );
+                })()}
+                {/* === КОНЕЦ БЛОКА ОТНОШЕНИЙ === */}
+
+                <div style={{ marginBottom: '25px' }}>
+                  <label style={labelStyle}>Характер</label>
+                  <textarea value={characterForm.personality} onChange={(e) => setCharacterForm({ ...characterForm, personality: e.target.value })} style={{ ...inputStyle, minHeight: '60px' }} />
+                </div>
                 <div style={{ display: 'flex', gap: '10px' }}>
                   <button onClick={() => { setShowCharacterModal(false); setEditingCharacter(null) }} style={{ flex: 1, padding: '10px', background: 'none', border: '1px solid #dcd3c1', color: '#7a6b5d', borderRadius: '6px', cursor: 'pointer' }}>Отмена</button>
                   <button onClick={handleSaveCharacter} style={{ flex: 1, padding: '10px', background: '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>{editingCharacter ? 'Сохранить' : 'Создать'}</button>
