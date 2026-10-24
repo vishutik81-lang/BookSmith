@@ -57,13 +57,28 @@ app.post('/api/projects', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.patch('/api/projects/:id', async (req, res) => {
+app.patch('/api/scenes/:id', async (req, res) => {
   try {
-    const { title, genre, subgenre } = req.body;
-    const { data, error } = await supabase.from('projects').update({ title, genre, subgenre }).eq('id', req.params.id).select().single();
+    // Фронтенд отправляет поле 'body', но в базе данных колонка называется 'text'
+    const { body, context_before, title } = req.body;
+    const updateData = {};
+    
+    // ИСПРАВЛЕНИЕ: записываем пришедшие данные в колонку 'text'
+    if (body !== undefined) updateData.text = body;
+    if (context_before !== undefined) updateData.context_before = context_before;
+    if (title !== undefined) updateData.title = title;
+    
+    const { data, error } = await supabase
+      .from('scenes')
+      .update(updateData)
+      .eq('id', req.params.id)
+      .select();
+      
     if (error) throw error;
-    res.json({ success: true, project: data });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+    res.json({ success: true, scene: data[0] });
+  } catch (err) { 
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 app.delete('/api/projects/:id', async (req, res) => {
