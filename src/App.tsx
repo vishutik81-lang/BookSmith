@@ -359,15 +359,6 @@ export default function App() {
     }
   }
 
-  const loadAllProjectStates = async (projectId: string) => {
-    try {
-      const res = await fetch(`/api/projects/${projectId}/states`)
-      const data = await res.json()
-      if (data.states) setAllProjectStates(data.states)
-    } catch (error) {
-      console.error('Ошибка загрузки состояний проекта:', error)
-    }
-  }
   
   const addCharacterToScene = async (characterId: string, role: string = 'present') => {
     if (!activeSceneId) return
