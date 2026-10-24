@@ -63,7 +63,9 @@ export default function App() {
   const [inspectorOpen, setInspectorOpen] = useState(false)
   const [inspectorRecord, setInspectorRecord] = useState<any>(null)
     // === STATE TIMELINE: СОСТОЯНИЯ ===
-  const [entityStates, setEntityStates] = useState<any[]>([])
+    // === STATE TIMELINE: СОСТОЯНИЯ ===
+  const [entityStates, setEntityStates] = useState<any[]>([]) // Для модального окна персонажа
+  const [allProjectStates, setAllProjectStates] = useState<any[]>([]) // Для промпта ИИ
   const [showAddStateModal, setShowAddStateModal] = useState(false)
   const [newStateForm, setNewStateForm] = useState({ 
     dimension: 'physical', 
@@ -108,21 +110,26 @@ export default function App() {
     loadModels()
   }, [])
 
-   useEffect(() => {
+     useEffect(() => {
     if (activeSceneId) loadSceneCharacters(activeSceneId)
     else setSceneCharacters([])
     
-    if (activeBookId) loadRelations(activeBookId)
-    else setRelations([])
+    if (activeBookId) {
+      loadRelations(activeBookId)
+      loadAllProjectStates(activeBookId)
+    } else {
+      setRelations([])
+      setAllProjectStates([])
+    }
   }, [activeSceneId, activeBookId])
 
-  const loadRelations = async (projectId: string) => {
+  const loadAllProjectStates = async (projectId: string) => {
     try {
-      const res = await fetch(`/api/projects/${projectId}/relations`)
+      const res = await fetch(`/api/projects/${projectId}/states`)
       const data = await res.json()
-      if (data.relations) setRelations(data.relations)
-    } catch (error) { 
-      console.error('Ошибка загрузки связей:', error) 
+      if (data.states) setAllProjectStates(data.states)
+    } catch (error) {
+      console.error('Ошибка загрузки состояний проекта:', error)
     }
   }
 
@@ -621,7 +628,33 @@ export default function App() {
         return `${sourceName} ↔ ${targetName}:\n${expandRelationship(r.type, r.strength)}`
       }).join('\n\n')
     }
+    // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
+    const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
+    const activeStatesForScene = allProjectStates.filter(s => 
+      sceneCharIds.includes(s.entity_id)
+    )
 
+    let statesContext = "У персонажей в этой сцене нет особых активных состояний, влияющих на контекст."
+    if (activeStatesForScene.length > 0) {
+      // Группируем состояния по персонажам
+      const statesByChar: Record<string, any[]> = {}
+      activeStatesForScene.forEach(state => {
+        const charName = sceneCharacters.find(sc => sc.character_id === state.entity_id)?.characters?.name || 'Неизвестно'
+        if (!statesByChar[charName]) statesByChar[charName] = []
+        statesByChar[charName].push(state)
+      })
+
+      statesContext = Object.entries(statesByChar).map(([charName, states]) => {
+        const statesList = states.map((s: any) => {
+          const dimName = DIMENSION_NAMES[s.dimension] || s.dimension
+          const reality = s.reality_contract !== 'canon' ? ` [${s.reality_contract}]` : ''
+          const desc = s.description ? `: ${s.description}` : ''
+          return `  - [${dimName}] ${s.label}${reality}${desc}`
+        }).join('\n')
+        return `• ${charName}:\n${statesList}`
+      }).join('\n')
+    }
+    
     // 3. Собираем итоговый промпт
     const prompt = `Ты — ИИ-соавтор художественной литературы. Твоя задача — создать НОВЫЙ ВАРИАНТ сцены на основе инструкции автора, а не продолжить существующий текст.
 
@@ -633,6 +666,10 @@ ${charactersContext}
 
 === ДИНАМИКА ОТНОШЕНИЙ В ЭТОЙ СЦЕНЕ ===
 ${relationshipsContext}
+
+=== АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ ===
+${statesContext}
+→ Как отражать в тексте: Строго учитывай физические ограничения, знания, психологию и социальный статус персонажей, описанные выше. Не игнорируй их при описании действий и диалогов.
 
 === ПРЕДЫСТОРИЯ СЦЕНЫ ===
 ${activeScene?.context_before || '(не указана)'}
