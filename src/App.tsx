@@ -981,6 +981,8 @@ ${getPolicyInstruction()}
                       )}
                     </div>
                   ))}
+              </div>  
+              ))}        
             </aside>
 
             <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fdfbf7' }}>
