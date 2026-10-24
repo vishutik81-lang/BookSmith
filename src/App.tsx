@@ -192,18 +192,42 @@ export default function App() {
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
 
-  const handleSave = async () => {
-    if (!activeScene) return
+    const handleSave = async () => {
+    if (!activeScene) {
+      console.warn("⚠️ Нет активной сцены для сохранения!")
+      return
+    }
+    
+    console.log("💾 [DEBUG] Попытка сохранения сцены ID:", activeScene.id)
+    console.log("💾 [DEBUG] Отправляемый текст (начало):", activeScene.text?.substring(0, 60) + "...")
+    console.log("💾 [DEBUG] Предыстория:", activeScene.context_before)
+
     setSaveStatus('saving')
     try {
       const res = await fetch(`/api/scenes/${activeScene.id}`, {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ body: activeScene.text, context_before: activeScene.context_before })
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          body: activeScene.text, 
+          context_before: activeScene.context_before 
+        })
       })
+      
       const data = await res.json()
-      if (data.success) { setSaveStatus('saved'); setTimeout(() => setSaveStatus('idle'), 2000) }
-      else { alert('Ошибка: ' + data.error); setSaveStatus('idle') }
-    } catch (error: any) { alert('Ошибка: ' + error.message); setSaveStatus('idle') }
+      console.log("💾 [DEBUG] Ответ от сервера:", data)
+
+      if (data.success) { 
+        setSaveStatus('saved')
+        setTimeout(() => setSaveStatus('idle'), 2000) 
+      } else { 
+        alert('Ошибка сохранения: ' + data.error)
+        setSaveStatus('idle') 
+      }
+    } catch (error: any) { 
+      console.error("💾 [DEBUG] Ошибка сети при сохранении:", error)
+      alert('Ошибка сети: ' + error.message)
+      setSaveStatus('idle') 
+    }
   }
 
   const handleUpdateChapterTitle = async (chapterId: string, newTitle: string) => {
