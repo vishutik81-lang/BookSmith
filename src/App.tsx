@@ -168,28 +168,59 @@ export default function App() {
     } catch (error: any) { alert('Ошибка соединения: ' + error.message) }
   }
 
-  const handleCreateBook = async () => {
+    const handleCreateBook = async () => {
     const title = window.prompt('Как назовем новую книгу?')
     if (!title || title.trim() === '') return
-    const genre = window.prompt('Жанр:') || 'Не указан'
-    const subgenre = window.prompt('Поджанр:') || ''
+    const genre = window.prompt('Жанр (например: Фэнтези, Детектив):') || 'Не указан'
+    const subgenre = window.prompt('Поджанр (необязательно):') || ''
+    
     try {
       const res = await fetch('/api/projects', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ title, description: subgenre, genre, subgenre })
       })
       const data = await res.json()
+      
       if (data.project) {
+        // 1. Безопасно извлекаем главы и сцены с fallback на пустые массивы
+        const chapters = data.project.chapters || []
+        const firstChapter = chapters[0]
+        const firstScene = firstChapter?.scenes?.[0]
+
         const newBook = {
-          id: data.project.id, title: data.project.title, status: 'В работе', genre, subgenre,
-          chapters: data.project.chapters.map((ch: any) => ({
-            id: ch.id, title: ch.title,
-            scenes: ch.scenes.map((s: any) => ({ id: s.id, title: s.title, text: s.body || '', context_before: '' }))
+          id: data.project.id, 
+          title: data.project.title, 
+          status: 'В работе', 
+          genre, 
+          subgenre,
+          chapters: chapters.map((ch: any) => ({
+            id: ch.id, 
+            title: ch.title,
+            scenes: (ch.scenes || []).map((s: any) => ({ 
+              id: s.id, 
+              title: s.title, 
+              text: s.body || '', 
+              context_before: '' 
+            }))
           }))
         }
-        setBooks([...books, newBook]); setActiveBookId(newBook.id); setActiveChapterId(newBook.chapters[0].id); setActiveSceneId(newBook.chapters[0].scenes[0].id); setView('editor'); loadCharacters(newBook.id); loadWorldNotes(newBook.id)
-      } else { alert('Ошибка: ' + data.error) }
-    } catch (error: any) { alert('Ошибка: ' + error.message) }
+        
+        setBooks([...books, newBook])
+        setActiveBookId(newBook.id)
+        
+        // 2. Безопасно устанавливаем активную главу и сцену, только если они существуют
+        if (firstChapter) setActiveChapterId(firstChapter.id)
+        if (firstScene) setActiveSceneId(firstScene.id)
+        
+        setView('editor')
+        loadCharacters(newBook.id)
+        loadWorldNotes(newBook.id)
+      } else { 
+        alert('Ошибка создания: ' + data.error) 
+      }
+    } catch (error: any) { 
+      alert('Ошибка соединения: ' + error.message) 
+    }
   }
 
     const handleSave = async () => {
@@ -1003,14 +1034,48 @@ ${getPolicyInstruction()}
                       </div>
                     </div>
                   )}
-                  {chapter.scenes.map(scene => (
+                                  {chapter.scenes.map(scene => (
                     <div key={scene.id} style={{ marginLeft: '10px', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
-                      <div className="tree-item" onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id) }} style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem', borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent', color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35' }}>{scene.title}</div>
-                      <button onClick={() => { setEditingSceneId(scene.id); setBookMetaForm({ ...bookMetaForm, title: scene.title }) }} style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '3px' }}>✏️</button>
+                      
+                      {/* РЕЖИМ РЕДАКТИРОВАНИЯ СЦЕНЫ */}
+                      {editingSceneId === scene.id ? (
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
+                          <input 
+                            type="text" 
+                            value={bookMetaForm.title} 
+                            onChange={(e) => setBookMetaForm({ ...bookMetaForm, title: e.target.value })} 
+                            autoFocus 
+                            style={{ width: '100%', padding: '4px 6px', border: '1px solid #7a4b3a', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box', outline: 'none' }} 
+                          />
+                          <div style={{ display: 'flex', gap: '4px' }}>
+                            <button 
+                              onClick={() => { handleUpdateSceneTitle(scene.id, bookMetaForm.title); setEditingSceneId(null) }} 
+                              style={{ padding: '2px 6px', background: '#5c7a5c', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.7rem' }}
+                            >✓</button>
+                            <button 
+                              onClick={() => setEditingSceneId(null)} 
+                              style={{ padding: '2px 6px', background: '#999', color: 'white', border: 'none', borderRadius: '3px', cursor: 'pointer', fontSize: '0.7rem' }}
+                            >✗</button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* ОБЫЧНЫЙ РЕЖИМ ПРОСМОТРА СЦЕНЫ */
+                        <>
+                          <div 
+                            className="tree-item" 
+                            onClick={() => { setActiveChapterId(chapter.id); setActiveSceneId(scene.id) }} 
+                            style={{ flex: 1, padding: '6px 10px', borderRadius: '4px', fontSize: '0.85rem', borderLeft: activeSceneId === scene.id ? '3px solid #7a4b3a' : '3px solid transparent', color: activeSceneId === scene.id ? '#5c3a21' : '#4a3f35', cursor: 'pointer' }}
+                          >
+                            {scene.title}
+                          </div>
+                          <button 
+                            onClick={() => { setEditingSceneId(scene.id); setBookMetaForm({ ...bookMetaForm, title: scene.title }) }} 
+                            style={{ background: 'none', border: '1px solid #dcd3c1', color: '#7a4b3a', cursor: 'pointer', fontSize: '0.7rem', padding: '2px 6px', borderRadius: '3px' }}
+                          >✏️</button>
+                        </>
+                      )}
                     </div>
                   ))}
-                </div>
-              ))}
             </aside>
 
             <main style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#fdfbf7' }}>
