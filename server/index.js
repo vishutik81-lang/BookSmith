@@ -338,6 +338,22 @@ app.get('/api/entities/:entityId/states', async (req, res) => {
   }
 });
 
+app.get('/api/projects/:projectId/states', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('entity_states')
+      .select('*')
+      .eq('project_id', req.params.projectId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    res.json({ states: data || [] });
+  } catch (err) {
+    console.error('Ошибка загрузки состояний проекта:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 app.post('/api/entities/:entityId/states', async (req, res) => {
   try {
     const { project_id, dimension, label, description, reality_contract } = req.body;
