@@ -629,7 +629,6 @@ export default function App() {
       }).join('\n\n')
     }
     // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
-    const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
     const activeStatesForScene = allProjectStates.filter(s => 
       sceneCharIds.includes(s.entity_id)
     )
