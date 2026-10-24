@@ -62,7 +62,7 @@ app.patch('/api/scenes/:id', async (req, res) => {
     const { body, context_before, title } = req.body;
     const updateData = {};
     
-    // ИСПРАВЛЕНО: используем 'body' (имя колонки в базе данных)
+    // Используем 'body', так как мы выяснили, что колонка называется именно так
     if (body !== undefined) updateData.body = body;
     if (context_before !== undefined) updateData.context_before = context_before;
     if (title !== undefined) updateData.title = title;
@@ -71,12 +71,18 @@ app.patch('/api/scenes/:id', async (req, res) => {
       .from('scenes')
       .update(updateData)
       .eq('id', req.params.id)
-      .select();
+      .select(); // Мы просим базу вернуть обновленную строку
       
     if (error) throw error;
+    
+    // ВОТ ГЛАВНАЯ ПРОВЕРКА: если база не вернула данные, значит обновление не сработало!
+    if (!data || data.length === 0) {
+      throw new Error(`Сцена с ID ${req.params.id} не найдена или обновление заблокировано (проверьте RLS или правильность ID)`);
+    }
+    
     res.json({ success: true, scene: data[0] });
   } catch (err) { 
-    console.error('Ошибка обновления сцены:', err);
+    console.error('❌ Ошибка обновления сцены:', err.message);
     res.status(500).json({ error: err.message }); 
   }
 });
