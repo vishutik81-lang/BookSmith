@@ -319,6 +319,61 @@ app.delete('/api/relations/:id', async (req, res) => {
   }
 });
 
+// === 11. ENTITY STATES (Состояния сущностей) ===
+
+app.get('/api/entities/:entityId/states', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('entity_states')
+      .select('*')
+      .eq('entity_id', req.params.entityId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
+      
+    if (error) throw error;
+    res.json({ states: data || [] });
+  } catch (err) {
+    console.error('Ошибка загрузки состояний:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/entities/:entityId/states', async (req, res) => {
+  try {
+    const { project_id, dimension, label, description, reality_contract } = req.body;
+    const { data, error } = await supabase
+      .from('entity_states')
+      .insert([{ 
+        project_id, 
+        entity_id: req.params.entityId, 
+        dimension, 
+        label, 
+        description: description || '', 
+        reality_contract: reality_contract || 'canon',
+        status: 'active',
+        confirmed: true
+      }])
+      .select()
+      .single();
+      
+    if (error) throw error;
+    res.json({ success: true, state: data });
+  } catch (err) {
+    console.error('Ошибка создания состояния:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/states/:id', async (req, res) => {
+  try {
+    const { error } = await supabase.from('entity_states').delete().eq('id', req.params.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Ошибка удаления состояния:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
 // 10. Catch-all for React
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
