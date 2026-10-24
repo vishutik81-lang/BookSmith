@@ -409,7 +409,7 @@ export default function App() {
     setShowCharacterModal(true)
   }
 
-  // ==========================================================
+    // ==========================================================
   // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (Для ИИ и для Интерфейса) ===
   // ==========================================================
 
@@ -580,8 +580,6 @@ ${getPolicyInstruction()}
       }
     }
   }
-  const buildPromptContext = () => {
-    // 1. Формируем список персонажей сцены (ваш старый код)
     const charactersContext = sceneCharacters.length > 0
       ? 'Персонажи в этой сцене:\n' + sceneCharacters.map((sc: any) => {
           const c = sc.characters
