@@ -59,12 +59,11 @@ app.post('/api/projects', async (req, res) => {
 
 app.patch('/api/scenes/:id', async (req, res) => {
   try {
-    // Фронтенд отправляет поле 'body', но в базе данных колонка называется 'text'
     const { body, context_before, title } = req.body;
     const updateData = {};
     
-    // ИСПРАВЛЕНИЕ: записываем пришедшие данные в колонку 'text'
-    if (body !== undefined) updateData.text = body;
+    // ИСПРАВЛЕНО: используем 'body' (имя колонки в базе данных)
+    if (body !== undefined) updateData.body = body;
     if (context_before !== undefined) updateData.context_before = context_before;
     if (title !== undefined) updateData.title = title;
     
@@ -77,6 +76,7 @@ app.patch('/api/scenes/:id', async (req, res) => {
     if (error) throw error;
     res.json({ success: true, scene: data[0] });
   } catch (err) { 
+    console.error('Ошибка обновления сцены:', err);
     res.status(500).json({ error: err.message }); 
   }
 });
