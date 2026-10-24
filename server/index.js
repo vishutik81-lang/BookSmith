@@ -33,12 +33,22 @@ app.post('/api/generate', async (req, res) => {
 });
 
 // 4. Projects
+// 4. Получение всех проектов с главами и сценами
 app.get('/api/projects', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false });
+    // ВАЖНО: select('*, chapters(*, scenes(*))') заставляет Supabase вернуть вложенную структуру
+    const { data, error } = await supabase
+      .from('projects')
+      .select('*, chapters(*, scenes(*))') 
+      .order('created_at', { ascending: false });
+      
     if (error) throw error;
+    
     res.json({ projects: data || [] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    console.error('❌ Ошибка загрузки проектов:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.post('/api/projects', async (req, res) => {
