@@ -627,8 +627,9 @@ export default function App() {
       worldNotes.custom_notes && `Дополнительно: ${worldNotes.custom_notes}`,
     ].filter(Boolean).join('\n')
 
-    // === НОВОЕ: Собираем связи ТОЛЬКО для персонажей текущей сцены ===
+       // === 1. СОБИРАЕМ СВЯЗИ ТОЛЬКО для персонажей текущей сцены ===
     const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
+    
     const activeRelations = relations.filter(r => 
       sceneCharIds.includes(r.source_id) && sceneCharIds.includes(r.target_id)
     )
@@ -641,10 +642,18 @@ export default function App() {
         return `${sourceName} ↔ ${targetName}:\n${expandRelationship(r.type, r.strength)}`
       }).join('\n\n')
     }
-    // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
+
+    // === 2. СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
+    // ВАЖНО: Мы НЕ пишем здесь "const sceneCharIds", мы используем уже объявленную выше переменную!
+    
+    console.log("🔍 [DEBUG] ID персонажей в сцене:", sceneCharIds)
+    console.log("🔍 [DEBUG] Все состояния проекта:", allProjectStates)
+
     const activeStatesForScene = allProjectStates.filter(s => 
       sceneCharIds.includes(s.entity_id)
     )
+
+    console.log("🔍 [DEBUG] Отфильтрованные состояния для промпта:", activeStatesForScene)
 
     let statesContext = "У персонажей в этой сцене нет особых активных состояний, влияющих на контекст."
     if (activeStatesForScene.length > 0) {
