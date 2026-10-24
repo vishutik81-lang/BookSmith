@@ -349,7 +349,26 @@ export default function App() {
       else setSceneCharacters([])
     } catch (error) { setSceneCharacters([]) }
   }
+  const loadRelations = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/relations`)
+      const data = await res.json()
+      if (data.relations) setRelations(data.relations)
+    } catch (error) { 
+      console.error('Ошибка загрузки связей:', error) 
+    }
+  }
 
+  const loadAllProjectStates = async (projectId: string) => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/states`)
+      const data = await res.json()
+      if (data.states) setAllProjectStates(data.states)
+    } catch (error) {
+      console.error('Ошибка загрузки состояний проекта:', error)
+    }
+  }
+  
   const addCharacterToScene = async (characterId: string, role: string = 'present') => {
     if (!activeSceneId) return
     try {
