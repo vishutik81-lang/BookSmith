@@ -335,16 +335,16 @@ app.post('/api/states', async (req, res) => {
       reality_contract: reality_contract || 'canon',
       status: 'active',
       confirmed: true,
-      // Явно обнуляем все возможные поля сущностей, чтобы избежать конфликтов
       entity_id: null,
       character_id: null,
       location_id: null,
       item_id: null
     };
 
-    if (entity_type === 'character') insertData.character_id = entity_id;
-    else if (entity_type === 'location') insertData.location_id = entity_id;
-    else if (entity_type === 'item') insertData.item_id = entity_id;
+    // ИСПРАВЛЕНИЕ: оператор || null превратит пустую строку "" в настоящий null
+    if (entity_type === 'character') insertData.character_id = entity_id || null;
+    else if (entity_type === 'location') insertData.location_id = entity_id || null;
+    else if (entity_type === 'item') insertData.item_id = entity_id || null;
     else throw new Error('Неверный тип сущности: ' + entity_type);
 
     console.log('📝 Attempting to insert state:', insertData);
