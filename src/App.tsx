@@ -1203,7 +1203,7 @@ ${getPolicyInstruction()}
                 <button onClick={() => { const name = prompt('Название предмета:'); if(name) addItem(name); }} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>+ Добавить</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-               {worldItems.map((item: any, index: number) => {
+                              {worldItems.map((item: any, index: number) => {
                   if (!item) return null;
                   return (
                     <div key={item.id || index} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
@@ -1216,6 +1216,7 @@ ${getPolicyInstruction()}
                             {item.characters?.name && <div>👤 У: {item.characters.name}</div>}
                           </div>
                         </div>
+                        {/* ВОТ НОВАЯ КНОПКА ДЛЯ ПРЕДМЕТА */}
                         <button 
                           onClick={() => openWorldEntityStateModal('item', item.id)}
                           style={{ padding: '4px 8px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
