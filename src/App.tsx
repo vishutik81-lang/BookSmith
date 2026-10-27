@@ -78,7 +78,8 @@ export default function App() {
     reality_contract: 'canon' 
   })
 
-  const DIMENSION_NAMES: Record<string, string> = {
+   // Теги ТОЛЬКО для персонажей
+  const CHAR_DIMENSIONS: Record<string, string> = {
     physical: "Физическое",
     knowledge: "Знание",
     psychology: "Психология",
@@ -86,6 +87,13 @@ export default function App() {
     equipment: "Снаряжение",
     social_status: "Соц. статус",
     motivation: "Мотивация",
+    custom: "Свое"
+  }
+
+  // Теги ТОЛЬКО для локаций и предметов (без психологии и соц. статуса)
+  const WORLD_DIMENSIONS: Record<string, string> = {
+    physical: "Состояние", // например: заперто, сломано, горит
+    equipment: "Свойства/Содержимое", // например: содержит тайник
     custom: "Свое"
   }
 
@@ -1528,78 +1536,60 @@ ${getPolicyInstruction()}
 
   
            {/* МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ СОСТОЯНИЯ */}
-      {showAddStateModal && (
+          {/* МОДАЛЬНОЕ ОКНО 1: ТОЛЬКО ДЛЯ ПЕРСОНАЖЕЙ */}
+      {showAddStateModal && editingCharacter && !targetEntity && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5000 }} onClick={() => setShowAddStateModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#fdfbf7', padding: '24px', borderRadius: '10px', width: 'min(450px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
-            <h3 style={{ marginTop: 0, color: '#5c3a21', marginBottom: '16px' }}>Новое состояние</h3>
+            <h3 style={{ marginTop: 0, color: '#5c3a21', marginBottom: '16px' }}>Состояние: {editingCharacter.name}</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
-              
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Тип сущности:</label>
-                <select 
-                  value={newStateForm.entity_type} 
-                  onChange={(e) => setNewStateForm({ ...newStateForm, entity_type: e.target.value as any, entity_id: '' })} 
-                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}
-                >
-                  <option value="character">Персонаж</option>
-                  <option value="location">Локация</option>
-                  <option value="item">Предмет</option>
-                </select>
-              </div>
-
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>
-                  {newStateForm.entity_type === 'character' ? 'Персонаж:' : newStateForm.entity_type === 'location' ? 'Локация:' : 'Предмет:'}
-                </label>
-                <select 
-                  value={newStateForm.entity_id} 
-                  onChange={(e) => setNewStateForm({ ...newStateForm, entity_id: e.target.value })} 
-                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}
-                >
-                  <option value="">Выберите...</option>
-                  {newStateForm.entity_type === 'character' && characters.map(c => <option key={c.id} value={c.id}>{c?.name || 'Без имени'}</option>)}
-                  {newStateForm.entity_type === 'location' && worldLocations.map(l => <option key={l.id} value={l.id}>{l?.name || 'Без названия'}</option>)}
-                  {newStateForm.entity_type === 'item' && worldItems.map(i => <option key={i.id} value={i.id}>{i?.name || 'Без названия'}</option>)}
-                </select>
-              </div>
-
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Измерение (тег):</label>
-                <select 
-                  value={newStateForm.dimension} 
-                  onChange={(e) => setNewStateForm({ ...newStateForm, dimension: e.target.value })} 
-                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}
-                >
-                  {Object.entries(DIMENSION_NAMES).map(([key, name]) => (
-                    <option key={key} value={key}>{name}</option>
-                  ))}
+                <select value={newStateForm.dimension} onChange={(e) => setNewStateForm({ ...newStateForm, dimension: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
+                  {Object.entries(CHAR_DIMENSIONS).map(([key, name]) => (<option key={key} value={key}>{name}</option>))}
                 </select>
               </div>
-
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Краткая суть (для ИИ):</label>
-                <input 
-                  type="text" 
-                  value={newStateForm.label} 
-                  onChange={(e) => setNewStateForm({ ...newStateForm, label: e.target.value })} 
-                  placeholder="Например: Дверь заперта на засов"
-                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', boxSizing: 'border-box' }} 
-                />
+                <input type="text" value={newStateForm.label} onChange={(e) => setNewStateForm({ ...newStateForm, label: e.target.value })} placeholder="Например: Ранена левая рука" style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', boxSizing: 'border-box' }} />
               </div>
-
               <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Подробности (опционально):</label>
-                <textarea 
-                  value={newStateForm.description} 
-                  onChange={(e) => setNewStateForm({ ...newStateForm, description: e.target.value })} 
-                  placeholder="Детали, которые важны для контекста..."
-                  style={{ width: '100%', minHeight: '60px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', padding: '8px', boxSizing: 'border-box', fontFamily: 'inherit' }} 
-                />
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Подробности:</label>
+                <textarea value={newStateForm.description} onChange={(e) => setNewStateForm({ ...newStateForm, description: e.target.value })} placeholder="Детали..." style={{ width: '100%', minHeight: '60px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', padding: '8px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
               </div>
-
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button onClick={() => setShowAddStateModal(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid #dcd3c1', borderRadius: '6px', cursor: 'pointer', color: '#7a6b5d', fontWeight: 'bold' }}>Отмена</button>
-                <button onClick={handleAddState} disabled={!newStateForm.entity_id || !newStateForm.label.trim()} style={{ flex: 1, padding: '10px', background: (!newStateForm.entity_id || !newStateForm.label.trim()) ? '#999' : '#7a4b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: (!newStateForm.entity_id || !newStateForm.label.trim()) ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>Сохранить</button>
+                <button onClick={() => handleAddState()} disabled={!newStateForm.label.trim()} style={{ flex: 1, padding: '10px', background: !newStateForm.label.trim() ? '#999' : '#7a4b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: !newStateForm.label.trim() ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>Сохранить</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* МОДАЛЬНОЕ ОКНО 2: ТОЛЬКО ДЛЯ ЛОКАЦИЙ И ПРЕДМЕТОВ */}
+      {showAddStateModal && targetEntity && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5000 }} onClick={() => { setShowAddStateModal(false); setTargetEntity(null); }}>
+          <div onClick={(e) => e.stopPropagation()} style={{ background: '#fdfbf7', padding: '24px', borderRadius: '10px', width: 'min(450px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
+            <h3 style={{ marginTop: 0, color: '#5c3a21', marginBottom: '16px' }}>
+              Состояние: {targetEntity.type === 'location' ? '🏰 ' : '🗡️ '}{targetEntity.name}
+            </h3>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Измерение (тег):</label>
+                <select value={newStateForm.dimension} onChange={(e) => setNewStateForm({ ...newStateForm, dimension: e.target.value })} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}>
+                  {Object.entries(WORLD_DIMENSIONS).map(([key, name]) => (<option key={key} value={key}>{name}</option>))}
+                </select>
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Краткая суть (для ИИ):</label>
+                <input type="text" value={newStateForm.label} onChange={(e) => setNewStateForm({ ...newStateForm, label: e.target.value })} placeholder={targetEntity.type === 'location' ? "Например: Дверь заперта" : "Например: Сломан"} style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', boxSizing: 'border-box' }} />
+              </div>
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Подробности:</label>
+                <textarea value={newStateForm.description} onChange={(e) => setNewStateForm({ ...newStateForm, description: e.target.value })} placeholder="Детали..." style={{ width: '100%', minHeight: '60px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', padding: '8px', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button onClick={() => { setShowAddStateModal(false); setTargetEntity(null); }} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid #dcd3c1', borderRadius: '6px', cursor: 'pointer', color: '#7a6b5d', fontWeight: 'bold' }}>Отмена</button>
+                <button onClick={() => handleAddState()} disabled={!newStateForm.label.trim()} style={{ flex: 1, padding: '10px', background: !newStateForm.label.trim() ? '#999' : '#7a4b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: !newStateForm.label.trim() ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>Сохранить</button>
               </div>
             </div>
           </div>
