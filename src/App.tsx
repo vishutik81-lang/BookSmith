@@ -421,24 +421,24 @@ export default function App() {
     } catch (error) { console.error('Ошибка загрузки мира:', error) }
   }
 
-  const addLocation = async (name: string) => {
+   const addLocation = async (name: string) => {
     try {
-          const res = await fetch(`/api/states`, {
+      const res = await fetch(`/api/locations`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          project_id: activeBookId,
-          entity_type: newStateForm.entity_type,
-          entity_id: newStateForm.entity_id,
-          dimension: newStateForm.dimension,
-          label: newStateForm.label,
-          description: newStateForm.description,
-          reality_contract: newStateForm.reality_contract
-        })
+        body: JSON.stringify({ project_id: activeBookId, name, type: 'unknown', description: '' })
       })
       const data = await res.json()
-      if (data.success) { setWorldLocations([...worldLocations, data.location]); loadAllProjectStates(activeBookId!) }
-    } catch (error: any) { alert('Ошибка: ' + error.message) }
+      if (data.success) {
+        setWorldLocations([...worldLocations, data.location])
+        // Опционально: обновляем список состояний, чтобы новая локация появилась в выпадающем списке
+        if (activeBookId) loadAllProjectStates(activeBookId) 
+      } else {
+        alert('Ошибка: ' + data.error)
+      }
+    } catch (error: any) {
+      alert('Ошибка: ' + error.message)
+    }
   }
 
   const addItem = async (name: string) => {
@@ -509,14 +509,18 @@ export default function App() {
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
-    const handleAddState = async () => {
-    if (!newStateForm.label.trim() || !editingCharacter) return
+   const handleAddState = async () => {
+    // ИСПРАВЛЕНО: проверяем наличие entity_id, а не editingCharacter
+    if (!newStateForm.label.trim() || !newStateForm.entity_id) return 
+    
     try {
-      const res = await fetch(`/api/entities/${editingCharacter.id}/states`, {
+      const res = await fetch(`/api/states`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           project_id: activeBookId,
+          entity_type: newStateForm.entity_type,
+          entity_id: newStateForm.entity_id,
           dimension: newStateForm.dimension,
           label: newStateForm.label,
           description: newStateForm.description,
@@ -526,10 +530,18 @@ export default function App() {
       const data = await res.json()
       if (data.success) {
         setEntityStates([data.state, ...entityStates])
-                setAllProjectStates([data.state, ...allProjectStates])
-
+        setAllProjectStates([data.state, ...allProjectStates])
         setShowAddStateModal(false)
-        setNewStateForm({ dimension: 'physical', label: '', description: '', reality_contract: 'canon' })
+        
+        // ИСПРАВЛЕНО: Полный сброс формы, включая entity_type и entity_id
+        setNewStateForm({
+          entity_type: 'character',
+          entity_id: '',
+          dimension: 'physical',
+          label: '',
+          description: '',
+          reality_contract: 'canon'
+        })
       } else {
         alert('Ошибка: ' + data.error)
       }
@@ -1137,6 +1149,8 @@ ${getPolicyInstruction()}
               </div>
             </div>
           </div>
+        </div>
+      )}
 
       {!loading && view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
@@ -1440,9 +1454,7 @@ ${getPolicyInstruction()}
         </div>
       )}
 
-      {showGraph && activeBookId && (
-        <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
-      )}
+  
            {/* МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ СОСТОЯНИЯ */}
       {showAddStateModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5000 }} onClick={() => setShowAddStateModal(false)}>
