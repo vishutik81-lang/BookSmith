@@ -204,8 +204,9 @@ export default function CharacterGraph({ projectId, onClose }: GraphProps) {
                       fontSize="12" 
                       fontWeight="bold" 
                       style={{ textShadow: '0 1px 2px white', cursor: 'help' }}
-                      title={STRENGTH_TOOLTIP}
                     >
+                      {/* В SVG подсказка делается через вложенный тег <title>, а не через атрибут */}
+                      <title>{STRENGTH_TOOLTIP}</title>
                       {TYPE_NAMES[link.type] || link.type} ({link.strength}/10)
                     </text>
                   )}
