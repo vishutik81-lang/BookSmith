@@ -359,17 +359,18 @@ app.post('/api/items', async (req, res) => {
 
 app.get('/api/projects/:projectId/states', async (req, res) => {
   try {
-    // Загружаем состояния и подтягиваем имена связанных сущностей для удобства
+    // УПРОЩЕНО: Запрашиваем только '*', без сложных JOIN-ов, которые часто вызывают 500 ошибку
     const { data, error } = await supabase
       .from('entity_states')
-      .select('*, characters(name), locations(name), items(name)')
+      .select('*')
       .eq('project_id', req.params.projectId)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
+      
     if (error) throw error;
     res.json({ states: data || [] });
   } catch (err) {
-    console.error('Ошибка загрузки состояний проекта:', err);
+    console.error('❌ Ошибка загрузки состояний проекта:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -378,7 +379,6 @@ app.post('/api/states', async (req, res) => {
   try {
     const { project_id, entity_type, entity_id, dimension, label, description, reality_contract } = req.body;
     
-    // Формируем объект вставки в зависимости от типа сущности
     const insertData = {
       project_id,
       dimension,
@@ -386,7 +386,8 @@ app.post('/api/states', async (req, res) => {
       description: description || '',
       reality_contract: reality_contract || 'canon',
       status: 'active',
-      confirmed: true
+      confirmed: true,
+      entity_id: null // Явно обнуляем старое поле, чтобы оно не конфликтовало
     };
 
     if (entity_type === 'character') insertData.character_id = entity_id;
@@ -396,9 +397,10 @@ app.post('/api/states', async (req, res) => {
 
     const { data, error } = await supabase.from('entity_states').insert([insertData]).select().single();
     if (error) throw error;
+    
     res.json({ success: true, state: data });
   } catch (err) {
-    console.error('Ошибка создания состояния:', err);
+    console.error('❌ Ошибка создания состояния:', err);
     res.status(500).json({ error: err.message });
   }
 });
