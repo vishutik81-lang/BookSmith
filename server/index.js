@@ -33,17 +33,13 @@ app.post('/api/generate', async (req, res) => {
 });
 
 // 4. Projects
-// 4. Получение всех проектов с главами и сценами
 app.get('/api/projects', async (req, res) => {
   try {
-    // ВАЖНО: select('*, chapters(*, scenes(*))') заставляет Supabase вернуть вложенную структуру
     const { data, error } = await supabase
       .from('projects')
       .select('*, chapters(*, scenes(*))') 
       .order('created_at', { ascending: false });
-      
     if (error) throw error;
-    
     res.json({ projects: data || [] });
   } catch (err) {
     console.error('❌ Ошибка загрузки проектов:', err);
@@ -56,45 +52,21 @@ app.post('/api/projects', async (req, res) => {
     const { title, description, genre, subgenre } = req.body;
     const { data: project, error: pErr } = await supabase.from('projects').insert([{ title, description, genre: genre || 'Не указан', subgenre: subgenre || '' }]).select().single();
     if (pErr) throw pErr;
-
     const { data: chapter, error: cErr } = await supabase.from('chapters').insert([{ project_id: project.id, title: 'Глава 1', sort_order: 0 }]).select().single();
     if (cErr) throw cErr;
-
     const { data: scene, error: sErr } = await supabase.from('scenes').insert([{ chapter_id: chapter.id, title: 'Сцена 1', body: '', context_before: '', sort_order: 0 }]).select().single();
     if (sErr) throw sErr;
-
     res.json({ message: 'OK', project: { ...project, chapters: [{ ...chapter, scenes: [scene] }] } });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-app.patch('/api/scenes/:id', async (req, res) => {
+app.patch('/api/projects/:id', async (req, res) => {
   try {
-    const { body, context_before, title } = req.body;
-    const updateData = {};
-    
-    // Используем 'body', так как мы выяснили, что колонка называется именно так
-    if (body !== undefined) updateData.body = body;
-    if (context_before !== undefined) updateData.context_before = context_before;
-    if (title !== undefined) updateData.title = title;
-    
-    const { data, error } = await supabase
-      .from('scenes')
-      .update(updateData)
-      .eq('id', req.params.id)
-      .select(); // Мы просим базу вернуть обновленную строку
-      
+    const { title, genre, subgenre } = req.body;
+    const { data, error } = await supabase.from('projects').update({ title, genre, subgenre }).eq('id', req.params.id).select().single();
     if (error) throw error;
-    
-    // ВОТ ГЛАВНАЯ ПРОВЕРКА: если база не вернула данные, значит обновление не сработало!
-    if (!data || data.length === 0) {
-      throw new Error(`Сцена с ID ${req.params.id} не найдена или обновление заблокировано (проверьте RLS или правильность ID)`);
-    }
-    
-    res.json({ success: true, scene: data[0] });
-  } catch (err) { 
-    console.error('❌ Ошибка обновления сцены:', err.message);
-    res.status(500).json({ error: err.message }); 
-  }
+    res.json({ success: true, project: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/projects/:id', async (req, res) => {
@@ -144,8 +116,13 @@ app.patch('/api/scenes/:id', async (req, res) => {
     
     const { data, error } = await supabase.from('scenes').update(updateData).eq('id', req.params.id).select();
     if (error) throw error;
+    if (!data || data.length === 0) throw new Error(`Сцена с ID ${req.params.id} не найдена`);
+    
     res.json({ success: true, scene: data[0] });
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) { 
+    console.error('❌ Ошибка обновления сцены:', err.message);
+    res.status(500).json({ error: err.message }); 
+  }
 });
 
 app.patch('/api/scenes/title/:id', async (req, res) => {
@@ -245,34 +222,21 @@ app.post('/api/projects/:projectId/world-notes', async (req, res) => {
     res.json({ notes: data });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
-// === 10. GRAPH RELATIONS (Граф связей) ===
 
+// 10. GRAPH RELATIONS
 app.get('/api/projects/:projectId/relations', async (req, res) => {
   try {
     const { projectId } = req.params;
-    
-    // 1. Получаем всех персонажей этого проекта
-    const { data: chars, error: charsError } = await supabase
-      .from('characters')
-      .select('id, name')
-      .eq('project_id', projectId);
-      
+    const { data: chars, error: charsError } = await supabase.from('characters').select('id, name').eq('project_id', projectId);
     if (charsError) throw charsError;
 
-    // 2. Получаем связи между этими персонажами
     let relations = [];
     if (chars && chars.length > 0) {
       const charIds = chars.map(c => c.id);
-      const { data: rels, error: relsError } = await supabase
-        .from('character_relations')
-        .select('*')
-        .in('source_id', charIds)
-        .in('target_id', charIds);
-        
+      const { data: rels, error: relsError } = await supabase.from('character_relations').select('*').in('source_id', charIds).in('target_id', charIds);
       if (relsError) throw relsError;
       relations = rels || [];
     }
-
     res.json({ characters: chars || [], relations: relations });
   } catch (err) {
     console.error('Ошибка загрузки связей:', err);
@@ -283,18 +247,7 @@ app.get('/api/projects/:projectId/relations', async (req, res) => {
 app.post('/api/relations', async (req, res) => {
   try {
     const { source_id, target_id, type, strength, description } = req.body;
-    const { data, error } = await supabase
-      .from('character_relations')
-      .upsert([{ 
-        source_id, 
-        target_id, 
-        type, 
-        strength: strength || 5, 
-        description: description || '' 
-      }], { onConflict: 'source_id,target_id,type' })
-      .select()
-      .single();
-      
+    const { data, error } = await supabase.from('character_relations').upsert([{ source_id, target_id, type, strength: strength || 5, description: description || '' }], { onConflict: 'source_id,target_id,type' }).select().single();
     if (error) throw error;
     res.json({ success: true, relation: data });
   } catch (err) {
@@ -305,12 +258,7 @@ app.post('/api/relations', async (req, res) => {
 
 app.delete('/api/relations/:id', async (req, res) => {
   try {
-    const { id } = req.params;
-    const { error } = await supabase
-      .from('character_relations')
-      .delete()
-      .eq('id', id);
-      
+    const { error } = await supabase.from('character_relations').delete().eq('id', req.params.id);
     if (error) throw error;
     res.json({ success: true });
   } catch (err) {
@@ -319,8 +267,7 @@ app.delete('/api/relations/:id', async (req, res) => {
   }
 });
 
-// === 11. LOCATIONS & ITEMS (Локации и Предметы) ===
-
+// 11. LOCATIONS & ITEMS
 app.get('/api/projects/:projectId/locations', async (req, res) => {
   try {
     const { data, error } = await supabase.from('locations').select('*').eq('project_id', req.params.projectId);
@@ -355,11 +302,9 @@ app.post('/api/items', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// === 12. ENTITY STATES (Обновленный для поддержки персонажей, локаций и предметов) ===
-
+// 12. ENTITY STATES (С улучшенным логированием для отладки)
 app.get('/api/projects/:projectId/states', async (req, res) => {
   try {
-    // УПРОЩЕНО: Запрашиваем только '*', без сложных JOIN-ов, которые часто вызывают 500 ошибку
     const { data, error } = await supabase
       .from('entity_states')
       .select('*')
@@ -367,10 +312,13 @@ app.get('/api/projects/:projectId/states', async (req, res) => {
       .eq('status', 'active')
       .order('created_at', { ascending: false });
       
-    if (error) throw error;
+    if (error) {
+      console.error('❌ Supabase error fetching states:', error);
+      throw error;
+    }
     res.json({ states: data || [] });
   } catch (err) {
-    console.error('❌ Ошибка загрузки состояний проекта:', err);
+    console.error('❌ Ошибка загрузки состояний проекта:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -387,20 +335,34 @@ app.post('/api/states', async (req, res) => {
       reality_contract: reality_contract || 'canon',
       status: 'active',
       confirmed: true,
-      entity_id: null // Явно обнуляем старое поле, чтобы оно не конфликтовало
+      // Явно обнуляем все возможные поля сущностей, чтобы избежать конфликтов
+      entity_id: null,
+      character_id: null,
+      location_id: null,
+      item_id: null
     };
 
     if (entity_type === 'character') insertData.character_id = entity_id;
     else if (entity_type === 'location') insertData.location_id = entity_id;
     else if (entity_type === 'item') insertData.item_id = entity_id;
-    else throw new Error('Неверный тип сущности');
+    else throw new Error('Неверный тип сущности: ' + entity_type);
 
-    const { data, error } = await supabase.from('entity_states').insert([insertData]).select().single();
-    if (error) throw error;
+    console.log('📝 Attempting to insert state:', insertData);
+
+    const { data, error } = await supabase
+      .from('entity_states')
+      .insert([insertData])
+      .select()
+      .single();
+      
+    if (error) {
+      console.error('❌ Supabase error inserting state:', error);
+      throw error;
+    }
     
     res.json({ success: true, state: data });
   } catch (err) {
-    console.error('❌ Ошибка создания состояния:', err);
+    console.error('❌ Ошибка создания состояния:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
@@ -411,11 +373,12 @@ app.delete('/api/states/:id', async (req, res) => {
     if (error) throw error;
     res.json({ success: true });
   } catch (err) {
-    console.error('Ошибка удаления состояния:', err);
+    console.error('❌ Ошибка удаления состояния:', err.message);
     res.status(500).json({ error: err.message });
   }
 });
-// 10. Catch-all for React
+
+// 13. Catch-all for React
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
 });
