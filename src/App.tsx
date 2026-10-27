@@ -691,24 +691,20 @@ export default function App() {
       }).join('\n\n')
     }
 
-    // === 2. СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
-    // ВАЖНО: Мы НЕ пишем здесь "const sceneCharIds", мы используем уже объявленную выше переменную!
+       // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
+    const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
     
-    console.log("🔍 [DEBUG] ID персонажей в сцене:", sceneCharIds)
-    console.log("🔍 [DEBUG] Все состояния проекта:", allProjectStates)
-
+    // Теперь мы фильтруем по character_id, так как именно его мы сохраняем в БД для персонажей
     const activeStatesForScene = allProjectStates.filter(s => 
-      sceneCharIds.includes(s.entity_id)
+      s.character_id && sceneCharIds.includes(s.character_id)
     )
-
-    console.log("🔍 [DEBUG] Отфильтрованные состояния для промпта:", activeStatesForScene)
 
     let statesContext = "У персонажей в этой сцене нет особых активных состояний, влияющих на контекст."
     if (activeStatesForScene.length > 0) {
       // Группируем состояния по персонажам
       const statesByChar: Record<string, any[]> = {}
       activeStatesForScene.forEach(state => {
-        const charName = sceneCharacters.find(sc => sc.character_id === state.entity_id)?.characters?.name || 'Неизвестно'
+        const charName = sceneCharacters.find(sc => sc.character_id === state.character_id)?.characters?.name || 'Неизвестно'
         if (!statesByChar[charName]) statesByChar[charName] = []
         statesByChar[charName].push(state)
       })
@@ -1099,7 +1095,7 @@ ${getPolicyInstruction()}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {worldLocations.map((loc: any) => (
                   <div key={loc.id} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
-                    <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{loc.name}</div>
+<div style={{ fontWeight: 'bold', color: '#2c241b' }}>{loc?.name || 'Без названия'}</div>
                     <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>{loc.description || 'Нет описания'}</div>
                   </div>
                 ))}
@@ -1116,7 +1112,7 @@ ${getPolicyInstruction()}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                 {worldItems.map((item: any) => (
                   <div key={item.id} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
-                    <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{item.name}</div>
+              <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{item?.name || 'Без названия'}</div>
                     <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>
                       {item.description || 'Нет описания'}
                       {item.locations?.name && <div>📍 {item.locations.name}</div>}
@@ -1251,7 +1247,7 @@ ${getPolicyInstruction()}
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px', marginBottom: '10px' }}>
                             {sceneCharacters.map((sc: any) => (
                               <div key={sc.character_id} style={{ padding: '6px 10px', background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                <span style={{ fontWeight: 'bold' }}>{sc.characters.name}</span>
+                                <span style={{ fontWeight: 'bold' }}>{sc.characters?.name || 'Неизвестный персонаж'}</span>
                                 <select value={sc.role} onChange={(e) => updateSceneCharacterRole(sc.character_id, e.target.value)} style={{ padding: '2px 4px', fontSize: '0.75rem', border: '1px solid #dcd3c1', borderRadius: '3px' }}>
                                   <option value="pov">POV</option><option value="present">присутствует</option><option value="mentioned">упоминается</option>
                                 </select>
@@ -1468,9 +1464,9 @@ ${getPolicyInstruction()}
                   style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}
                 >
                   <option value="">Выберите...</option>
-                  {newStateForm.entity_type === 'character' && characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                  {newStateForm.entity_type === 'location' && worldLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
-                  {newStateForm.entity_type === 'item' && worldItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                  {newStateForm.entity_type === 'character' && characters.map(c => <option key={c.id} value={c.id}>{c?.name || 'Без имени'}</option>)}
+{newStateForm.entity_type === 'location' && worldLocations.map(l => <option key={l.id} value={l.id}>{l?.name || 'Без названия'}</option>)}
+{newStateForm.entity_type === 'item' && worldItems.map(i => <option key={i.id} value={i.id}>{i?.name || 'Без названия'}</option>)}
                 </select>
               </div>
 
