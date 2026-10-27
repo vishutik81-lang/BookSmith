@@ -35,16 +35,10 @@ app.post('/api/generate', async (req, res) => {
 // 4. Projects
 app.get('/api/projects', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*, chapters(*, scenes(*))') 
-      .order('created_at', { ascending: false });
+    const { data, error } = await supabase.from('projects').select('*, chapters(*, scenes(*))').order('created_at', { ascending: false });
     if (error) throw error;
     res.json({ projects: data || [] });
-  } catch (err) {
-    console.error('❌ Ошибка загрузки проектов:', err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/projects', async (req, res) => {
@@ -117,7 +111,6 @@ app.patch('/api/scenes/:id', async (req, res) => {
     const { data, error } = await supabase.from('scenes').update(updateData).eq('id', req.params.id).select();
     if (error) throw error;
     if (!data || data.length === 0) throw new Error(`Сцена с ID ${req.params.id} не найдена`);
-    
     res.json({ success: true, scene: data[0] });
   } catch (err) { 
     console.error('❌ Ошибка обновления сцены:', err.message);
@@ -229,7 +222,6 @@ app.get('/api/projects/:projectId/relations', async (req, res) => {
     const { projectId } = req.params;
     const { data: chars, error: charsError } = await supabase.from('characters').select('id, name').eq('project_id', projectId);
     if (charsError) throw charsError;
-
     let relations = [];
     if (chars && chars.length > 0) {
       const charIds = chars.map(c => c.id);
@@ -238,10 +230,7 @@ app.get('/api/projects/:projectId/relations', async (req, res) => {
       relations = rels || [];
     }
     res.json({ characters: chars || [], relations: relations });
-  } catch (err) {
-    console.error('Ошибка загрузки связей:', err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/relations', async (req, res) => {
@@ -250,10 +239,7 @@ app.post('/api/relations', async (req, res) => {
     const { data, error } = await supabase.from('character_relations').upsert([{ source_id, target_id, type, strength: strength || 5, description: description || '' }], { onConflict: 'source_id,target_id,type' }).select().single();
     if (error) throw error;
     res.json({ success: true, relation: data });
-  } catch (err) {
-    console.error('Ошибка создания связи:', err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.delete('/api/relations/:id', async (req, res) => {
@@ -261,10 +247,7 @@ app.delete('/api/relations/:id', async (req, res) => {
     const { error } = await supabase.from('character_relations').delete().eq('id', req.params.id);
     if (error) throw error;
     res.json({ success: true });
-  } catch (err) {
-    console.error('Ошибка удаления связи:', err);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 // 11. LOCATIONS & ITEMS
@@ -302,25 +285,13 @@ app.post('/api/items', async (req, res) => {
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 12. ENTITY STATES (С улучшенным логированием для отладки)
+// 12. ENTITY STATES
 app.get('/api/projects/:projectId/states', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('entity_states')
-      .select('*')
-      .eq('project_id', req.params.projectId)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
-      
-    if (error) {
-      console.error('❌ Supabase error fetching states:', error);
-      throw error;
-    }
+    const { data, error } = await supabase.from('entity_states').select('*').eq('project_id', req.params.projectId).eq('status', 'active').order('created_at', { ascending: false });
+    if (error) throw error;
     res.json({ states: data || [] });
-  } catch (err) {
-    console.error('❌ Ошибка загрузки состояний проекта:', err.message);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
 app.post('/api/states', async (req, res) => {
@@ -341,24 +312,14 @@ app.post('/api/states', async (req, res) => {
       item_id: null
     };
 
-    // ИСПРАВЛЕНИЕ: оператор || null превратит пустую строку "" в настоящий null
+    // Преобразуем пустую строку в null, чтобы избежать ошибки UUID
     if (entity_type === 'character') insertData.character_id = entity_id || null;
     else if (entity_type === 'location') insertData.location_id = entity_id || null;
     else if (entity_type === 'item') insertData.item_id = entity_id || null;
     else throw new Error('Неверный тип сущности: ' + entity_type);
 
-    console.log('📝 Attempting to insert state:', insertData);
-
-    const { data, error } = await supabase
-      .from('entity_states')
-      .insert([insertData])
-      .select()
-      .single();
-      
-    if (error) {
-      console.error('❌ Supabase error inserting state:', error);
-      throw error;
-    }
+    const { data, error } = await supabase.from('entity_states').insert([insertData]).select().single();
+    if (error) throw error;
     
     res.json({ success: true, state: data });
   } catch (err) {
@@ -372,13 +333,10 @@ app.delete('/api/states/:id', async (req, res) => {
     const { error } = await supabase.from('entity_states').delete().eq('id', req.params.id);
     if (error) throw error;
     res.json({ success: true });
-  } catch (err) {
-    console.error('❌ Ошибка удаления состояния:', err.message);
-    res.status(500).json({ error: err.message });
-  }
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
-// 13. Catch-all for React
+// 13. Catch-all for React (ДОЛЖЕН БЫТЬ В САМОМ КОНЦЕ)
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
 });
