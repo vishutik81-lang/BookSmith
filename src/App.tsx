@@ -1100,12 +1100,15 @@ ${getPolicyInstruction()}
                 <button onClick={() => { const name = prompt('Название локации:'); if(name) addLocation(name); }} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>+ Добавить</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {worldLocations.map((loc: any) => (
-                  <div key={loc.id} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
-<div style={{ fontWeight: 'bold', color: '#2c241b' }}>{loc?.name || 'Без названия'}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>{loc.description || 'Нет описания'}</div>
-                  </div>
-                ))}
+                {worldLocations.map((loc: any, index: number) => {
+                  if (!loc) return null; // ЗАЩИТА: пропускаем пустые элементы
+                  return (
+                    <div key={loc.id || index} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
+                      <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{loc?.name || 'Без названия'}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>{loc?.description || 'Нет описания'}</div>
+                    </div>
+                  );
+                })}
                 {worldLocations.length === 0 && <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic' }}>Пока нет локаций.</div>}
               </div>
             </div>
@@ -1117,22 +1120,23 @@ ${getPolicyInstruction()}
                 <button onClick={() => { const name = prompt('Название предмета:'); if(name) addItem(name); }} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>+ Добавить</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {worldItems.map((item: any) => (
-                  <div key={item.id} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
-              <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{item?.name || 'Без названия'}</div>
-                    <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>
-                      {item.description || 'Нет описания'}
-                      {item.locations?.name && <div>📍 {item.locations.name}</div>}
-                      {item.characters?.name && <div>👤 У: {item.characters.name}</div>}
+                {worldItems.map((item: any, index: number) => {
+                  if (!item) return null; // ЗАЩИТА: пропускаем пустые элементы
+                  return (
+                    <div key={item.id || index} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
+                      <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{item?.name || 'Без названия'}</div>
+                      <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>
+                        {item?.description || 'Нет описания'}
+                        {item.locations?.name && <div>📍 {item.locations.name}</div>}
+                        {item.characters?.name && <div>👤 У: {item.characters.name}</div>}
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
                 {worldItems.length === 0 && <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic' }}>Пока нет предметов.</div>}
               </div>
             </div>
           </div>
-        </div>
-      )}
 
       {!loading && view === 'editor' && activeBook && (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
