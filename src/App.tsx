@@ -1172,7 +1172,7 @@ ${getPolicyInstruction()}
                 <button onClick={() => { const name = prompt('Название локации:'); if(name) addLocation(name); }} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>+ Добавить</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                               {worldLocations.map((loc: any, index: number) => {
+                {worldLocations.map((loc: any, index: number) => {
                   if (!loc) return null;
                   return (
                     <div key={loc.id || index} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
@@ -1181,6 +1181,7 @@ ${getPolicyInstruction()}
                           <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{loc?.name || 'Без названия'}</div>
                           <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>{loc?.description || 'Нет описания'}</div>
                         </div>
+                        {/* ВОТ НОВАЯ КНОПКА ДЛЯ ЛОКАЦИИ */}
                         <button 
                           onClick={() => openWorldEntityStateModal('location', loc.id)}
                           style={{ padding: '4px 8px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
