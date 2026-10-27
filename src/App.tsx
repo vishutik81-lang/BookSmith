@@ -49,6 +49,8 @@ export default function App() {
   const [isGenerating, setIsGenerating] = useState(false)
   const [generationHistory, setGenerationHistory] = useState<any[]>([])
   const [activeHistoryId, setActiveHistoryId] = useState<string | null>(null)
+    const [worldLocations, setWorldLocations] = useState<any[]>([])
+  const [worldItems, setWorldItems] = useState<any[]>([])
 
   const [observations, setObservations] = useState<any[]>([])
     const [relations, setRelations] = useState<any[]>([])
@@ -67,7 +69,9 @@ export default function App() {
   const [entityStates, setEntityStates] = useState<any[]>([]) // Для модального окна персонажа
   const [allProjectStates, setAllProjectStates] = useState<any[]>([]) // Для промпта ИИ
   const [showAddStateModal, setShowAddStateModal] = useState(false)
-  const [newStateForm, setNewStateForm] = useState({ 
+    const [newStateForm, setNewStateForm] = useState({ 
+    entity_type: 'character' as 'character' | 'location' | 'item',
+    entity_id: '',
     dimension: 'physical', 
     label: '', 
     description: '', 
@@ -242,6 +246,7 @@ export default function App() {
         setView('editor')
         loadCharacters(newBook.id)
         loadWorldNotes(newBook.id)
+        loadWorldEntities(newBook.id)
       } else { 
         alert('Ошибка создания: ' + data.error) 
       }
@@ -402,6 +407,49 @@ export default function App() {
       if (data.notes) setWorldNotes(data.notes)
       else setWorldNotes({ setting: '', time_period: '', rules: '', important_events: '', tone: '', custom_notes: '' })
     } catch (error) { console.error('Ошибка загрузки заметок:', error) }
+  }
+    const loadWorldEntities = async (projectId: string) => {
+    try {
+      const [locRes, itemRes] = await Promise.all([
+        fetch(`/api/projects/${projectId}/locations`),
+        fetch(`/api/projects/${projectId}/items`)
+      ])
+      const locData = await locRes.json()
+      const itemData = await itemRes.json()
+      if (locData.locations) setWorldLocations(locData.locations)
+      if (itemData.items) setWorldItems(itemData.items)
+    } catch (error) { console.error('Ошибка загрузки мира:', error) }
+  }
+
+  const addLocation = async (name: string) => {
+    try {
+          const res = await fetch(`/api/states`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          project_id: activeBookId,
+          entity_type: newStateForm.entity_type,
+          entity_id: newStateForm.entity_id,
+          dimension: newStateForm.dimension,
+          label: newStateForm.label,
+          description: newStateForm.description,
+          reality_contract: newStateForm.reality_contract
+        })
+      })
+      const data = await res.json()
+      if (data.success) { setWorldLocations([...worldLocations, data.location]); loadAllProjectStates(activeBookId!) }
+    } catch (error: any) { alert('Ошибка: ' + error.message) }
+  }
+
+  const addItem = async (name: string) => {
+    try {
+      const res = await fetch('/api/items', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ project_id: activeBookId, name, type: 'unknown', description: '' })
+      })
+      const data = await res.json()
+      if (data.success) { setWorldItems([...worldItems, data.item]); loadAllProjectStates(activeBookId!) }
+    } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
 
   const handleSaveWorldNotes = async () => {
@@ -873,7 +921,7 @@ ${getPolicyInstruction()}
               <div style={{ fontSize: '3rem', color: '#7a4b3a' }}>+</div><div style={{ fontSize: '1.1rem', color: '#5c3a21', fontWeight: 'bold' }}>Новая книга</div>
             </div>
             {books.map(book => (
-              <div key={book.id} className="book-card" onMouseEnter={() => setHoveredBookId(book.id)} onMouseLeave={() => setHoveredBookId(null)} onClick={() => { setActiveBookId(book.id); setActiveChapterId(book.chapters[0]?.id || null); setActiveSceneId(book.chapters[0]?.scenes[0]?.id || null); setView('editor'); loadCharacters(book.id); loadWorldNotes(book.id) }} style={{ aspectRatio: '3/4', background: '#ffffff', borderRadius: '8px', border: '1px solid #dcd3c1', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative', overflow: 'hidden' }}>
+              <div key={book.id} className="book-card" onMouseEnter={() => setHoveredBookId(book.id)} onMouseLeave={() => setHoveredBookId(null)} onClick={() => { setActiveBookId(book.id); setActiveChapterId(book.chapters[0]?.id || null); setActiveSceneId(book.chapters[0]?.scenes[0]?.id || null); setView('editor'); loadCharacters(book.id); loadWorldNotes(book.id); loadWorldEntities(book.id) }} style={{ aspectRatio: '3/4', background: '#ffffff', borderRadius: '8px', border: '1px solid #dcd3c1', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative', overflow: 'hidden' }}>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b' }}>{book.title}</h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#7a6b5d' }}>{book.genre}{book.subgenre ? ` • ${book.subgenre}` : ''}</p>
                 {hoveredBookId === book.id && <button onClick={(e) => { e.stopPropagation(); handleDeleteBook(book.id, book.title) }} style={{ position: 'absolute', top: '10px', right: '10px', background: '#dc2626', color: 'white', border: 'none', borderRadius: '4px', padding: '6px 10px', cursor: 'pointer', fontSize: '0.8rem', zIndex: 10 }}>🗑️</button>}
@@ -1034,20 +1082,51 @@ ${getPolicyInstruction()}
         </div>
       )}
 
-      {!loading && view === 'world' && activeBook && (
-        <div style={{ padding: '40px 10%', maxWidth: '900px', margin: '0 auto' }}>
+           {!loading && view === 'world' && activeBook && (
+        <div style={{ padding: '40px 10%', maxWidth: '1000px', margin: '0 auto', height: '100vh', overflowY: 'auto' }}>
           <header style={{ marginBottom: '30px', borderBottom: '1px solid #dcd3c1', paddingBottom: '20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <h1 style={{ fontSize: '2rem', color: '#5c3a21', margin: 0 }}>Мир: {activeBook.title}</h1>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>← К редактору</button>
-              <button onClick={handleSaveWorldNotes} disabled={worldNotesSaveStatus !== 'idle'} style={{ padding: '8px 16px', background: worldNotesSaveStatus === 'saved' ? '#5c7a5c' : '#7a4b3a', color: '#fdfbf7', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>{worldNotesSaveStatus === 'saving' ? '...' : '💾 Сохранить'}</button>
-            </div>
+            <button onClick={() => setView('editor')} style={{ padding: '8px 16px', background: 'none', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '6px', cursor: 'pointer' }}>← К редактору</button>
           </header>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>🏰 Сеттинг</label><textarea value={worldNotes.setting} onChange={(e) => setWorldNotes({ ...worldNotes, setting: e.target.value })} style={{ ...inputStyle, minHeight: '70px' }} /></div>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>⏳ Время</label><input type="text" value={worldNotes.time_period} onChange={(e) => setWorldNotes({ ...worldNotes, time_period: e.target.value })} style={inputStyle} /></div>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>⚖️ Правила</label><textarea value={worldNotes.rules} onChange={(e) => setWorldNotes({ ...worldNotes, rules: e.target.value })} style={{ ...inputStyle, minHeight: '70px' }} /></div>
-            <div style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '8px', padding: '20px' }}><label style={labelStyle}>🎨 Тон</label><textarea value={worldNotes.tone} onChange={(e) => setWorldNotes({ ...worldNotes, tone: e.target.value })} style={{ ...inputStyle, minHeight: '70px' }} /></div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '30px' }}>
+            {/* ЛОКАЦИИ */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h2 style={{ fontSize: '1.2rem', color: '#5c3a21', margin: 0 }}>🏰 Локации</h2>
+                <button onClick={() => { const name = prompt('Название локации:'); if(name) addLocation(name); }} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>+ Добавить</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {worldLocations.map((loc: any) => (
+                  <div key={loc.id} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{loc.name}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>{loc.description || 'Нет описания'}</div>
+                  </div>
+                ))}
+                {worldLocations.length === 0 && <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic' }}>Пока нет локаций.</div>}
+              </div>
+            </div>
+
+            {/* ПРЕДМЕТЫ */}
+            <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                <h2 style={{ fontSize: '1.2rem', color: '#5c3a21', margin: 0 }}>🗡️ Предметы</h2>
+                <button onClick={() => { const name = prompt('Название предмета:'); if(name) addItem(name); }} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>+ Добавить</button>
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {worldItems.map((item: any) => (
+                  <div key={item.id} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
+                    <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{item.name}</div>
+                    <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>
+                      {item.description || 'Нет описания'}
+                      {item.locations?.name && <div>📍 {item.locations.name}</div>}
+                      {item.characters?.name && <div>👤 У: {item.characters.name}</div>}
+                    </div>
+                  </div>
+                ))}
+                {worldItems.length === 0 && <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic' }}>Пока нет предметов.</div>}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -1357,12 +1436,44 @@ ${getPolicyInstruction()}
       {showGraph && activeBookId && (
         <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
       )}
-            {/* МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ СОСТОЯНИЯ */}
+                {/* МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ СОСТОЯНИЯ */}
       {showAddStateModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5000 }} onClick={() => setShowAddStateModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#fdfbf7', padding: '24px', borderRadius: '10px', width: 'min(450px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <h3 style={{ marginTop: 0, color: '#5c3a21', marginBottom: '16px' }}>Новое состояние</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              
+              {/* ВЫБОР ТИПА СУЩНОСТИ */}
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Тип сущности:</label>
+                <select 
+                  value={newStateForm.entity_type} 
+                  onChange={(e) => setNewStateForm({ ...newStateForm, entity_type: e.target.value as any, entity_id: '' })} 
+                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}
+                >
+                  <option value="character">Персонаж</option>
+                  <option value="location">Локация</option>
+                  <option value="item">Предмет</option>
+                </select>
+              </div>
+
+              {/* ВЫБОР КОНКРЕТНОЙ СУЩНОСТИ */}
+              <div>
+                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>
+                  {newStateForm.entity_type === 'character' ? 'Персонаж:' : newStateForm.entity_type === 'location' ? 'Локация:' : 'Предмет:'}
+                </label>
+                <select 
+                  value={newStateForm.entity_id} 
+                  onChange={(e) => setNewStateForm({ ...newStateForm, entity_id: e.target.value })} 
+                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}
+                >
+                  <option value="">Выберите...</option>
+                  {newStateForm.entity_type === 'character' && characters.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {newStateForm.entity_type === 'location' && worldLocations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+                  {newStateForm.entity_type === 'item' && worldItems.map(i => <option key={i.id} value={i.id}>{i.name}</option>)}
+                </select>
+              </div>
+
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Измерение (тег):</label>
                 <select 
@@ -1375,16 +1486,18 @@ ${getPolicyInstruction()}
                   ))}
                 </select>
               </div>
+
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Краткая суть (для ИИ):</label>
                 <input 
                   type="text" 
                   value={newStateForm.label} 
                   onChange={(e) => setNewStateForm({ ...newStateForm, label: e.target.value })} 
-                  placeholder="Например: Ранена левая рука"
+                  placeholder="Например: Дверь заперта на засов"
                   style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', boxSizing: 'border-box' }} 
                 />
               </div>
+
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Подробности (опционально):</label>
                 <textarea 
@@ -1394,22 +1507,10 @@ ${getPolicyInstruction()}
                   style={{ width: '100%', minHeight: '60px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1', padding: '8px', boxSizing: 'border-box', fontFamily: 'inherit' }} 
                 />
               </div>
-              <div>
-                <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Статус реальности:</label>
-                <select 
-                  value={newStateForm.reality_contract} 
-                  onChange={(e) => setNewStateForm({ ...newStateForm, reality_contract: e.target.value })} 
-                  style={{ width: '100%', padding: '8px', marginTop: '4px', borderRadius: '4px', border: '1px solid #dcd3c1' }}
-                >
-                  <option value="canon">Канон (Объективный факт)</option>
-                  <option value="contested">Спорно / Не подтверждено</option>
-                  <option value="dream">Сон / Галлюцинация</option>
-                  <option value="flashback">Флэшбек / Прошлое</option>
-                </select>
-              </div>
+
               <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
                 <button onClick={() => setShowAddStateModal(false)} style={{ flex: 1, padding: '10px', background: 'transparent', border: '1px solid #dcd3c1', borderRadius: '6px', cursor: 'pointer', color: '#7a6b5d', fontWeight: 'bold' }}>Отмена</button>
-                <button onClick={handleAddState} style={{ flex: 1, padding: '10px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold' }}>Сохранить</button>
+                <button onClick={handleAddState} disabled={!newStateForm.entity_id || !newStateForm.label.trim()} style={{ flex: 1, padding: '10px', background: (!newStateForm.entity_id || !newStateForm.label.trim()) ? '#999' : '#7a4b3a', color: 'white', border: 'none', borderRadius: '6px', cursor: (!newStateForm.entity_id || !newStateForm.label.trim()) ? 'not-allowed' : 'pointer', fontWeight: 'bold' }}>Сохранить</button>
               </div>
             </div>
           </div>
