@@ -1524,6 +1524,10 @@ ${getPolicyInstruction()}
         </div>
       )}
 
+       {showGraph && activeBookId && (
+        <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
+      )}
+
       <PromptInspector open={inspectorOpen} record={inspectorRecord} onClose={() => setInspectorOpen(false)} />
     </div>
   )
