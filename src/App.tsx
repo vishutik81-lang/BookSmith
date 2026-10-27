@@ -592,6 +592,32 @@ export default function App() {
     }
     setShowCharacterModal(true)
   }
+    // Открыть окно состояния для персонажа (автоматически подставляет его ID)
+  const openCharacterStateModal = () => {
+    if (!editingCharacter) return;
+    setNewStateForm({
+      entity_type: 'character',
+      entity_id: editingCharacter.id,
+      dimension: 'physical',
+      label: '',
+      description: '',
+      reality_contract: 'canon'
+    });
+    setShowAddStateModal(true);
+  }
+
+  // Открыть окно состояния для локации или предмета из вкладки "Мир"
+  const openWorldEntityStateModal = (type: 'location' | 'item', id: string) => {
+    setNewStateForm({
+      entity_type: type,
+      entity_id: id,
+      dimension: 'physical',
+      label: '',
+      description: '',
+      reality_contract: 'canon'
+    });
+    setShowAddStateModal(true);
+  }
 
     // ==========================================================
   // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (Для ИИ и для Интерфейса) ===
@@ -1112,12 +1138,22 @@ ${getPolicyInstruction()}
                 <button onClick={() => { const name = prompt('Название локации:'); if(name) addLocation(name); }} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>+ Добавить</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {worldLocations.map((loc: any, index: number) => {
-                  if (!loc) return null; // ЗАЩИТА: пропускаем пустые элементы
+                               {worldLocations.map((loc: any, index: number) => {
+                  if (!loc) return null;
                   return (
                     <div key={loc.id || index} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
-                      <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{loc?.name || 'Без названия'}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>{loc?.description || 'Нет описания'}</div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{loc?.name || 'Без названия'}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>{loc?.description || 'Нет описания'}</div>
+                        </div>
+                        <button 
+                          onClick={() => openWorldEntityStateModal('location', loc.id)}
+                          style={{ padding: '4px 8px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                        >
+                          📜 Состояния
+                        </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -1132,15 +1168,25 @@ ${getPolicyInstruction()}
                 <button onClick={() => { const name = prompt('Название предмета:'); if(name) addItem(name); }} style={{ padding: '6px 12px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' }}>+ Добавить</button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                {worldItems.map((item: any, index: number) => {
-                  if (!item) return null; // ЗАЩИТА: пропускаем пустые элементы
+               {worldItems.map((item: any, index: number) => {
+                  if (!item) return null;
                   return (
                     <div key={item.id || index} style={{ background: '#ffffff', border: '1px solid #dcd3c1', borderRadius: '6px', padding: '12px' }}>
-                      <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{item?.name || 'Без названия'}</div>
-                      <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>
-                        {item?.description || 'Нет описания'}
-                        {item.locations?.name && <div>📍 {item.locations.name}</div>}
-                        {item.characters?.name && <div>👤 У: {item.characters.name}</div>}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                        <div>
+                          <div style={{ fontWeight: 'bold', color: '#2c241b' }}>{item?.name || 'Без названия'}</div>
+                          <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginTop: '4px' }}>
+                            {item?.description || 'Нет описания'}
+                            {item.locations?.name && <div>📍 {item.locations.name}</div>}
+                            {item.characters?.name && <div>👤 У: {item.characters.name}</div>}
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => openWorldEntityStateModal('item', item.id)}
+                          style={{ padding: '4px 8px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+                        >
+                          📜 Состояния
+                        </button>
                       </div>
                     </div>
                   );
