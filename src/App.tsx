@@ -696,12 +696,34 @@ export default function App() {
       }).join('\n\n')
     }
 
-        // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
-    const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
+    // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
+    // (Мы используем уже объявленную выше переменную sceneCharIds)
     
     const activeStatesForScene = allProjectStates.filter(s => 
       s && s.character_id && sceneCharIds.includes(s.character_id)
     )
+
+    let statesContext = "У персонажей в этой сцене нет особых активных состояний, влияющих на контекст."
+    if (activeStatesForScene.length > 0) {
+      const statesByChar: Record<string, any[]> = {}
+      activeStatesForScene.forEach(state => {
+        if (!state) return;
+        const charName = sceneCharacters.find(sc => sc.character_id === state.character_id)?.characters?.name || 'Неизвестно'
+        if (!statesByChar[charName]) statesByChar[charName] = []
+        statesByChar[charName].push(state)
+      })
+
+      statesContext = Object.entries(statesByChar).map(([charName, states]) => {
+        const statesList = states.map((s: any) => {
+          if (!s) return '';
+          const dimName = DIMENSION_NAMES[s.dimension] || s.dimension
+          const reality = s.reality_contract !== 'canon' ? ` [${s.reality_contract}]` : ''
+          const desc = s?.description ? `: ${s.description}` : ''
+          return `  - [${dimName}] ${s.label}${reality}${desc}`
+        }).filter(Boolean).join('\n')
+        return `• ${charName}:\n${statesList}`
+      }).join('\n')
+    }
 
     let statesContext = "У персонажей в этой сцене нет особых активных состояний, влияющих на контекст."
     if (activeStatesForScene.length > 0) {
