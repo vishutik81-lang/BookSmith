@@ -552,13 +552,18 @@ export default function App() {
     }
   }
 
-    const openCharacterModal = async (character?: any) => {
+   const openCharacterModal = async (character?: any) => {
     if (character) {
       setEditingCharacter(character)
       setCharacterForm({
-        name: character.name, description: character.description || '', role: character.role || 'secondary',
-        appearance: character.appearance || '', personality: character.personality || '', sexual_orientation: character.sexual_orientation || '',
-        gender: character.gender || 'not_specified', race: character.race || 'human'
+        name: character.name || '', 
+        description: character.description || '', 
+        role: character.role || 'secondary',
+        appearance: character.appearance || '', 
+        personality: character.personality || '', 
+        sexual_orientation: character.sexual_orientation || '',
+        gender: character.gender || 'not_specified', 
+        race: character.race || 'human'
       })
       // Загружаем состояния для этого персонажа
       try {
@@ -692,19 +697,17 @@ export default function App() {
     }
 
         // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
-    // (Мы используем уже объявленную выше переменную sceneCharIds)
+    const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
     
-    console.log("🔍 [DEBUG] ID персонажей в сцене:", sceneCharIds)
-    console.log("🔍 [DEBUG] Все состояния проекта:", allProjectStates)
-
     const activeStatesForScene = allProjectStates.filter(s => 
-      s.character_id && sceneCharIds.includes(s.character_id)
+      s && s.character_id && sceneCharIds.includes(s.character_id)
     )
 
     let statesContext = "У персонажей в этой сцене нет особых активных состояний, влияющих на контекст."
     if (activeStatesForScene.length > 0) {
       const statesByChar: Record<string, any[]> = {}
       activeStatesForScene.forEach(state => {
+        if (!state) return;
         const charName = sceneCharacters.find(sc => sc.character_id === state.character_id)?.characters?.name || 'Неизвестно'
         if (!statesByChar[charName]) statesByChar[charName] = []
         statesByChar[charName].push(state)
@@ -712,11 +715,12 @@ export default function App() {
 
       statesContext = Object.entries(statesByChar).map(([charName, states]) => {
         const statesList = states.map((s: any) => {
+          if (!s) return '';
           const dimName = DIMENSION_NAMES[s.dimension] || s.dimension
           const reality = s.reality_contract !== 'canon' ? ` [${s.reality_contract}]` : ''
-          const desc = s.description ? `: ${s.description}` : ''
+          const desc = s?.description ? `: ${s.description}` : ''
           return `  - [${dimName}] ${s.label}${reality}${desc}`
-        }).join('\n')
+        }).filter(Boolean).join('\n')
         return `• ${charName}:\n${statesList}`
       }).join('\n')
     }
@@ -985,6 +989,7 @@ ${getPolicyInstruction()}
                       </label>
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {charRelations.map(r => {
+                          if (!r) return null;
                           const otherId = r.source_id === editingCharacter.id ? r.target_id : r.source_id;
                           const otherChar = characters.find(c => c.id === otherId);
                           const otherName = otherChar ? otherChar.name : 'Неизвестный персонаж';
@@ -997,7 +1002,7 @@ ${getPolicyInstruction()}
                                   ({getRelationTypeName(r.type)}, {getRelationLevel(r.strength)} {r.strength}/10)
                                 </span>
                               </div>
-                              {r.description && (
+                              {r?.description && (
                                 <div style={{ fontSize: '0.8rem', fontStyle: 'italic', color: '#7a6b5d', marginTop: '4px', paddingLeft: '8px', borderLeft: '2px solid #dcd3c1' }}>
                                   "{r.description}"
                                 </div>
