@@ -1443,14 +1443,13 @@ ${getPolicyInstruction()}
       {showGraph && activeBookId && (
         <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
       )}
-                {/* МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ СОСТОЯНИЯ */}
+           {/* МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ СОСТОЯНИЯ */}
       {showAddStateModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5000 }} onClick={() => setShowAddStateModal(false)}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#fdfbf7', padding: '24px', borderRadius: '10px', width: 'min(450px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
             <h3 style={{ marginTop: 0, color: '#5c3a21', marginBottom: '16px' }}>Новое состояние</h3>
             <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               
-              {/* ВЫБОР ТИПА СУЩНОСТИ */}
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>Тип сущности:</label>
                 <select 
@@ -1464,7 +1463,6 @@ ${getPolicyInstruction()}
                 </select>
               </div>
 
-              {/* ВЫБОР КОНКРЕТНОЙ СУЩНОСТИ */}
               <div>
                 <label style={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#5c3a21' }}>
                   {newStateForm.entity_type === 'character' ? 'Персонаж:' : newStateForm.entity_type === 'location' ? 'Локация:' : 'Предмет:'}
@@ -1476,8 +1474,8 @@ ${getPolicyInstruction()}
                 >
                   <option value="">Выберите...</option>
                   {newStateForm.entity_type === 'character' && characters.map(c => <option key={c.id} value={c.id}>{c?.name || 'Без имени'}</option>)}
-{newStateForm.entity_type === 'location' && worldLocations.map(l => <option key={l.id} value={l.id}>{l?.name || 'Без названия'}</option>)}
-{newStateForm.entity_type === 'item' && worldItems.map(i => <option key={i.id} value={i.id}>{i?.name || 'Без названия'}</option>)}
+                  {newStateForm.entity_type === 'location' && worldLocations.map(l => <option key={l.id} value={l.id}>{l?.name || 'Без названия'}</option>)}
+                  {newStateForm.entity_type === 'item' && worldItems.map(i => <option key={i.id} value={i.id}>{i?.name || 'Без названия'}</option>)}
                 </select>
               </div>
 
@@ -1524,7 +1522,7 @@ ${getPolicyInstruction()}
         </div>
       )}
 
-       {showGraph && activeBookId && (
+      {showGraph && activeBookId && (
         <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
       )}
 
