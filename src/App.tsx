@@ -691,17 +691,18 @@ export default function App() {
       }).join('\n\n')
     }
 
-       // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
-    const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
+        // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
+    // (Мы используем уже объявленную выше переменную sceneCharIds)
     
-    // Теперь мы фильтруем по character_id, так как именно его мы сохраняем в БД для персонажей
+    console.log("🔍 [DEBUG] ID персонажей в сцене:", sceneCharIds)
+    console.log("🔍 [DEBUG] Все состояния проекта:", allProjectStates)
+
     const activeStatesForScene = allProjectStates.filter(s => 
       s.character_id && sceneCharIds.includes(s.character_id)
     )
 
     let statesContext = "У персонажей в этой сцене нет особых активных состояний, влияющих на контекст."
     if (activeStatesForScene.length > 0) {
-      // Группируем состояния по персонажам
       const statesByChar: Record<string, any[]> = {}
       activeStatesForScene.forEach(state => {
         const charName = sceneCharacters.find(sc => sc.character_id === state.character_id)?.characters?.name || 'Неизвестно'
