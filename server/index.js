@@ -319,34 +319,53 @@ app.delete('/api/relations/:id', async (req, res) => {
   }
 });
 
-// === 11. ENTITY STATES (Состояния сущностей) ===
+// === 11. LOCATIONS & ITEMS (Локации и Предметы) ===
 
-app.get('/api/entities/:entityId/states', async (req, res) => {
+app.get('/api/projects/:projectId/locations', async (req, res) => {
   try {
-    const { data, error } = await supabase
-      .from('entity_states')
-      .select('*')
-      .eq('entity_id', req.params.entityId)
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
-      
+    const { data, error } = await supabase.from('locations').select('*').eq('project_id', req.params.projectId);
     if (error) throw error;
-    res.json({ states: data || [] });
-  } catch (err) {
-    console.error('Ошибка загрузки состояний:', err);
-    res.status(500).json({ error: err.message });
-  }
+    res.json({ locations: data || [] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
 });
+
+app.post('/api/locations', async (req, res) => {
+  try {
+    const { project_id, name, type, description, parent_location_id } = req.body;
+    const { data, error } = await supabase.from('locations').insert([{ project_id, name, type: type || 'unknown', description: description || '', parent_location_id }]).select().single();
+    if (error) throw error;
+    res.json({ success: true, location: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.get('/api/projects/:projectId/items', async (req, res) => {
+  try {
+    const { data, error } = await supabase.from('items').select('*, characters(name), locations(name)').eq('project_id', req.params.projectId);
+    if (error) throw error;
+    res.json({ items: data || [] });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+app.post('/api/items', async (req, res) => {
+  try {
+    const { project_id, name, type, description, owner_id, location_id } = req.body;
+    const { data, error } = await supabase.from('items').insert([{ project_id, name, type: type || 'unknown', description: description || '', owner_id, location_id }]).select().single();
+    if (error) throw error;
+    res.json({ success: true, item: data });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// === 12. ENTITY STATES (Обновленный для поддержки персонажей, локаций и предметов) ===
 
 app.get('/api/projects/:projectId/states', async (req, res) => {
   try {
+    // Загружаем состояния и подтягиваем имена связанных сущностей для удобства
     const { data, error } = await supabase
       .from('entity_states')
-      .select('*')
+      .select('*, characters(name), locations(name), items(name)')
       .eq('project_id', req.params.projectId)
       .eq('status', 'active')
       .order('created_at', { ascending: false });
-      
     if (error) throw error;
     res.json({ states: data || [] });
   } catch (err) {
@@ -354,24 +373,28 @@ app.get('/api/projects/:projectId/states', async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 });
-app.post('/api/entities/:entityId/states', async (req, res) => {
+
+app.post('/api/states', async (req, res) => {
   try {
-    const { project_id, dimension, label, description, reality_contract } = req.body;
-    const { data, error } = await supabase
-      .from('entity_states')
-      .insert([{ 
-        project_id, 
-        entity_id: req.params.entityId, 
-        dimension, 
-        label, 
-        description: description || '', 
-        reality_contract: reality_contract || 'canon',
-        status: 'active',
-        confirmed: true
-      }])
-      .select()
-      .single();
-      
+    const { project_id, entity_type, entity_id, dimension, label, description, reality_contract } = req.body;
+    
+    // Формируем объект вставки в зависимости от типа сущности
+    const insertData = {
+      project_id,
+      dimension,
+      label,
+      description: description || '',
+      reality_contract: reality_contract || 'canon',
+      status: 'active',
+      confirmed: true
+    };
+
+    if (entity_type === 'character') insertData.character_id = entity_id;
+    else if (entity_type === 'location') insertData.location_id = entity_id;
+    else if (entity_type === 'item') insertData.item_id = entity_id;
+    else throw new Error('Неверный тип сущности');
+
+    const { data, error } = await supabase.from('entity_states').insert([insertData]).select().single();
     if (error) throw error;
     res.json({ success: true, state: data });
   } catch (err) {
