@@ -718,20 +718,74 @@ export default function App() {
       worldNotes.custom_notes && `Дополнительно: ${worldNotes.custom_notes}`,
     ].filter(Boolean).join('\n')
 
-       // === 1. СОБИРАЕМ СВЯЗИ ТОЛЬКО для персонажей текущей сцены ===
+         // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ВСЕХ СУЩНОСТЕЙ ДЛЯ СЦЕНЫ ===
     const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
     
-    const activeRelations = relations.filter(r => 
-      sceneCharIds.includes(r.source_id) && sceneCharIds.includes(r.target_id)
+    // 1. Состояния персонажей в сцене
+    const activeCharStates = allProjectStates.filter(s => 
+      s && s.entity_type === 'character' && s.entity_id && sceneCharIds.includes(s.entity_id)
+    )
+    // 2. Состояния локаций (задают контекст мира)
+    const activeLocStates = allProjectStates.filter(s => 
+      s && s.entity_type === 'location' && s.entity_id
+    )
+    // 3. Состояния предметов
+    const activeItemStates = allProjectStates.filter(s => 
+      s && s.entity_type === 'item' && s.entity_id
     )
 
-    let relationshipsContext = "В этой сцене нет заранее определенных связей между персонажами. Опирайся только на инструкцию автора."
-    if (activeRelations.length > 0) {
-      relationshipsContext = activeRelations.map(r => {
-        const sourceName = sceneCharacters.find(sc => sc.character_id === r.source_id)?.characters?.name || 'Неизвестно'
-        const targetName = sceneCharacters.find(sc => sc.character_id === r.target_id)?.characters?.name || 'Неизвестно'
-        return `${sourceName} ↔ ${targetName}:\n${expandRelationship(r.type, r.strength)}`
-      }).join('\n\n')
+    let statesContext = "У сущностей в этой сцене нет особых активных состояний, влияющих на контекст."
+    const hasStates = activeCharStates.length > 0 || activeLocStates.length > 0 || activeItemStates.length > 0
+
+    if (hasStates) {
+      const contextParts = []
+
+      // Форматируем персонажей
+      if (activeCharStates.length > 0) {
+        const statesByChar: Record<string, any[]> = {}
+        activeCharStates.forEach(state => {
+          const charName = sceneCharacters.find(sc => sc.character_id === state.entity_id)?.characters?.name || 'Неизвестно'
+          if (!statesByChar[charName]) statesByChar[charName] = []
+          statesByChar[charName].push(state)
+        })
+        const charText = Object.entries(statesByChar).map(([charName, states]) => {
+          const list = states.map((s: any) => {
+            if (!s) return ''
+            const dim = DIMENSION_NAMES[s.dimension] || s.dimension
+            const reality = s.reality_contract !== 'canon' ? ` [${s.reality_contract}]` : ''
+            const desc = s?.description ? `: ${s.description}` : ''
+            return `  - [${dim}] ${s.label}${reality}${desc}`
+          }).filter(Boolean).join('\n')
+          return `• ${charName}:\n${list}`
+        }).join('\n')
+        contextParts.push(`[Персонажи]\n${charText}`)
+      }
+
+      // Форматируем локации
+      if (activeLocStates.length > 0) {
+        const locText = activeLocStates.map((s: any) => {
+          if (!s) return ''
+          const dim = DIMENSION_NAMES[s.dimension] || s.dimension
+          const reality = s.reality_contract !== 'canon' ? ` [${s.reality_contract}]` : ''
+          const desc = s?.description ? `: ${s.description}` : ''
+          return `• [${dim}] ${s.label}${reality}${desc}`
+        }).filter(Boolean).join('\n')
+        contextParts.push(`[Локации]\n${locText}`)
+      }
+
+      // Форматируем предметы
+      if (activeItemStates.length > 0) {
+        const itemText = activeItemStates.map((s: any) => {
+          if (!s) return ''
+          const dim = DIMENSION_NAMES[s.dimension] || s.dimension
+          const reality = s.reality_contract !== 'canon' ? ` [${s.reality_contract}]` : ''
+          const desc = s?.description ? `: ${s.description}` : ''
+          return `• [${dim}] ${s.label}${reality}${desc}`
+        }).filter(Boolean).join('\n')
+        contextParts.push(`[Предметы]\n${itemText}`)
+      }
+
+      statesContext = contextParts.join('\n\n')
     }
 
     // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ПЕРСОНАЖЕЙ СЦЕНЫ ===
