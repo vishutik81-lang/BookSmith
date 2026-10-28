@@ -34,7 +34,7 @@ export default function App() {
     setting: '', time_period: '', rules: '',
     important_events: '', tone: '', custom_notes: ''
   })
-  const [_worldNotesSaveStatus, setWorldNotesSaveStatus] = useState('idle')
+
 
   const [showContextBefore, setShowContextBefore] = useState(false)
   const [showSceneChars, setShowSceneChars] = useState(true)
@@ -55,7 +55,6 @@ export default function App() {
   const [observations, setObservations] = useState<any[]>([])
     const [relations, setRelations] = useState<any[]>([])
   const [showObservations, setShowObservations] = useState(false)
-  const [_showAnalysisModal, _setShowAnalysisModal] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const [showExportModal, setShowExportModal] = useState(false)
@@ -154,9 +153,7 @@ export default function App() {
   const activeScene = activeChapter?.scenes.find(s => s.id === activeSceneId)
   const activeHistory = generationHistory.find(h => h.id === activeHistoryId)
 
-  const _generateUUID = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
-  })
+
 
   const handleTextChange = (newText: string) => {
     setBooks(books.map(book => {
@@ -564,7 +561,7 @@ export default function App() {
     }
   }
 
-   const openCharacterModal = async (character?: any) => {
+  const openCharacterModal = async (character?: any) => {
     if (character) {
       setEditingCharacter(character)
       setCharacterForm({
@@ -577,7 +574,6 @@ export default function App() {
         gender: character.gender || 'not_specified', 
         race: character.race || 'human'
       })
-      // Загружаем состояния для этого персонажа
       try {
         const res = await fetch(`/api/entities/${character.id}/states`)
         const data = await res.json()
@@ -592,10 +588,22 @@ export default function App() {
     }
     setShowCharacterModal(true)
   }
-    // Открыть окно состояния для персонажа (автоматически подставляет его ID)
 
+  // Открыть окно состояния для персонажа (автоматически подставляет его ID)
+  const openCharacterStateModal = () => {
+    if (!editingCharacter) return;
+    setNewStateForm({
+      entity_type: 'character',
+      entity_id: editingCharacter.id,
+      dimension: 'physical',
+      label: '',
+      description: '',
+      reality_contract: 'canon'
+    });
+    setShowAddStateModal(true);
+  }
 
-    // Открыть окно состояния для локации или предмета из вкладки "Мир"
+  // Открыть окно состояния для локации или предмета из вкладки "Мир"
   const openWorldEntityStateModal = (type: 'location' | 'item', id: string, name: string) => {
     setTargetEntity({ type, id, name });
     setNewStateForm({
@@ -608,7 +616,6 @@ export default function App() {
     });
     setShowAddStateModal(true);
   }
-
     // ==========================================================
   // === ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ (Для ИИ и для Интерфейса) ===
   // ==========================================================
@@ -635,8 +642,7 @@ export default function App() {
   // 3. Длинная инструкция для ИИ (Для промпта)
 
 
-    return `• [${typeName}] [Сила: ${strength}/10 — ${level}]\n  → Как отражать в тексте: ${behaviorHint}`
-  }
+ 
 
   // 4. Творческая свобода (Для промпта)
   const getLatitudeInstruction = () => {
@@ -1062,8 +1068,8 @@ ${getPolicyInstruction()}
                     <label style={{ ...labelStyle, marginBottom: 0, display: 'flex', alignItems: 'center', gap: '6px' }}>
                       📜 Активные состояния
                     </label>
-                    <button 
-                      onClick={() => setShowAddStateModal(true)} 
+                                        <button 
+                      onClick={openCharacterStateModal} 
                       style={{ padding: '4px 8px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem' }}
                     >
                       + Добавить
