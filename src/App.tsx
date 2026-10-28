@@ -107,15 +107,15 @@ export default function App() {
         const data = await res.json()
         if (data.projects) {
           const loadedBooks = data.projects.map((p: any) => ({
-            id: p.id, title: p.title, status: 'В работе',
-            genre: p.genre || 'Не указан', subgenre: p.subgenre || '',
-            chapters: (p.chapters || []).map((ch: any) => ({
-              id: ch.id, title: ch.title,
-              scenes: (ch.scenes || []).map((s: any) => ({
-                id: s.id, title: s.title, text: s.body || '', context_before: s.context_before || ''
-              }))
+          id: p.id, title: p.title, status: 'В работе',
+          genre: p.genre || 'Не указан', subgenre: p.subgenre || '',
+          chapters: (p.chapters || []).map((c: any) => ({
+            id: c.id, title: c.title,
+            scenes: (c.scenes || []).map((s: any) => ({
+              id: s.id, title: s.title, text: s.body || '', context_before: s.context_before || ''
             }))
           }))
+        }))
           setBooks(loadedBooks)
         }
       } catch (error) { console.error('Ошибка загрузки книг:', error) }
