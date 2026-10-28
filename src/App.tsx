@@ -502,7 +502,7 @@ export default function App() {
     try {
       const res = await fetch(`/api/characters/${characterId}`, { method: 'DELETE' })
       const data = await res.json()
-      if (data.success) setCharacters(characters.filter(c => c.id !== characterId))
+      if (data.success) setCharacters(characters.filter((c: any) => c.id !== characterId))
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
@@ -922,8 +922,8 @@ ${getPolicyInstruction()}
   }
 
   const countWords = (text: string) => text ? text.split(/\s+/).filter(w => w.length > 0).length : 0
-  const getBookWordCount = () => { let t = 0; activeBook?.chapters.forEach(ch => ch.scenes.forEach(s => t += countWords(s.text))); return t }
-  const getChapterWordCount = () => { let t = 0; activeChapter?.scenes.forEach(s => t += countWords(s.text)); return t }
+  const getBookWordCount = () => { let t = 0; activeBook?.chapters.forEach((ch: any) => ch.scenes.forEach((s: any) => t += countWords(s.text))); return t }
+  const getChapterWordCount = () => { let t = 0; activeChapter?.scenes.forEach((s: any) => t += countWords(s.text)); return t }
 
   const handleExport = () => {
     if (!activeBook) return
@@ -946,7 +946,7 @@ ${getPolicyInstruction()}
 
   const inputStyle = { width: '100%', padding: '8px', border: '1px solid #dcd3c1', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' as const, background: '#fdfbf7', fontFamily: 'Georgia, serif' }
   const labelStyle = { display: 'block', marginBottom: '4px', fontWeight: 'bold', color: '#5c3a21', fontSize: '0.8rem' }
-  const availableCharactersForScene = characters.filter(c => !sceneCharacters.some(sc => sc.character_id === c.id))
+  const availableCharactersForScene = characters.filter((c: any) => !sceneCharacters.some((sc: any) => sc.character_id === c.id))
 
   return (
     <div style={{ minHeight: '100vh', background: '#fdfbf7', fontFamily: 'Georgia, serif', color: '#2c241b' }}>
