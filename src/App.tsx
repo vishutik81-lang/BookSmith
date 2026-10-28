@@ -69,6 +69,8 @@ export default function App() {
   const [entityStates, setEntityStates] = useState<any[]>([]) // Для модального окна персонажа
   const [allProjectStates, setAllProjectStates] = useState<any[]>([]) // Для промпта ИИ
   const [showAddStateModal, setShowAddStateModal] = useState(false)
+    const [targetEntity, setTargetEntity] = useState<{ type: 'location' | 'item', id: string, name: string } | null>(null)
+
     const [newStateForm, setNewStateForm] = useState({ 
     entity_type: 'character' as 'character' | 'location' | 'item',
     entity_id: '',
