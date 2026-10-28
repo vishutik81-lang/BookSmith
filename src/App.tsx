@@ -175,6 +175,48 @@ export default function App() {
           is_primary: mediaForm.is_primary 
         })
       })
+        const handleGenerateImage = async (projectId: string, entityId: string, entityType: string) => {
+    const promptToUse = mediaForm.prompt_description || `portrait of a character, high quality, detailed, fantasy style`
+    
+    // Показываем пользователю, что процесс идет
+    const originalBtnText = "✨ Сгенерировать"
+    // (В реальном UI здесь можно добавить состояние isGenerating, но для простоты используем alert/confirm или просто ждем)
+    alert('⏳ Запускаю генерацию через Perchance. Это может занять 15-30 секунд. Пожалуйста, подождите...')
+    
+    try {
+      const res = await fetch('/api/generate-image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: promptToUse })
+      })
+      const data = await res.json()
+      
+      if (data.success && data.imageUrl) {
+        // Автоматически сохраняем полученное изображение
+        const saveRes = await fetch('/api/media', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            project_id: projectId, 
+            entity_id: entityId, 
+            entity_type: entityType, 
+            url: data.imageUrl, 
+            prompt_description: promptToUse, 
+            is_primary: true 
+          })
+        })
+        const saveData = await saveRes.json()
+        if (saveData.success) {
+          setEntityMedia([saveData.media, ...entityMedia])
+          alert('✅ Изображение успешно сгенерировано и сохранено!')
+        }
+      } else {
+        alert('❌ Ошибка генерации: ' + (data.error || 'Неизвестная ошибка'))
+      }
+    } catch (error: any) {
+      alert('❌ Ошибка сети: ' + error.message)
+    }
+  }
       const data = await res.json()
       if (data.success) {
         setEntityMedia([data.media, ...entityMedia])
@@ -1159,12 +1201,12 @@ ${getPolicyInstruction()}
          >
            💾 Сохранить референс
          </button>
-         <button 
-           onClick={() => alert('Функция генерации через Perchance будет подключена на следующем шаге!')}
-           style={{ flex: 1, padding: '6px', background: '#fdfbf7', color: '#7a4b3a', border: '1px solid #7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
-         >
-           ✨ Сгенерировать
-         </button>
+       <button 
+  onClick={() => handleGenerateImage(activeBookId!, editingCharacter.id, 'character')}
+  style={{ flex: 1, padding: '6px', background: '#fdfbf7', color: '#7a4b3a', border: '1px solid #7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+>
+  ✨ Сгенерировать
+</button>
        </div>
      </div>
    </div>
