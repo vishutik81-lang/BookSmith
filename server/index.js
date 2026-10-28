@@ -5,6 +5,7 @@ import { dirname, join } from 'path';
 import { supabase } from './supabase.js';
 import { generateText, AVAILABLE_MODELS } from './openrouter.js';
    import { testPerchanceConnection } from './perchance.js';
+   import { testPerchanceConnection, generateImage } from './perchance.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -400,6 +401,20 @@ app.post('/api/media', async (req, res) => {
     res.status(500).json({ error: err.message }); 
   }
 });
+
+   // === ЭНДПОИНТ ГЕНЕРАЦИИ ИЗОБРАЖЕНИЯ ЧЕРЕЗ PERCHANCE ===
+   app.post('/api/generate-image', async (req, res) => {
+     try {
+       const { prompt } = req.body;
+       if (!prompt) return res.status(400).json({ error: 'Промпт не указан' });
+       
+       const result = await generateImage(prompt);
+       res.json(result);
+     } catch (err) {
+       console.error('Ошибка в /api/generate-image:', err.message);
+       res.status(500).json({ error: err.message });
+     }
+   });
 
 // 13. Catch-all for React (ДОЛЖЕН БЫТЬ В САМОМ КОНЦЕ)
 app.get('*', (req, res) => {
