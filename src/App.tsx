@@ -464,19 +464,7 @@ export default function App() {
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
 
-  const _handleSaveWorldNotes = async () => {
-    if (!activeBookId) return
-    setWorldNotesSaveStatus('saving')
-    try {
-      const res = await fetch(`/api/projects/${activeBookId}/world-notes`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(worldNotes)
-      })
-      const data = await res.json()
-      if (data.notes) { setWorldNotesSaveStatus('saved'); setTimeout(() => setWorldNotesSaveStatus('idle'), 2000) }
-      else { alert('Ошибка: ' + data.error); setWorldNotesSaveStatus('idle') }
-    } catch (error: any) { alert('Ошибка: ' + error.message); setWorldNotesSaveStatus('idle') }
-  }
-
+ 
   const loadModels = async () => {
     try {
       const res = await fetch('/api/models')
@@ -605,18 +593,7 @@ export default function App() {
     setShowCharacterModal(true)
   }
     // Открыть окно состояния для персонажа (автоматически подставляет его ID)
-  const _openCharacterStateModal = () => {
-    if (!editingCharacter) return;
-    setNewStateForm({
-      entity_type: 'character',
-      entity_id: editingCharacter.id,
-      dimension: 'physical',
-      label: '',
-      description: '',
-      reality_contract: 'canon'
-    });
-    setShowAddStateModal(true);
-  }
+
 
     // Открыть окно состояния для локации или предмета из вкладки "Мир"
   const openWorldEntityStateModal = (type: 'location' | 'item', id: string, name: string) => {
@@ -656,30 +633,7 @@ export default function App() {
   }
 
   // 3. Длинная инструкция для ИИ (Для промпта)
-  const _expandRelationship = (type: string, strength: number) => {
-    const level = strength <= 3 ? "Начальная/Слабая" : strength <= 6 ? "Устойчивая/Средняя" : strength <= 8 ? "Глубокая/Сильная" : "Фатальная/Экстремальная"
-    const typeName = getRelationTypeName(type)
 
-    let behaviorHint = ""
-    if (type === 'enemy' || type === 'betrayed') {
-      behaviorHint = strength >= 7 
-        ? "Тон предельно холодный, язвительный или агрессивный. Физическая дистанция максимальна. Любые попытки сближения встречают жесткий отпор." 
-        : "Скрытое недоверие, колкие замечания, постоянная проверка на прочность."
-    } else if (type === 'romantic' || type === 'secret_lover') {
-      behaviorHint = strength >= 7 
-        ? "Скрытая нежность, задерживающиеся взгляды, интуитивное понимание. Физический контакт осторожен, но крайне значим." 
-        : "Осторожное любопытство, легкий флирт, желание узнать человека лучше, но с оглядкой."
-    } else if (type === 'ally' || type === 'childhood_friend') {
-      behaviorHint = strength >= 7 
-        ? "Безоговорочное доверие, готовность пойти на риск ради другого, интуитивное понимание с полуслова." 
-        : "Взаимовыгодное сотрудничество, вежливость, базовое уважение."
-    } else if (type === 'rival') {
-      behaviorHint = strength >= 7 
-        ? "Ожесточенная борьба, желание доказать превосходство любой ценой." 
-        : "Профессиональная конкуренция, подтекст в диалогах, взаимное уважение сквозь соперничество."
-    } else {
-      behaviorHint = `Учитывайте уровень связи (${strength}/10) при описании их взаимодействия: ${level}.`
-    }
 
     return `• [${typeName}] [Сила: ${strength}/10 — ${level}]\n  → Как отражать в тексте: ${behaviorHint}`
   }
@@ -763,7 +717,7 @@ export default function App() {
           if (!statesByChar[charName]) statesByChar[charName] = []
           statesByChar[charName].push(state)
         })
-        const charText = Object.entries(statesByChar).map(([charName, states]) => {
+              const charText = Object.entries(statesByChar).map(([charName, states]: [string, any[]]) => {
           const list = states.map((s: any) => {
             if (!s) return ''
             const dim = DIMENSION_NAMES[s.dimension] || s.dimension
