@@ -1559,7 +1559,7 @@ ${getPolicyInstruction()}
         </div>
       )}
 
-      {showGraph && activeBookId && (
+           {showGraph && activeBookId && (
         <CharacterGraph projectId={activeBookId} onClose={() => setShowGraph(false)} />
       )}
 
@@ -1567,3 +1567,5 @@ ${getPolicyInstruction()}
     </div>
   )
 }
+
+export default App
