@@ -34,7 +34,7 @@ export default function App() {
     setting: '', time_period: '', rules: '',
     important_events: '', tone: '', custom_notes: ''
   })
-  const [worldNotesSaveStatus, setWorldNotesSaveStatus] = useState('idle')
+  const [_worldNotesSaveStatus, setWorldNotesSaveStatus] = useState('idle')
 
   const [showContextBefore, setShowContextBefore] = useState(false)
   const [showSceneChars, setShowSceneChars] = useState(true)
@@ -55,7 +55,7 @@ export default function App() {
   const [observations, setObservations] = useState<any[]>([])
     const [relations, setRelations] = useState<any[]>([])
   const [showObservations, setShowObservations] = useState(false)
-  const [showAnalysisModal, setShowAnalysisModal] = useState(false)
+  const [_showAnalysisModal, _setShowAnalysisModal] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const [showExportModal, setShowExportModal] = useState(false)
@@ -154,7 +154,7 @@ export default function App() {
   const activeScene = activeChapter?.scenes.find(s => s.id === activeSceneId)
   const activeHistory = generationHistory.find(h => h.id === activeHistoryId)
 
-  const generateUUID = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+  const _generateUUID = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
     const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
   })
 
@@ -464,7 +464,7 @@ export default function App() {
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
 
-  const handleSaveWorldNotes = async () => {
+  const _handleSaveWorldNotes = async () => {
     if (!activeBookId) return
     setWorldNotesSaveStatus('saving')
     try {
@@ -605,7 +605,7 @@ export default function App() {
     setShowCharacterModal(true)
   }
     // Открыть окно состояния для персонажа (автоматически подставляет его ID)
-  const openCharacterStateModal = () => {
+  const _openCharacterStateModal = () => {
     if (!editingCharacter) return;
     setNewStateForm({
       entity_type: 'character',
@@ -656,7 +656,7 @@ export default function App() {
   }
 
   // 3. Длинная инструкция для ИИ (Для промпта)
-  const expandRelationship = (type: string, strength: number) => {
+  const _expandRelationship = (type: string, strength: number) => {
     const level = strength <= 3 ? "Начальная/Слабая" : strength <= 6 ? "Устойчивая/Средняя" : strength <= 8 ? "Глубокая/Сильная" : "Фатальная/Экстремальная"
     const typeName = getRelationTypeName(type)
 
