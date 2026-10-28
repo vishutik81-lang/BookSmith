@@ -616,8 +616,9 @@ export default function App() {
     setShowAddStateModal(true);
   }
 
-  // Открыть окно состояния для локации или предмета из вкладки "Мир"
-  const openWorldEntityStateModal = (type: 'location' | 'item', id: string) => {
+    // Открыть окно состояния для локации или предмета из вкладки "Мир"
+  const openWorldEntityStateModal = (type: 'location' | 'item', id: string, name: string) => {
+    setTargetEntity({ type, id, name });
     setNewStateForm({
       entity_type: type,
       entity_id: id,
@@ -1185,11 +1186,11 @@ ${getPolicyInstruction()}
                         </div>
                         {/* ВОТ НОВАЯ КНОПКА ДЛЯ ЛОКАЦИИ */}
                         <button 
-                          onClick={() => openWorldEntityStateModal('location', loc.id)}
-                          style={{ padding: '4px 8px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                        >
-                          📜 Состояния
-                        </button>
+  onClick={() => openWorldEntityStateModal('location', loc.id, loc.name)}
+  style={{ padding: '4px 8px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+>
+  📜 Состояния
+</button>
                       </div>
                     </div>
                   );
@@ -1220,11 +1221,11 @@ ${getPolicyInstruction()}
                         </div>
                         {/* ВОТ НОВАЯ КНОПКА ДЛЯ ПРЕДМЕТА */}
                         <button 
-                          onClick={() => openWorldEntityStateModal('item', item.id)}
-                          style={{ padding: '4px 8px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
-                        >
-                          📜 Состояния
-                        </button>
+  onClick={() => openWorldEntityStateModal('item', item.id, item.name)}
+  style={{ padding: '4px 8px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.75rem', whiteSpace: 'nowrap' }}
+>
+  📜 Состояния
+</button>
                       </div>
                     </div>
                   );
@@ -1569,7 +1570,7 @@ ${getPolicyInstruction()}
         </div>
       )}
 
-      {/* МОДАЛЬНОЕ ОКНО 2: ТОЛЬКО ДЛЯ ЛОКАЦИЙ И ПРЕДМЕТОВ */}
+            {/* МОДАЛЬНОЕ ОКНО 2: ТОЛЬКО ДЛЯ ЛОКАЦИЙ И ПРЕДМЕТОВ */}
       {showAddStateModal && targetEntity && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 5000 }} onClick={() => { setShowAddStateModal(false); setTargetEntity(null); }}>
           <div onClick={(e) => e.stopPropagation()} style={{ background: '#fdfbf7', padding: '24px', borderRadius: '10px', width: 'min(450px, 90vw)', boxShadow: '0 10px 30px rgba(0,0,0,0.3)' }}>
