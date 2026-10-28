@@ -98,6 +98,8 @@ export default function App() {
     equipment: "Свойства/Содержимое", // например: содержит тайник
     custom: "Свое"
   }
+    // Объединяем их для обратной совместимости со старым кодом в App.tsx
+  const DIMENSION_NAMES = { ...CHAR_DIMENSIONS, ...WORLD_DIMENSIONS }
 
   useEffect(() => {
     const loadBooks = async () => {
@@ -202,7 +204,7 @@ export default function App() {
         const newScene = { id: data.scene.id, title: data.scene.title, text: data.scene.body || '', context_before: '' }
         setBooks(books.map(b => {
           if (b.id !== activeBookId) return b
-          return { ...b, chapters: b.chapters.map(c => c.id === chapterId ? { ...c, scenes: [...c.scenes, newScene] } : c) }
+          return { ...b, chapters: b.chapters.map((c: any) => c.id === chapterId ? { ...c, scenes: [...c.scenes, newScene] } : c) }
         }))
         setActiveChapterId(chapterId); setActiveSceneId(newScene.id)
       } else { alert('Ошибка: ' + data.error) }
@@ -503,7 +505,7 @@ export default function App() {
       const res = await fetch(url, { method: editingCharacter ? 'PATCH' : 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(characterForm) })
       const data = await res.json()
       if (data.character) {
-        if (editingCharacter) setCharacters(characters.map(c => c.id === data.character.id ? data.character : c))
+        if (editingCharacter) setCharacters(characters.map((c: any) => c.id === data.character.id ? data.character : c))
         else setCharacters([...characters, data.character])
         setShowCharacterModal(false); setEditingCharacter(null); setCharacterForm({ name: '', description: '', role: 'secondary', appearance: '', personality: '', sexual_orientation: '', gender: 'not_specified', race: 'human' })
       } else { alert('Ошибка: ' + data.error) }
@@ -566,8 +568,8 @@ export default function App() {
       const res = await fetch(`/api/states/${stateId}`, { method: 'DELETE' })
       const data = await res.json()
       if (data.success) {
-        setEntityStates(entityStates.filter(s => s.id !== stateId))
-                setAllProjectStates(allProjectStates.filter(s => s.id !== stateId))
+        setEntityStates(entityStates.filter((s: any) => s.id !== stateId))
+                setAllProjectStates(allProjectStates.filter((s: any) => s.id !== stateId))
       }
     } catch (error: any) {
       alert('Ошибка: ' + error.message)
@@ -729,19 +731,21 @@ export default function App() {
       worldNotes.custom_notes && `Дополнительно: ${worldNotes.custom_notes}`,
     ].filter(Boolean).join('\n')
 
+        // Объявляем переменную, чтобы она не была undefined
+    let relationshipsContext = "В этой сцене нет заранее определенных связей между персонажами. Опирайся только на инструкцию автора."
          // === СОБИРАЕМ АКТИВНЫЕ СОСТОЯНИЯ ВСЕХ СУЩНОСТЕЙ ДЛЯ СЦЕНЫ ===
     const sceneCharIds = sceneCharacters.map(sc => sc.character_id)
     
     // 1. Состояния персонажей в сцене
-    const activeCharStates = allProjectStates.filter(s => 
+    const activeCharStates = allProjectStates.filter((s: any) => 
       s && s.entity_type === 'character' && s.entity_id && sceneCharIds.includes(s.entity_id)
     )
     // 2. Состояния локаций (задают контекст мира)
-    const activeLocStates = allProjectStates.filter(s => 
+    const activeLocStates = allProjectStates.filter((s: any) => 
       s && s.entity_type === 'location' && s.entity_id
     )
     // 3. Состояния предметов
-    const activeItemStates = allProjectStates.filter(s => 
+    const activeItemStates = allProjectStates.filter((s: any) => 
       s && s.entity_type === 'item' && s.entity_id
     )
 
@@ -1371,7 +1375,7 @@ ${getPolicyInstruction()}
                             <div style={{ fontSize: '0.8rem', color: '#7a6b5d', marginBottom: '8px' }}>Выберите:</div>
                             {availableCharactersForScene.length === 0 ? <div style={{ fontSize: '0.85rem', color: '#7a6b5d', fontStyle: 'italic' }}>Все добавлены.</div> : (
                               <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', maxHeight: '200px', overflowY: 'auto' }}>
-                                {availableCharactersForScene.map(c => (
+                                {availableCharactersForScene.map((c: any) => (
                                   <button key={c.id} onClick={() => addCharacterToScene(c.id, 'present')} style={{ padding: '6px 10px', background: '#fdfbf7', border: '1px solid #dcd3c1', borderRadius: '4px', cursor: 'pointer', textAlign: 'left', fontSize: '0.85rem' }}>+ {c.name}</button>
                                 ))}
                               </div>
