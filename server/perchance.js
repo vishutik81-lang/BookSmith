@@ -13,7 +13,6 @@ export async function testPerchanceConnection() {
       ]
     });
     
-    // Создаем контекст с реалистичными параметрами обычного пользователя
     const context = await browser.newContext({
       viewport: { width: 1280, height: 800 },
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
@@ -21,39 +20,34 @@ export async function testPerchanceConnection() {
     
     const page = await context.newPage();
     
-    // Маскировка: скрываем флаг webdriver, который выдает бота
+    // Маскировка: скрываем флаг webdriver
     await page.addInitScript(() => {
       Object.defineProperty(navigator, 'webdriver', { get: () => false });
     });
 
     console.log('🌐 Заходим на Perchance...');
     
-    // waitUntil: 'networkidle' критически важен! Он заставляет браузер ждать, 
-    // пока Cloudflare не завершит свою 5-секундную проверку и не сделает редирект.
+    // ИСПРАВЛЕНИЕ: используем 'domcontentloaded' вместо 'networkidle'
     await page.goto('https://perchance.org/ai-text-to-image-generator', { 
-      waitUntil: 'networkidle', 
-      timeout: 90000 // 90 секунд на случай медленной проверки
+      waitUntil: 'domcontentloaded', 
+      timeout: 60000 
     });
+    
+    console.log('⏳ DOM загружен. Ожидаем прохождения проверки Cloudflare (8 секунд)...');
+    // Даем время скрипту Cloudflare завершить проверку и сделать редирект
+    await new Promise(resolve => setTimeout(resolve, 8000));
     
     const title = await page.title();
     console.log('✅ Текущий заголовок страницы:', title);
     
-    // На всякий случай, если защита все еще держит, даем 5 секунд на авто-редирект
-    if (title.includes('Just a moment') || title.includes('Attention Required')) {
-      console.log('⏳ Обнаружена защита Cloudflare. Ожидаем автоматического прохождения...');
-      await new Promise(resolve => setTimeout(resolve, 5000));
-      const newTitle = await page.title();
-      console.log('✅ Заголовок после ожидания:', newTitle);
-    }
-    
-    // Проверяем, появилось ли поле для ввода промпта
+    // Проверяем, появилось ли поле для ввода промпта (основной индикатор успеха)
     const promptBox = await page.$('textarea');
     const hasPromptBox = !!promptBox;
     console.log('✅ Поле для ввода промпта найдено:', hasPromptBox);
     
     return { 
       success: true, 
-      title: await page.title(), 
+      title: title, 
       hasPromptBox 
     };
   } catch (error) {
