@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { supabase } from './supabase.js';
 import { generateText, AVAILABLE_MODELS } from './openrouter.js';
+   import { testPerchanceConnection } from './perchance.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -334,6 +335,13 @@ app.delete('/api/states/:id', async (req, res) => {
     if (error) throw error;
     res.json({ success: true });
   } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
+// === ТЕСТОВЫЙ ЭНДПОИНТ ДЛЯ PERCHANCE ===
+app.get('/api/test-perchance', async (req, res) => {
+  console.log('🚀 Получен запрос на тест Perchance...');
+  const result = await testPerchanceConnection();
+  res.json(result);
 });
 
 // 13. Catch-all for React (ДОЛЖЕН БЫТЬ В САМОМ КОНЦЕ)
