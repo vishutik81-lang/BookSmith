@@ -12,6 +12,8 @@ export default function App() {
   const [activeChapterId, setActiveChapterId] = useState<string | null>(null)
   const [activeSceneId, setActiveSceneId] = useState<string | null>(null)
 
+     const [entityMedia, setEntityMedia] = useState<any[]>([])
+   const [mediaForm, setMediaForm] = useState({ url: '', prompt_description: '', is_primary: true })
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
   const [editingBookId, setEditingBookId] = useState<string | null>(null)
@@ -147,6 +149,31 @@ export default function App() {
       console.error('Ошибка загрузки состояний проекта:', error)
     }
   }
+     const loadEntityMedia = async (entityId: string, entityType: string) => {
+     try {
+       const res = await fetch(`/api/media/${entityId}?entity_type=${entityType}`)
+       const data = await res.json()
+       if (data.media) setEntityMedia(data.media)
+     } catch (error) { console.error('Ошибка загрузки медиа:', error) }
+   }
+
+   const handleSaveMedia = async (projectId: string, entityId: string, entityType: string) => {
+     if (!mediaForm.url.trim() && !mediaForm.prompt_description.trim()) return
+     try {
+       const res = await fetch('/api/media', {
+         method: 'POST',
+         headers: { 'Content-Type': 'application/json' },
+         body: JSON.stringify({ project_id: projectId, entity_id: entityId, entity_type, ...mediaForm })
+       })
+       const data = await res.json()
+       if (data.success) {
+         setEntityMedia([data.media, ...entityMedia])
+         setMediaForm({ url: '', prompt_description: '', is_primary: true }) // Сброс формы
+       } else {
+         alert('Ошибка: ' + data.error)
+       }
+     } catch (error: any) { alert('Ошибка: ' + error.message) }
+   }
 
   const activeBook = books.find(b => b.id === activeBookId)
   const activeChapter = activeBook?.chapters.find(c => c.id === activeChapterId)
@@ -759,6 +786,22 @@ export default function App() {
         }).filter(Boolean).join('\n')
         contextParts.push(`[Предметы]\n${itemText}`)
       }
+      
+            // Форматируем медиа-описания (ИИ читает их, если они есть)
+      const activeMedia = allProjectStates // Используем тот же фильтр, что и для состояний, или загружаем отдельно. Для MVP возьмем из entityMedia, если они загружены, или сделаем отдельный запрос.
+      // Для простоты MVP: добавим описание из entityMedia, если оно есть для персонажей сцены
+      
+      const mediaContextParts = []
+      sceneCharacters.forEach((sc: any) => {
+        const charMedia = entityMedia.find((m: any) => m.entity_id === sc.character_id && m.prompt_description)
+        if (charMedia) {
+          mediaContextParts.push(`• ${sc.characters?.name}: [Визуальный референс ИИ] ${charMedia.prompt_description}`)
+        }
+      })
+
+      if (mediaContextParts.length > 0) {
+        contextParts.push(`[ВИЗУАЛЬНЫЙ КОНТЕКСТ ДЛЯ ИИ]\n${mediaContextParts.join('\n')}\n→ Инструкция: Используй эти визуальные детали при описании внешности, если это уместно в сцене. Если URL изображения предоставлен, считай его каноном.`)
+      }
 
       statesContext = contextParts.join('\n\n')
     }
@@ -1061,6 +1104,60 @@ ${getPolicyInstruction()}
                   );
                 })()}
                 {/* === КОНЕЦ БЛОКА ОТНОШЕНИЙ === */}
+
+                   {/* === БЛОК: ИЗОБРАЖЕНИЯ СУЩНОСТИ === */}
+   <div style={{ marginBottom: '15px', padding: '12px', background: '#f5f0e6', borderRadius: '6px', border: '1px solid #dcd3c1' }}>
+     <label style={{ ...labelStyle, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+       🖼️ Визуальный референс (ИИ использует описание)
+     </label>
+     
+     {/* Список уже добавленных изображений */}
+     {entityMedia.length > 0 && (
+       <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+         {entityMedia.map((m: any) => (
+           <div key={m.id} style={{ minWidth: '60px', textAlign: 'center' }}>
+             <div style={{ width: '60px', height: '60px', background: '#dcd3c1', borderRadius: '4px', overflow: 'hidden', border: m.is_primary ? '2px solid #7a4b3a' : '1px solid #bfaea1' }}>
+               {m.url ? <img src={m.url} alt="ref" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '20px' }}>📝</div>}
+             </div>
+             {m.is_primary && <div style={{ fontSize: '0.6rem', color: '#7a4b3a', marginTop: '2px' }}>Главное</div>}
+           </div>
+         ))}
+       </div>
+     )}
+
+     {/* Форма добавления нового */}
+     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+       <input 
+         type="text" 
+         placeholder="URL изображения (или оставьте пустым для текста)" 
+         value={mediaForm.url}
+         onChange={(e) => setMediaForm({...mediaForm, url: e.target.value})}
+         style={{ ...inputStyle, fontSize: '0.8rem' }}
+       />
+       <textarea 
+         placeholder="Описание для ИИ (например: 'Высокий эльф с серебряными волосами и шрамом на щеке'). ИИ прочтет это, даже если картинки нет." 
+         value={mediaForm.prompt_description}
+         onChange={(e) => setMediaForm({...mediaForm, prompt_description: e.target.value})}
+         style={{ ...inputStyle, minHeight: '50px', fontSize: '0.8rem' }}
+       />
+       <div style={{ display: 'flex', gap: '8px' }}>
+         <button 
+           onClick={() => handleSaveMedia(activeBookId!, editingCharacter.id, 'character')} 
+           disabled={!mediaForm.url.trim() && !mediaForm.prompt_description.trim()}
+           style={{ flex: 1, padding: '6px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+         >
+           💾 Сохранить референс
+         </button>
+         <button 
+           onClick={() => alert('Функция генерации через Perchance будет подключена на следующем шаге!')}
+           style={{ flex: 1, padding: '6px', background: '#fdfbf7', color: '#7a4b3a', border: '1px solid #7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
+         >
+           ✨ Сгенерировать
+         </button>
+       </div>
+     </div>
+   </div>
+   {/* === КОНЕЦ БЛОКА ИЗОБРАЖЕНИЙ === */}
 
                                 {/* === БЛОК: СОСТОЯНИЯ ПЕРСОНАЖА (STATE TIMELINE MVP) === */}
                 <div style={{ marginBottom: '15px', padding: '12px', background: '#f5f0e6', borderRadius: '6px', border: '1px solid #dcd3c1' }}>
