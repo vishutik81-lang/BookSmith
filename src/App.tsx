@@ -53,7 +53,6 @@ export default function App() {
   const [observations, setObservations] = useState<any[]>([])
     const [relations, setRelations] = useState<any[]>([])
   const [showObservations, setShowObservations] = useState(false)
-  const [showAnalysisModal, setShowAnalysisModal] = useState(false)
   const [isAnalyzing, setIsAnalyzing] = useState(false)
 
   const [showExportModal, setShowExportModal] = useState(false)
@@ -133,32 +132,28 @@ export default function App() {
     }
   }
 
-  const activeBook = books.find(b => b.id === activeBookId)
-  const activeChapter = activeBook?.chapters.find(c => c.id === activeChapterId)
-  const activeScene = activeChapter?.scenes.find(s => s.id === activeSceneId)
+  const activeBook = books.find((b: any) => b.id === activeBookId)
+  const activeChapter = activeBook?.chapters.find((c: any) => c.id === activeChapterId)
+  const activeScene = activeChapter?.scenes.find((s: any) => s.id === activeSceneId)
   const activeHistory = generationHistory.find(h => h.id === activeHistoryId)
 
-  const generateUUID = () => 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-    const r = Math.random() * 16 | 0; return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16)
-  })
-
   const handleTextChange = (newText: string) => {
-    setBooks(books.map(book => {
+    setBooks(books.map((book: any) => {
       if (book.id !== activeBookId) return book
-      return { ...book, chapters: book.chapters.map(chapter => {
+      return { ...book, chapters: book.chapters.map((chapter: any) => {
         if (chapter.id !== activeChapterId) return chapter
-        return { ...chapter, scenes: chapter.scenes.map(scene => scene.id === activeSceneId ? { ...scene, text: newText } : scene) }
+        return { ...chapter, scenes: chapter.scenes.map((scene: any) => scene.id === activeSceneId ? { ...scene, text: newText } : scene) }
       })}
     }))
     if (saveStatus === 'saved') setSaveStatus('idle')
   }
 
   const handleContextBeforeChange = (newContext: string) => {
-    setBooks(books.map(book => {
+    setBooks(books.map((book: any) => {
       if (book.id !== activeBookId) return book
-      return { ...book, chapters: book.chapters.map(chapter => {
+      return { ...book, chapters: book.chapters.map((chapter: any) => {
         if (chapter.id !== activeChapterId) return chapter
-        return { ...chapter, scenes: chapter.scenes.map(scene => scene.id === activeSceneId ? { ...scene, context_before: newContext } : scene) }
+        return { ...chapter, scenes: chapter.scenes.map((scene: any) => scene.id === activeSceneId ? { ...scene, context_before: newContext } : scene) }
       })}
     }))
   }
@@ -172,7 +167,7 @@ export default function App() {
       const data = await res.json()
       if (data.success) {
         const newChapter = { id: data.chapter.id, title: data.chapter.title, scenes: [] }
-        setBooks(books.map(b => b.id === activeBookId ? { ...b, chapters: [...b.chapters, newChapter] } : b))
+        setBooks(books.map((b: any) => b.id === activeBookId ? { ...b, chapters: [...b.chapters, newChapter] } : b))
       } else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка соединения: ' + error.message) }
   }
@@ -186,9 +181,9 @@ export default function App() {
       const data = await res.json()
       if (data.success) {
         const newScene = { id: data.scene.id, title: data.scene.title, text: data.scene.body || '', context_before: '' }
-        setBooks(books.map(b => {
+        setBooks(books.map((b: any) => {
           if (b.id !== activeBookId) return b
-          return { ...b, chapters: b.chapters.map(c => c.id === chapterId ? { ...c, scenes: [...c.scenes, newScene] } : c) }
+          return { ...b, chapters: b.chapters.map((c: any) => c.id === chapterId ? { ...c, scenes: [...c.scenes, newScene] } : c) }
         }))
         setActiveChapterId(chapterId); setActiveSceneId(newScene.id)
       } else { alert('Ошибка: ' + data.error) }
@@ -293,7 +288,7 @@ export default function App() {
     try {
       const res = await fetch(`/api/chapters/${chapterId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newTitle }) })
       const data = await res.json()
-      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map(ch => ch.id === chapterId ? { ...ch, title: newTitle } : ch) })); setEditingChapterId(null) }
+      if (data.success) { setBooks(books.map((book: any) => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map((ch: any) => ch.id === chapterId ? { ...ch, title: newTitle } : ch) })); setEditingChapterId(null) }
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
@@ -303,7 +298,7 @@ export default function App() {
     try {
       const res = await fetch(`/api/scenes/title/${sceneId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newTitle }) })
       const data = await res.json()
-      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map(ch => ({ ...ch, scenes: ch.scenes.map(s => s.id === sceneId ? { ...s, title: newTitle } : s) })) })); setEditingSceneId(null) }
+      if (data.success) { setBooks(books.map((book: any) => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map((ch: any) => ({ ...ch, scenes: ch.scenes.map((s: any) => s.id === sceneId ? { ...s, title: newTitle } : s) })) })); setEditingSceneId(null) }
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
@@ -317,7 +312,7 @@ export default function App() {
       })
       const data = await res.json()
       if (data.success) {
-        setBooks(books.map(b => b.id === activeBookId ? { ...b, title: bookMetaForm.title, genre: bookMetaForm.genre, subgenre: bookMetaForm.subgenre } : b))
+        setBooks(books.map((b: any) => b.id === activeBookId ? { ...b, title: bookMetaForm.title, genre: bookMetaForm.genre, subgenre: bookMetaForm.subgenre } : b))
         setEditingBookId(null)
       } else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
@@ -833,15 +828,15 @@ ${getPolicyInstruction()}
   }
 
   const countWords = (text: string) => text ? text.split(/\s+/).filter(w => w.length > 0).length : 0
-  const getBookWordCount = () => { let t = 0; activeBook?.chapters.forEach(ch => ch.scenes.forEach(s => t += countWords(s.text))); return t }
-  const getChapterWordCount = () => { let t = 0; activeChapter?.scenes.forEach(s => t += countWords(s.text)); return t }
+  const getBookWordCount = () => { let t = 0; activeBook?.chapters.forEach((ch: any) => ch.scenes.forEach((s: any) => t += countWords(s.text))); return t }
+  const getChapterWordCount = () => { let t = 0; activeChapter?.scenes.forEach((s: any) => t += countWords(s.text)); return t }
 
   const handleExport = () => {
     if (!activeBook) return
     let content = '', filename = activeBook.title.replace(/[^a-z0-9а-яё]/gi, '_')
     if (exportScope === 'scene' && activeScene) { content = activeScene.text; filename += `_${activeScene.title.replace(/[^a-z0-9а-яё]/gi, '_')}` }
-    else if (exportScope === 'chapter' && activeChapter) { content = activeChapter.scenes.map(s => `# ${s.title}\n\n${s.text}`).join('\n\n---\n\n'); filename += `_${activeChapter.title.replace(/[^a-z0-9а-яё]/gi, '_')}` }
-    else { content = activeBook.chapters.map(ch => `# Глава: ${ch.title}\n\n` + ch.scenes.map(s => `## ${s.title}\n\n${s.text}`).join('\n\n')).join('\n\n***\n\n') }
+    else if (exportScope === 'chapter' && activeChapter) { content = activeChapter.scenes.map((s: any) => `# ${s.title}\n\n${s.text}`).join('\n\n---\n\n'); filename += `_${activeChapter.title.replace(/[^a-z0-9а-яё]/gi, '_')}` }
+    else { content = activeBook.chapters.map((ch: any) => `# Глава: ${ch.title}\n\n` + ch.scenes.map((s: any) => `## ${s.title}\n\n${s.text}`).join('\n\n')).join('\n\n***\n\n') }
     
     if (exportFormat === 'md') {
       content = `# ${activeBook.title}\n**Жанр:** ${activeBook.genre}\n\n---\n\n` + content
@@ -872,7 +867,7 @@ ${getPolicyInstruction()}
             <div className="create-card" onClick={handleCreateBook} style={{ aspectRatio: '3/4', border: '2px dashed #bfaea1', borderRadius: '8px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', background: '#f5f0e6' }}>
               <div style={{ fontSize: '3rem', color: '#7a4b3a' }}>+</div><div style={{ fontSize: '1.1rem', color: '#5c3a21', fontWeight: 'bold' }}>Новая книга</div>
             </div>
-            {books.map(book => (
+            {books.map((book: any) => (
               <div key={book.id} className="book-card" onMouseEnter={() => setHoveredBookId(book.id)} onMouseLeave={() => setHoveredBookId(null)} onClick={() => { setActiveBookId(book.id); setActiveChapterId(book.chapters[0]?.id || null); setActiveSceneId(book.chapters[0]?.scenes[0]?.id || null); setView('editor'); loadCharacters(book.id); loadWorldNotes(book.id) }} style={{ aspectRatio: '3/4', background: '#ffffff', borderRadius: '8px', border: '1px solid #dcd3c1', padding: '20px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', position: 'relative', overflow: 'hidden' }}>
                 <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#2c241b' }}>{book.title}</h3>
                 <p style={{ margin: '4px 0 0 0', fontSize: '0.85rem', color: '#7a6b5d' }}>{book.genre}{book.subgenre ? ` • ${book.subgenre}` : ''}</p>
@@ -941,7 +936,7 @@ ${getPolicyInstruction()}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         {charRelations.map(r => {
                           const otherId = r.source_id === editingCharacter.id ? r.target_id : r.source_id;
-                          const otherChar = characters.find(c => c.id === otherId);
+                          const otherChar = characters.find((c: any) => c.id === otherId);
                           const otherName = otherChar ? otherChar.name : 'Неизвестный персонаж';
                           
                           return (
@@ -1094,7 +1089,7 @@ ${getPolicyInstruction()}
                 <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: 0 }}>Структура</h3>
                 <button onClick={addChapter} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1.2rem' }}>+</button>
               </div>
-              {activeBook.chapters.map(chapter => (
+              {activeBook.chapters.map((chapter: any) => (
                 <div key={chapter.id} style={{ marginBottom: '15px' }}>
                   {editingChapterId === chapter.id ? (
                     <div>
@@ -1113,7 +1108,7 @@ ${getPolicyInstruction()}
                       </div>
                     </div>
                   )}
-                                  {chapter.scenes.map(scene => (
+                                  {chapter.scenes.map((scene: any) => (
                     <div key={scene.id} style={{ marginLeft: '10px', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
                       
                       {/* РЕЖИМ РЕДАКТИРОВАНИЯ СЦЕНЫ */}
