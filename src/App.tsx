@@ -1567,5 +1567,3 @@ ${getPolicyInstruction()}
     </div>
   )
 }
-
-export default App
