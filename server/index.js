@@ -344,6 +344,63 @@ app.get('/api/test-perchance', async (req, res) => {
   res.json(result);
 });
 
+// === 14. MEDIA ASSETS (ИЗОБРАЖЕНИЯ) ===
+
+// Получить все изображения для конкретной сущности
+app.get('/api/media/:entityId', async (req, res) => {
+  try {
+    const { entityId } = req.params;
+    const { entity_type } = req.query; // 'character', 'location', 'item'
+    
+    const { data, error } = await supabase
+      .from('media_assets')
+      .select('*')
+      .eq('entity_id', entityId)
+      .eq('entity_type', entity_type)
+      .order('is_primary', { ascending: false }); // Главные картинки первыми
+      
+    if (error) throw error;
+    res.json({ media: data || [] });
+  } catch (err) { 
+    console.error('Ошибка загрузки медиа:', err.message);
+    res.status(500).json({ error: err.message }); 
+  }
+});
+
+// Сохранить или обновить изображение сущности
+app.post('/api/media', async (req, res) => {
+  try {
+    const { project_id, entity_id, entity_type, url, prompt_description, is_primary } = req.body;
+    
+    // Для MVP: если is_primary = true, сначала снимаем этот флаг с других картинок этой сущности
+    if (is_primary) {
+      await supabase.from('media_assets')
+        .update({ is_primary: false })
+        .eq('entity_id', entity_id)
+        .eq('entity_type', entity_type);
+    }
+
+    const { data, error } = await supabase
+      .from('media_assets')
+      .insert([{ 
+        project_id, 
+        entity_id, 
+        entity_type, 
+        url: url || null, 
+        prompt_description: prompt_description || '', 
+        is_primary: is_primary || false 
+      }])
+      .select()
+      .single();
+      
+    if (error) throw error;
+    res.json({ success: true, media: data });
+  } catch (err) { 
+    console.error('Ошибка сохранения медиа:', err.message);
+    res.status(500).json({ error: err.message }); 
+  }
+});
+
 // 13. Catch-all for React (ДОЛЖЕН БЫТЬ В САМОМ КОНЦЕ)
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
