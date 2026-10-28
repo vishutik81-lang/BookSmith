@@ -161,9 +161,9 @@ export default function App() {
   const handleTextChange = (newText: string) => {
     setBooks(books.map(book => {
       if (book.id !== activeBookId) return book
-      return { ...book, chapters: book.chapters.map(chapter => {
+      return { ...book, chapters: book.chapters.map((chapter: any) => {
         if (chapter.id !== activeChapterId) return chapter
-        return { ...chapter, scenes: chapter.scenes.map(scene => scene.id === activeSceneId ? { ...scene, text: newText } : scene) }
+        return { ...chapter, scenes: chapter.scenes.map((scene: any) => scene.id === activeSceneId ? { ...scene, text: newText } : scene) }
       })}
     }))
     if (saveStatus === 'saved') setSaveStatus('idle')
@@ -172,9 +172,9 @@ export default function App() {
   const handleContextBeforeChange = (newContext: string) => {
     setBooks(books.map(book => {
       if (book.id !== activeBookId) return book
-      return { ...book, chapters: book.chapters.map(chapter => {
+      return { ...book, chapters: book.chapters.map((chapter: any) => {
         if (chapter.id !== activeChapterId) return chapter
-        return { ...chapter, scenes: chapter.scenes.map(scene => scene.id === activeSceneId ? { ...scene, context_before: newContext } : scene) }
+        return { ...chapter, scenes: chapter.scenes.map((scene: any) => scene.id === activeSceneId ? { ...scene, context_before: newContext } : scene) }
       })}
     }))
   }
@@ -310,7 +310,7 @@ export default function App() {
     try {
       const res = await fetch(`/api/chapters/${chapterId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newTitle }) })
       const data = await res.json()
-      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map(ch => ch.id === chapterId ? { ...ch, title: newTitle } : ch) })); setEditingChapterId(null) }
+      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map((ch: any) => ch.id === chapterId ? { ...ch, title: newTitle } : ch) })); setEditingChapterId(null) }
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
@@ -320,7 +320,7 @@ export default function App() {
     try {
       const res = await fetch(`/api/scenes/title/${sceneId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: newTitle }) })
       const data = await res.json()
-      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map(ch => ({ ...ch, scenes: ch.scenes.map(s => s.id === sceneId ? { ...s, title: newTitle } : s) })) })); setEditingSceneId(null) }
+      if (data.success) { setBooks(books.map(book => book.id !== activeBookId ? book : { ...book, chapters: book.chapters.map((ch: any) => ({ ...ch, scenes: ch.scenes.map((s: any) => s.id === sceneId ? { ...s, title: newTitle } : s) })) })); setEditingSceneId(null) }
       else { alert('Ошибка: ' + data.error) }
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
@@ -969,8 +969,8 @@ ${getPolicyInstruction()}
     if (!activeBook) return
     let content = '', filename = activeBook.title.replace(/[^a-z0-9а-яё]/gi, '_')
     if (exportScope === 'scene' && activeScene) { content = activeScene.text; filename += `_${activeScene.title.replace(/[^a-z0-9а-яё]/gi, '_')}` }
-    else if (exportScope === 'chapter' && activeChapter) { content = activeChapter.scenes.map(s => `# ${s.title}\n\n${s.text}`).join('\n\n---\n\n'); filename += `_${activeChapter.title.replace(/[^a-z0-9а-яё]/gi, '_')}` }
-    else { content = activeBook.chapters.map(ch => `# Глава: ${ch.title}\n\n` + ch.scenes.map(s => `## ${s.title}\n\n${s.text}`).join('\n\n')).join('\n\n***\n\n') }
+    else if (exportScope === 'chapter' && activeChapter) { content = activeChapter.scenes.map((s: any) => `# ${s.title}\n\n${s.text}`).join('\n\n---\n\n'); filename += `_${activeChapter.title.replace(/[^a-z0-9а-яё]/gi, '_')}` }
+    else { content = activeBook.chapters.map((ch: any) => `# Глава: ${ch.title}\n\n` + ch.scenes.map((s: any) => `## ${s.title}\n\n${s.text}`).join('\n\n')).join('\n\n***\n\n') }
     
     if (exportFormat === 'md') {
       content = `# ${activeBook.title}\n**Жанр:** ${activeBook.genre}\n\n---\n\n` + content
@@ -1283,7 +1283,7 @@ ${getPolicyInstruction()}
                 <h3 style={{ fontSize: '0.8rem', textTransform: 'uppercase', color: '#7a6b5d', margin: 0 }}>Структура</h3>
                 <button onClick={addChapter} style={{ background: 'none', border: 'none', color: '#7a4b3a', cursor: 'pointer', fontSize: '1.2rem' }}>+</button>
               </div>
-              {activeBook.chapters.map(chapter => (
+              {activeBook.chapters.map((chapter: any) => (
                 <div key={chapter.id} style={{ marginBottom: '15px' }}>
                   {editingChapterId === chapter.id ? (
                     <div>
@@ -1302,7 +1302,7 @@ ${getPolicyInstruction()}
                       </div>
                     </div>
                   )}
-                                  {chapter.scenes.map(scene => (
+                                  {chapter.scenes.map((scene: any) => (
                     <div key={scene.id} style={{ marginLeft: '10px', marginBottom: '4px', display: 'flex', alignItems: 'center' }}>
                       
                       {/* РЕЖИМ РЕДАКТИРОВАНИЯ СЦЕНЫ */}
