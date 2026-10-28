@@ -149,9 +149,9 @@ export default function App() {
       console.error('Ошибка загрузки состояний проекта:', error)
     }
   }
-     const loadEntityMedia = async (entityId: string, entityType: string) => {
+   // 1. Загрузка медиа (всё верно, оставляем как есть)
+  const loadEntityMedia = async (entityId: string, entityType: string) => {
     try {
-      // Исправлено: используем entityType (параметр функции) для подстановки в URL
       const res = await fetch(`/api/media/${entityId}?entity_type=${entityType}`)
       const data = await res.json()
       if (data.media) setEntityMedia(data.media)
@@ -160,6 +160,7 @@ export default function App() {
     }
   }
 
+  // 2. Сохранение медиа (восстанавливаем целостность функции)
   const handleSaveMedia = async (projectId: string, entityId: string, entityType: string) => {
     if (!mediaForm.url.trim() && !mediaForm.prompt_description.trim()) return
     try {
@@ -169,18 +170,29 @@ export default function App() {
         body: JSON.stringify({ 
           project_id: projectId, 
           entity_id: entityId, 
-          entity_type: entityType, // Здесь тоже всё корректно
+          entity_type: entityType,
           url: mediaForm.url, 
           prompt_description: mediaForm.prompt_description, 
           is_primary: mediaForm.is_primary 
         })
       })
-        const handleGenerateImage = async (projectId: string, entityId: string, entityType: string) => {
+      // Вот здесь раньше был разрыв. Теперь всё на своих местах:
+      const data = await res.json()
+      if (data.success) {
+        setEntityMedia([data.media, ...entityMedia])
+        setMediaForm({ url: '', prompt_description: '', is_primary: true })
+      } else {
+        alert('Ошибка: ' + data.error)
+      }
+    } catch (error: any) { 
+      alert('Ошибка: ' + error.message) 
+    }
+  }
+
+  // 3. Генерация изображения (теперь это отдельная, самостоятельная функция)
+  const handleGenerateImage = async (projectId: string, entityId: string, entityType: string) => {
     const promptToUse = mediaForm.prompt_description || `portrait of a character, high quality, detailed, fantasy style`
     
-    // Показываем пользователю, что процесс идет
-    const originalBtnText = "✨ Сгенерировать"
-    // (В реальном UI здесь можно добавить состояние isGenerating, но для простоты используем alert/confirm или просто ждем)
     alert('⏳ Запускаю генерацию через Perchance. Это может занять 15-30 секунд. Пожалуйста, подождите...')
     
     try {
@@ -215,17 +227,6 @@ export default function App() {
       }
     } catch (error: any) {
       alert('❌ Ошибка сети: ' + error.message)
-    }
-  }
-      const data = await res.json()
-      if (data.success) {
-        setEntityMedia([data.media, ...entityMedia])
-        setMediaForm({ url: '', prompt_description: '', is_primary: true })
-      } else {
-        alert('Ошибка: ' + data.error)
-      }
-    } catch (error: any) { 
-      alert('Ошибка: ' + error.message) 
     }
   }
   const activeBook = books.find(b => b.id === activeBookId)
