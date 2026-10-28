@@ -150,31 +150,42 @@ export default function App() {
     }
   }
      const loadEntityMedia = async (entityId: string, entityType: string) => {
-     try {
-       const res = await fetch(`/api/media/${entityId}?entity_type=${entityType}`)
-       const data = await res.json()
-       if (data.media) setEntityMedia(data.media)
-     } catch (error) { console.error('Ошибка загрузки медиа:', error) }
-   }
+    try {
+      // Исправлено: используем entityType (параметр функции) для подстановки в URL
+      const res = await fetch(`/api/media/${entityId}?entity_type=${entityType}`)
+      const data = await res.json()
+      if (data.media) setEntityMedia(data.media)
+    } catch (error) { 
+      console.error('Ошибка загрузки медиа:', error) 
+    }
+  }
 
-   const handleSaveMedia = async (projectId: string, entityId: string, entityType: string) => {
-     if (!mediaForm.url.trim() && !mediaForm.prompt_description.trim()) return
-     try {
-       const res = await fetch('/api/media', {
-         method: 'POST',
-         headers: { 'Content-Type': 'application/json' },
-         body: JSON.stringify({ project_id: projectId, entity_id: entityId, entity_type, ...mediaForm })
-       })
-       const data = await res.json()
-       if (data.success) {
-         setEntityMedia([data.media, ...entityMedia])
-         setMediaForm({ url: '', prompt_description: '', is_primary: true }) // Сброс формы
-       } else {
-         alert('Ошибка: ' + data.error)
-       }
-     } catch (error: any) { alert('Ошибка: ' + error.message) }
-   }
-
+  const handleSaveMedia = async (projectId: string, entityId: string, entityType: string) => {
+    if (!mediaForm.url.trim() && !mediaForm.prompt_description.trim()) return
+    try {
+      const res = await fetch('/api/media', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          project_id: projectId, 
+          entity_id: entityId, 
+          entity_type: entityType, // Здесь тоже всё корректно
+          url: mediaForm.url, 
+          prompt_description: mediaForm.prompt_description, 
+          is_primary: mediaForm.is_primary 
+        })
+      })
+      const data = await res.json()
+      if (data.success) {
+        setEntityMedia([data.media, ...entityMedia])
+        setMediaForm({ url: '', prompt_description: '', is_primary: true })
+      } else {
+        alert('Ошибка: ' + data.error)
+      }
+    } catch (error: any) { 
+      alert('Ошибка: ' + error.message) 
+    }
+  }
   const activeBook = books.find(b => b.id === activeBookId)
   const activeChapter = activeBook?.chapters.find(c => c.id === activeChapterId)
   const activeScene = activeChapter?.scenes.find(s => s.id === activeSceneId)
