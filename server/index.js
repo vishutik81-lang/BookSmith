@@ -415,6 +415,30 @@ app.post('/api/media', async (req, res) => {
      }
    });
 
+app.get('/api/entities/:entityId/states', async (req, res) => {
+  try {
+    const { entityId } = req.params;
+    const { entity_type } = req.query;
+
+    let query = supabase.from('entity_states').select('*').eq('status', 'active');
+
+    if (entity_type === 'character') query = query.eq('character_id', entityId);
+    else if (entity_type === 'location') query = query.eq('location_id', entityId);
+    else if (entity_type === 'item') query = query.eq('item_id', entityId);
+    else query = query.or(`character_id.eq.${entityId},location_id.eq.${entityId},item_id.eq.${entityId}`);
+
+    const { data, error } = await query.order('created_at', { ascending: false });
+    if (error) throw error;
+
+    const enriched = (data || []).map(s => ({
+      ...s,
+      entity_type: s.character_id ? 'character' : s.location_id ? 'location' : s.item_id ? 'item' : null,
+      entity_id: s.character_id || s.location_id || s.item_id || null
+    }));
+    res.json({ states: enriched });
+  } catch (err) { res.status(500).json({ error: err.message }); }
+});
+
 // 13. Catch-all for React (ДОЛЖЕН БЫТЬ В САМОМ КОНЦЕ)
 app.get('*', (req, res) => {
   res.sendFile(join(__dirname, '../dist/index.html'));
