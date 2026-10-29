@@ -607,9 +607,14 @@ export default function App() {
       })
       const data = await res.json()
       if (data.success) {
-        setEntityStates([data.state, ...entityStates])
-        setAllProjectStates([data.state, ...allProjectStates])
-        setShowAddStateModal(false)
+  // Состояния персонажа пишем только в entityStates (для модалки персонажа),
+  // состояния локаций/предметов туда не подмешиваем
+  if (newStateForm.entity_type === 'character') {
+    setEntityStates([data.state, ...entityStates])
+  }
+  setAllProjectStates([data.state, ...allProjectStates])
+  setShowAddStateModal(false)
+  setTargetEntity(null) 
         
         // ИСПРАВЛЕНО: Полный сброс формы, включая entity_type и entity_id
         setNewStateForm({
@@ -656,15 +661,17 @@ export default function App() {
         race: character.race || 'human'
       })
       try {
-        const res = await fetch(`/api/entities/${character.id}/states`)
+   const res = await fetch(`/api/entities/${character.id}/states?entity_type=character`)
         const data = await res.json()
         if (data.states) setEntityStates(data.states)
       } catch (error) {
         console.error('Ошибка загрузки состояний:', error)
       }
+      loadEntityMedia(character.id, 'character')
     } else {
       setEditingCharacter(null)
       setEntityStates([])
+      setEntityMedia([])
       setCharacterForm({ name: '', description: '', role: 'secondary', appearance: '', personality: '', sexual_orientation: '', gender: 'not_specified', race: 'human' })
     }
     setShowCharacterModal(true)
@@ -673,6 +680,7 @@ export default function App() {
   // Открыть окно состояния для персонажа (автоматически подставляет его ID)
   const openCharacterStateModal = () => {
     if (!editingCharacter) return;
+    setTargetEntity(null);
     setNewStateForm({
       entity_type: 'character',
       entity_id: editingCharacter.id,
@@ -1160,10 +1168,13 @@ ${getPolicyInstruction()}
                 {/* === КОНЕЦ БЛОКА ОТНОШЕНИЙ === */}
 
                    {/* === БЛОК: ИЗОБРАЖЕНИЯ СУЩНОСТИ === */}
+                {editingCharacter && (
    <div style={{ marginBottom: '15px', padding: '12px', background: '#f5f0e6', borderRadius: '6px', border: '1px solid #dcd3c1' }}>
      <label style={{ ...labelStyle, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
        🖼️ Визуальный референс (ИИ использует описание)
      </label>
+      </div>
+)}
      
      {/* Список уже добавленных изображений */}
      {entityMedia.length > 0 && (
