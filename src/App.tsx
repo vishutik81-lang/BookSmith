@@ -1168,60 +1168,32 @@ ${getPolicyInstruction()}
                 {/* === КОНЕЦ БЛОКА ОТНОШЕНИЙ === */}
 
                    {/* === БЛОК: ИЗОБРАЖЕНИЯ СУЩНОСТИ === */}
-                {editingCharacter && (
-   <div style={{ marginBottom: '15px', padding: '12px', background: '#f5f0e6', borderRadius: '6px', border: '1px solid #dcd3c1' }}>
-     <label style={{ ...labelStyle, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
-       🖼️ Визуальный референс (ИИ использует описание)
-     </label>
-      </div>
-)}
-     
-     {/* Список уже добавленных изображений */}
-     {entityMedia.length > 0 && (
-       <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
-         {entityMedia.map((m: any) => (
-           <div key={m.id} style={{ minWidth: '60px', textAlign: 'center' }}>
-             <div style={{ width: '60px', height: '60px', background: '#dcd3c1', borderRadius: '4px', overflow: 'hidden', border: m.is_primary ? '2px solid #7a4b3a' : '1px solid #bfaea1' }}>
-               {m.url ? <img src={m.url} alt="ref" style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: '20px' }}>📝</div>}
-             </div>
-             {m.is_primary && <div style={{ fontSize: '0.6rem', color: '#7a4b3a', marginTop: '2px' }}>Главное</div>}
-           </div>
-         ))}
-       </div>
-     )}
+    {editingCharacter && (
+  <div style={{ marginBottom: '15px', padding: '12px', background: '#f5f0e6', borderRadius: '6px', border: '1px solid #dcd3c1' }}>
+    <label style={{ ...labelStyle, marginBottom: '10px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+      🖼️ Визуальный референс (ИИ использует описание)
+    </label>
 
-     {/* Форма добавления нового */}
-     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-       <input 
-         type="text" 
-         placeholder="URL изображения (или оставьте пустым для текста)" 
-         value={mediaForm.url}
-         onChange={(e) => setMediaForm({...mediaForm, url: e.target.value})}
-         style={{ ...inputStyle, fontSize: '0.8rem' }}
-       />
-       <textarea 
-         placeholder="Описание для ИИ (например: 'Высокий эльф с серебряными волосами и шрамом на щеке'). ИИ прочтет это, даже если картинки нет." 
-         value={mediaForm.prompt_description}
-         onChange={(e) => setMediaForm({...mediaForm, prompt_description: e.target.value})}
-         style={{ ...inputStyle, minHeight: '50px', fontSize: '0.8rem' }}
-       />
-       <div style={{ display: 'flex', gap: '8px' }}>
-         <button 
-           onClick={() => handleSaveMedia(activeBookId!, editingCharacter.id, 'character')} 
-           disabled={!mediaForm.url.trim() && !mediaForm.prompt_description.trim()}
-           style={{ flex: 1, padding: '6px', background: '#7a4b3a', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
-         >
-           💾 Сохранить референс
-         </button>
-       <button 
-  onClick={() => handleGenerateImage(activeBookId!, editingCharacter.id, 'character')}
-  style={{ flex: 1, padding: '6px', background: '#fdfbf7', color: '#7a4b3a', border: '1px solid #7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
->
-  ✨ Сгенерировать
-</button>
-       </div>
-     </div>
-   </div>
+    {entityMedia.length > 0 && (
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '10px', overflowX: 'auto', paddingBottom: '4px' }}>
+        {entityMedia.map((m: any) => (
+          <div key={m.id} style={{ minWidth: '60px', textAlign: 'center' }}>
+            {/* ... */}
+          </div>
+        ))}
+      </div>
+    )}
+
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <input ... />
+      <textarea ... />
+      <div style={{ display: 'flex', gap: '8px' }}>
+        <button onClick={() => handleSaveMedia(activeBookId!, editingCharacter.id, 'character')}>💾 Сохранить референс</button>
+        <button onClick={() => handleGenerateImage(activeBookId!, editingCharacter.id, 'character')}>✨ Сгенерировать</button>
+      </div>
+    </div>
+  </div>
+)}
    {/* === КОНЕЦ БЛОКА ИЗОБРАЖЕНИЙ === */}
 
                                 {/* === БЛОК: СОСТОЯНИЯ ПЕРСОНАЖА (STATE TIMELINE MVP) === */}
