@@ -4,7 +4,6 @@ import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
 import { supabase } from './supabase.js';
 import { generateText, AVAILABLE_MODELS } from './openrouter.js';
-   import { testPerchanceConnection } from './perchance.js';
    import { testPerchanceConnection, generateImage } from './perchance.js';
 
 const __filename = fileURLToPath(import.meta.url);
