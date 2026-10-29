@@ -289,9 +289,21 @@ app.post('/api/items', async (req, res) => {
 // 12. ENTITY STATES
 app.get('/api/projects/:projectId/states', async (req, res) => {
   try {
-    const { data, error } = await supabase.from('entity_states').select('*').eq('project_id', req.params.projectId).eq('status', 'active').order('created_at', { ascending: false });
+    const { data, error } = await supabase
+      .from('entity_states')
+      .select('*')
+      .eq('project_id', req.params.projectId)
+      .eq('status', 'active')
+      .order('created_at', { ascending: false });
     if (error) throw error;
-    res.json({ states: data || [] });
+
+    const enriched = (data || []).map(s => ({
+      ...s,
+      entity_type: s.character_id ? 'character' : s.location_id ? 'location' : s.item_id ? 'item' : null,
+      entity_id: s.character_id || s.location_id || s.item_id || null
+    }));
+
+    res.json({ states: enriched });
   } catch (err) { res.status(500).json({ error: err.message }); }
 });
 
