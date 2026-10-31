@@ -17,6 +17,9 @@ export default function App() {
   const [imageJob, setImageJob] = useState<{ status: 'idle' | 'running' | 'done' | 'failed'; message: string }>({ status: 'idle', message: '' })
 const [modelCheck, setModelCheck] = useState({ running: false, done: 0, total: 0 })
 const [showBrokenModels, setShowBrokenModels] = useState(false)
+  const [imageModels, setImageModels] = useState<any[]>([])
+const [selectedImageModel, setSelectedImageModel] = useState<string>(localStorage.getItem('selectedImageModel') || 'pollinations::flux')
+const [translatePrompt, setTranslatePrompt] = useState(true)
 
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
@@ -129,6 +132,7 @@ const [showBrokenModels, setShowBrokenModels] = useState(false)
     }
     loadBooks()
     loadModels()
+    loadImageModels()
   }, [])
 
      useEffect(() => {
@@ -202,7 +206,7 @@ const handleGenerateImage = async (projectId: string, entityId: string, entityTy
     const startRes = await fetch('/api/generate-image', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ prompt: promptToUse })
+      body: JSON.stringify({ prompt: promptToUse, model: selectedImageModel, textModel: selectedModel, kind: entityType, translate: translatePrompt })
     })
     const start = await startRes.json()
     if (!startRes.ok || !start.jobId) throw new Error(start.error || `Сервер ответил ${startRes.status}`)
@@ -241,7 +245,13 @@ const handleGenerateImage = async (projectId: string, entityId: string, entityTy
     const saveData = await saveRes.json()
     if (!saveData.success) throw new Error(saveData.error || 'Не удалось сохранить изображение')
     setEntityMedia(prev => [saveData.media, ...prev])
-    setImageJob({ status: 'done', message: `✅ Готово (${job.provider})` })
+    setImageJob({
+      status: 'done',
+      message: `✅ Готово (${job.provider}).` +
+        (job.finalPrompt && job.finalPrompt !== promptToUse ? ` Отправлен промпт: ${job.finalPrompt}` : '') +
+        ((job.notes || []).length ? ` ⚠ ${job.notes.join('; ')}` : '')
+    })
+
   } catch (error: any) {
     setImageJob({ status: 'failed', message: '❌ ' + error.message })
   }
@@ -560,7 +570,21 @@ const handleGenerateImage = async (projectId: string, entityId: string, entityTy
     } catch (error: any) { alert('Ошибка: ' + error.message) }
   }
 
- 
+ const loadImageModels = async () => {
+    try {
+      const res = await fetch('/api/image-models')
+      const data = await res.json()
+      if (Array.isArray(data.models) && data.models.length > 0) {
+        setImageModels(data.models)
+        if (!data.models.find((m: any) => m.key === selectedImageModel)) {
+          setSelectedImageModel(data.default || data.models[0].key)
+        }
+      }
+    } catch (e) {
+      console.warn('Не удалось загрузить модели изображений', e)
+    }
+  }
+
   const loadModels = async () => {
   try {
     const res = await fetch('/api/models')
@@ -1264,6 +1288,23 @@ const modelIcon = (m: any) => m.keyConfigured === false ? '🔑' : m.status === 
         onChange={(e) => setMediaForm({ ...mediaForm, prompt_description: e.target.value })}
         style={{ ...inputStyle, minHeight: '50px', fontSize: '0.8rem' }}
       />
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <select
+          value={selectedImageModel}
+          onChange={(e) => { setSelectedImageModel(e.target.value); localStorage.setItem('selectedImageModel', e.target.value) }}
+          style={{ ...inputStyle, width: 'auto', flex: 1, minWidth: '140px', padding: '5px', fontSize: '0.78rem' }}
+        >
+          {imageModels.length === 0 && <option value={selectedImageModel}>{selectedImageModel}</option>}
+          {imageModels.map((m: any) => (
+            <option key={m.key} value={m.key}>{m.name} — {m.provider}{m.note ? ` (${m.note})` : ''}</option>
+          ))}
+        </select>
+        <label style={{ fontSize: '0.72rem', color: '#7a6b5d', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+          <input type="checkbox" checked={translatePrompt} onChange={(e) => setTranslatePrompt(e.target.checked)} />
+          переводить на английский
+        </label>
+      </div>
+
       <div style={{ display: 'flex', gap: '8px' }}>
         <button
           onClick={() => handleSaveMedia(activeBookId!, editingCharacter.id, 'character')}
