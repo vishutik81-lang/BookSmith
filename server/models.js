@@ -4,7 +4,7 @@ import OpenAI from 'openai';
 // ПРОВАЙДЕРЫ: адрес API и имя переменной окружения с ключом (на Render)
 // =====================================================================
 const PROVIDERS = {
-  OpenRouter:   { baseUrl: 'https://openrouter.ai/api/v1',     keyEnv: 'OPENROUTER_API_KEY' },
+  OpenRouter:   { baseUrl: process.env.OPENROUTER_BASE_URL || 'https://openrouter.ai/api/v1', keyEnv: 'OPENROUTER_API_KEY' },
   AllTokens:    { baseUrl: 'https://api.alltokens.ru/api/v1',  keyEnv: 'ALLTOKENS_API_KEY' },
   CloudCompute: { baseUrl: 'https://app.cloudcompute.ru/api/v1', keyEnv: 'CLOUDCOMPUTE_API_KEY' },
   Teamorouter:  { baseUrl: 'https://api.teamorouter.ru/v1',    keyEnv: 'TEAMO_API_KEY' },
@@ -190,6 +190,23 @@ export async function generateText(prompt, modelIdOrKey, { timeoutMs = 120000 } 
 // Результаты хранятся в памяти сервера (после перезапуска нужно проверить заново).
 // =====================================================================
 const checks = new Map();
+
+// Подбор текстовых моделей для служебных задач (например, перевод промпта для картинок):
+// сначала выбранная пользователем (если не провалила проверку), затем проверенные рабочие.
+export function pickTextModels(preferredKey, max = 3) {
+  const usable = (m) => {
+    const cfg = PROVIDERS[m.provider];
+    return m.kind === 'text' && !!cfg && !!process.env[cfg.keyEnv];
+  };
+  const out = [];
+  const preferred = findModel(preferredKey);
+  if (preferred && usable(preferred) && checks.get(preferred.key)?.ok !== false) out.push(preferred);
+  for (const m of AVAILABLE_MODELS) {
+    if (out.length >= max) break;
+    if (!out.includes(m) && usable(m) && checks.get(m.key)?.ok === true) out.push(m);
+  }
+  return out;
+}
 
 export async function checkModel(model) {
   const started = Date.now();
