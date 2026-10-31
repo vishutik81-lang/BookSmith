@@ -14,6 +14,10 @@ export default function App() {
 
      const [entityMedia, setEntityMedia] = useState<any[]>([])
    const [mediaForm, setMediaForm] = useState({ url: '', prompt_description: '', is_primary: true })
+  const [imageJob, setImageJob] = useState<{ status: 'idle' | 'running' | 'done' | 'failed'; message: string }>({ status: 'idle', message: '' })
+const [modelCheck, setModelCheck] = useState({ running: false, done: 0, total: 0 })
+const [showBrokenModels, setShowBrokenModels] = useState(false)
+
   const [editingChapterId, setEditingChapterId] = useState<string | null>(null)
   const [editingSceneId, setEditingSceneId] = useState<string | null>(null)
   const [editingBookId, setEditingBookId] = useState<string | null>(null)
@@ -190,45 +194,59 @@ export default function App() {
   }
 
   // 3. Генерация изображения (теперь это отдельная, самостоятельная функция)
-  const handleGenerateImage = async (projectId: string, entityId: string, entityType: string) => {
-    const promptToUse = mediaForm.prompt_description || `portrait of a character, high quality, detailed, fantasy style`
-    
-    alert('⏳ Запускаю генерацию через Perchance. Это может занять 15-30 секунд. Пожалуйста, подождите...')
-    
-    try {
-      const res = await fetch('/api/generate-image', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: promptToUse })
-      })
-      const data = await res.json()
-      
-      if (data.success && data.imageUrl) {
-        // Автоматически сохраняем полученное изображение
-        const saveRes = await fetch('/api/media', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            project_id: projectId, 
-            entity_id: entityId, 
-            entity_type: entityType, 
-            url: data.imageUrl, 
-            prompt_description: promptToUse, 
-            is_primary: true 
-          })
-        })
-        const saveData = await saveRes.json()
-        if (saveData.success) {
-          setEntityMedia([saveData.media, ...entityMedia])
-          alert('✅ Изображение успешно сгенерировано и сохранено!')
-        }
-      } else {
-        alert('❌ Ошибка генерации: ' + (data.error || 'Неизвестная ошибка'))
-      }
-    } catch (error: any) {
-      alert('❌ Ошибка сети: ' + error.message)
+const handleGenerateImage = async (projectId: string, entityId: string, entityType: string) => {
+  if (imageJob.status === 'running') return
+  const promptToUse = mediaForm.prompt_description.trim() || 'portrait of a character, high quality, detailed, fantasy style'
+  setImageJob({ status: 'running', message: 'Отправляю запрос…' })
+  try {
+    const startRes = await fetch('/api/generate-image', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ prompt: promptToUse })
+    })
+    const start = await startRes.json()
+    if (!startRes.ok || !start.jobId) throw new Error(start.error || `Сервер ответил ${startRes.status}`)
+
+    // Опрашиваем сервер каждые 2 секунды, максимум 4 минуты
+    const deadline = Date.now() + 4 * 60 * 1000
+    let job: any = null
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 2000))
+      const pollRes = await fetch(`/api/generate-image/${start.jobId}`)
+      if (pollRes.status === 404) throw new Error('Задача потеряна (сервер перезапускался). Попробуйте ещё раз.')
+      job = await pollRes.json()
+      if (job.status === 'done' || job.status === 'failed') break
+      setImageJob({ status: 'running', message: job.stage ? `Генерирую: ${job.stage}…` : 'Ожидаю очередь…' })
     }
+    if (!job || (job.status !== 'done' && job.status !== 'failed')) {
+      throw new Error('Время ожидания истекло (4 минуты)')
+    }
+    if (job.status === 'failed') {
+      const details = (job.attempts || []).filter((a: any) => !a.ok).map((a: any) => `${a.provider}: ${a.error}`).join(' | ')
+      throw new Error((job.error || 'Не удалось создать изображение') + (details ? ` (${details})` : ''))
+    }
+
+    const saveRes = await fetch('/api/media', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        project_id: projectId,
+        entity_id: entityId,
+        entity_type: entityType,
+        url: job.imageUrl,
+        prompt_description: promptToUse,
+        is_primary: true
+      })
+    })
+    const saveData = await saveRes.json()
+    if (!saveData.success) throw new Error(saveData.error || 'Не удалось сохранить изображение')
+    setEntityMedia(prev => [saveData.media, ...prev])
+    setImageJob({ status: 'done', message: `✅ Готово (${job.provider})` })
+  } catch (error: any) {
+    setImageJob({ status: 'failed', message: '❌ ' + error.message })
   }
+}
+
   const activeBook = books.find(b => b.id === activeBookId)
   const activeChapter = activeBook?.chapters.find(c => c.id === activeChapterId)
   const activeScene = activeChapter?.scenes.find(s => s.id === activeSceneId)
@@ -544,25 +562,34 @@ export default function App() {
 
  
   const loadModels = async () => {
-    try {
-      const res = await fetch('/api/models')
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-      const data = await res.json()
-      const modelsList = Array.isArray(data) ? data : (data.models || [])
-      if (modelsList.length > 0) {
-        setAvailableModels(modelsList)
-        if (!modelsList.find((m: any) => m.id === selectedModel)) {
-          setSelectedModel(modelsList[0].id)
-          localStorage.setItem('selectedAIModel', modelsList[0].id)
-        }
-      } else { throw new Error('Список моделей пуст') }
-    } catch (error) {
-      console.warn('Fallback модели:', error)
-      const fallback = [{ id: 'liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5', provider: 'OpenRouter' }]
-      setAvailableModels(fallback)
-      setSelectedModel(fallback[0].id)
+  try {
+    const res = await fetch('/api/models')
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+    const data = await res.json()
+    const modelsList = Array.isArray(data) ? data : (data.models || [])
+    if (modelsList.length === 0) throw new Error('Список моделей пуст')
+    setAvailableModels(modelsList)
+
+    // selectedModel может быть старым id или новым key: приводим к key
+    const textModels = modelsList.filter((m: any) => (m.kind || 'text') === 'text')
+    const current = textModels.find((m: any) => m.key === selectedModel) || textModels.find((m: any) => m.id === selectedModel)
+    if (current) {
+      if (current.key !== selectedModel) {
+        setSelectedModel(current.key)
+        localStorage.setItem('selectedAIModel', current.key)
+      }
+    } else if (textModels.length > 0) {
+      setSelectedModel(textModels[0].key)
+      localStorage.setItem('selectedAIModel', textModels[0].key)
     }
+  } catch (error) {
+    console.warn('Fallback модели:', error)
+    const fallback = [{ id: 'liquid/lfm-2.5-2.6b:free', key: 'OpenRouter::liquid/lfm-2.5-2.6b:free', name: 'Liquid LFM 2.5', provider: 'OpenRouter', kind: 'text', status: 'unknown', keyConfigured: true }]
+    setAvailableModels(fallback)
+    setSelectedModel(fallback[0].key)
   }
+}
+
 
   const handleSaveCharacter = async () => {
     if (!characterForm.name.trim()) { alert('Имя обязательно'); return }
@@ -1049,6 +1076,38 @@ ${getPolicyInstruction()}
     setShowExportModal(false)
   }
 
+  const checkModels = async () => {
+  const targets = availableModels.filter((m: any) => (m.kind || 'text') === 'text' && m.keyConfigured !== false)
+  setModelCheck({ running: true, done: 0, total: targets.length })
+  let next = 0
+  let done = 0
+  const worker = async () => {
+    while (next < targets.length) {
+      const m = targets[next++]
+      try {
+        await fetch('/api/models/check', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ key: m.key })
+        })
+      } catch { /* ошибка сети: модель останется непроверенной */ }
+      done++
+      setModelCheck({ running: true, done, total: targets.length })
+    }
+  }
+  await Promise.all([worker(), worker(), worker()])
+  await loadModels()
+  setModelCheck({ running: false, done, total: targets.length })
+}
+
+const textModels = availableModels.filter((m: any) => (m.kind || 'text') === 'text')
+const visibleModels = textModels.filter((m: any) =>
+  showBrokenModels || m.key === selectedModel || (m.status !== 'failed' && m.keyConfigured !== false)
+)
+const hiddenModelsCount = textModels.length - visibleModels.length
+const selectedModelInfo = textModels.find((m: any) => m.key === selectedModel)
+const modelIcon = (m: any) => m.keyConfigured === false ? '🔑' : m.status === 'ok' ? '✅' : m.status === 'failed' ? '❌' : '•'
+
   const inputStyle = { width: '100%', padding: '8px', border: '1px solid #dcd3c1', borderRadius: '4px', fontSize: '0.85rem', boxSizing: 'border-box' as const, background: '#fdfbf7', fontFamily: 'Georgia, serif' }
   const labelStyle = { display: 'block', marginBottom: '4px', fontWeight: 'bold', color: '#5c3a21', fontSize: '0.8rem' }
   const availableCharactersForScene = characters.filter((c: any) => !sceneCharacters.some((sc: any) => sc.character_id === c.id))
@@ -1214,14 +1273,21 @@ ${getPolicyInstruction()}
           💾 Сохранить референс
         </button>
         <button
-          onClick={() => handleGenerateImage(activeBookId!, editingCharacter.id, 'character')}
-          style={{ flex: 1, padding: '6px', background: '#fdfbf7', color: '#7a4b3a', border: '1px solid #7a4b3a', borderRadius: '4px', cursor: 'pointer', fontSize: '0.8rem' }}
-        >
-          ✨ Сгенерировать
-        </button>
+  onClick={() => handleGenerateImage(activeBookId!, editingCharacter.id, 'character')}
+  disabled={imageJob.status === 'running'}
+  style={{ flex: 1, padding: '6px', background: '#fdfbf7', color: '#7a4b3a', border: '1px solid #7a4b3a', borderRadius: '4px', cursor: imageJob.status === 'running' ? 'wait' : 'pointer', fontSize: '0.8rem', opacity: imageJob.status === 'running' ? 0.6 : 1 }}
+>
+  {imageJob.status === 'running' ? '⏳ Генерация…' : '✨ Сгенерировать'}
+</button>
+
       </div>
     </div>
   </div>
+  {imageJob.message && (
+  <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: imageJob.status === 'failed' ? '#991b1b' : '#7a6b5d' }}>
+    {imageJob.message}
+  </div>
+)}
 )}
 {/* === КОНЕЦ БЛОКА ИЗОБРАЖЕНИЙ === */}
 
@@ -1591,14 +1657,42 @@ ${getPolicyInstruction()}
                   )}
                 </div>
 
-                <div style={{ marginBottom: '10px' }}>
-                  <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Модель:</label>
-                  <select value={selectedModel} onChange={(e) => { setSelectedModel(e.target.value); localStorage.setItem('selectedAIModel', e.target.value) }} style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #dcd3c1', fontSize: '0.85rem', background: '#fdfbf7', boxSizing: 'border-box' }}>
-                    {availableModels.map((model: any) => (
-                      <option key={model.id} value={model.id}>{model.name} — {model.provider}</option>
-                    ))}
-                  </select>
-                </div>
+               <div style={{ marginBottom: '10px' }}>
+  <label style={{ display: 'block', fontSize: '0.75rem', color: '#7a6b5d', marginBottom: '4px' }}>Модель:</label>
+  <select
+    value={selectedModel}
+    onChange={(e) => { setSelectedModel(e.target.value); localStorage.setItem('selectedAIModel', e.target.value) }}
+    style={{ width: '100%', padding: '6px 8px', borderRadius: '4px', border: '1px solid #dcd3c1', fontSize: '0.85rem', background: '#fdfbf7', boxSizing: 'border-box' }}
+  >
+    {visibleModels.map((model: any) => (
+      <option key={model.key} value={model.key}>{modelIcon(model)} {model.name} — {model.provider}</option>
+    ))}
+  </select>
+  <div style={{ display: 'flex', gap: '6px', marginTop: '6px', alignItems: 'center', flexWrap: 'wrap' }}>
+    <button
+      onClick={checkModels}
+      disabled={modelCheck.running}
+      style={{ padding: '4px 8px', background: '#fdfbf7', border: '1px solid #7a4b3a', color: '#7a4b3a', borderRadius: '4px', cursor: modelCheck.running ? 'wait' : 'pointer', fontSize: '0.72rem' }}
+    >
+      {modelCheck.running ? `Проверка ${modelCheck.done}/${modelCheck.total}…` : '🩺 Проверить модели'}
+    </button>
+    <label style={{ fontSize: '0.72rem', color: '#7a6b5d', display: 'flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+      <input type="checkbox" checked={showBrokenModels} onChange={(e) => setShowBrokenModels(e.target.checked)} />
+      показать скрытые{hiddenModelsCount > 0 ? ` (${hiddenModelsCount})` : ''}
+    </label>
+  </div>
+  {selectedModelInfo?.keyConfigured === false && (
+    <div style={{ fontSize: '0.72rem', color: '#991b1b', marginTop: '4px' }}>
+      🔑 На сервере не задан ключ {selectedModelInfo.keyEnv}
+    </div>
+  )}
+  {selectedModelInfo?.status === 'failed' && selectedModelInfo.lastCheck && (
+    <div style={{ fontSize: '0.72rem', color: '#991b1b', marginTop: '4px', lineHeight: 1.4 }}>
+      ❌ {selectedModelInfo.lastCheck.hint}. {selectedModelInfo.lastCheck.message}
+    </div>
+  )}
+</div>
+
 
                 <textarea value={aiInstruction} onChange={(e) => setAiInstruction(e.target.value)} placeholder="Инструкция..." style={{ width: '100%', height: '80px', padding: '10px', borderRadius: '6px', border: '1px solid #dcd3c1', marginBottom: '10px', boxSizing: 'border-box', background: '#fdfbf7', fontSize: '0.9rem', resize: 'none' }} />
 
