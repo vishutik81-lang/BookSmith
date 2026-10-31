@@ -2,7 +2,7 @@ import { randomUUID } from 'crypto';
 import OpenAI from 'openai';
 import { supabase } from './supabase.js';
 import { generateImage as perchanceGenerate } from './perchance.js';
-import { providerConfig } from './models.js';
+import { providerConfig, generateText, pickTextModels } from './models.js';
 
 // =====================================================================
 // НАСТРОЙКИ
@@ -16,6 +16,14 @@ const MAX_ACTIVE_JOBS = 3;
 const MAX_PROMPT_LEN = 900;
 
 const jobs = new Map();
+
+const CYRILLIC = /[А-Яа-яЁё]/;
+
+const KIND_HINT = {
+  character: 'This is a portrait of a single character: start with "portrait of", then describe face, hair, beard, clothing; end with art style words.',
+  location: 'This is a location or landscape: describe the place, architecture, atmosphere and lighting.',
+  item: 'This is a single object or artifact: describe it centered on a neutral background.',
+};
 
 // ---------- вспомогательные функции ----------
 function withTimeout(promise, ms, label) {
@@ -74,6 +82,25 @@ async function sourceToImage(src, timeoutMs = 30000) {
   return { buffer, mime };
 }
 
+// Описание на русском -> короткий английский промпт для генератора картинок
+async function toEnglishPrompt(text, kind, textModelKey, job) {
+  const instruction =
+    'Rewrite the following description as ONE concise English prompt for an AI image generator (Flux / Stable Diffusion). ' +
+    'Rules: purely visual details, comma-separated phrases, no personal names, no explanations, no quotes, at most 60 words. ' +
+    (KIND_HINT[kind] || '') +
+    '\nOutput ONLY the prompt.\n\nDescription:\n' + text;
+
+  for (const model of pickTextModels(textModelKey)) {
+    const r = await generateText(instruction, model.key, { timeoutMs: 30000 });
+    let out = String(r.text || '').replace(/^\s*(prompt|промпт)\s*:\s*/i, '').replace(/^["'`]+|["'`]+$/g, '').replace(/\s+/g, ' ').trim();
+    if (!String(r.text || '').startsWith('Ошибка:') && out && !CYRILLIC.test(out)) {
+      return { prompt: out.slice(0, 600), model: model.key };
+    }
+    job.notes.push(`Перевод через ${model.name} не удался`);
+  }
+  return null;
+}
+
 // ---------- Supabase Storage ----------
 let bucketReady = null;
 function ensureBucket() {
@@ -125,7 +152,7 @@ const IMAGE_PROVIDERS = {
       const h = opts.height || 1024;
       const url =
         `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
-        `?width=${w}&height=${h}&seed=${seed}&nologo=true&model=flux`;
+        `?width=${w}&height=${h}&seed=${seed}&nologo=true&model=${encodeURIComponent(opts.model || 'flux')}`;
       const buffer = await fetchBuffer(url, { timeoutMs: 55000 });
       const mime = sniffMime(buffer);
       // Иногда сервис отвечает текстом об ошибке вместо картинки
@@ -171,6 +198,40 @@ function providerChain() {
   return names.length ? names : ['pollinations', 'perchance'];
 }
 
+// Список моделей Pollinations: берём у сервиса, при недоступности используем запасной
+let pollModelsCache = { at: 0, list: null };
+async function pollinationsModels() {
+  if (pollModelsCache.list && Date.now() - pollModelsCache.at < 60 * 60 * 1000) return pollModelsCache.list;
+  let list = ['flux', 'turbo'];
+  let fresh = false;
+  try {
+    const buf = await fetchBuffer('https://image.pollinations.ai/models', { timeoutMs: 5000 });
+    const data = JSON.parse(buf.toString('utf8'));
+    const raw = Array.isArray(data) ? data : Object.keys(data || {});
+    const names = raw.map((x) => (typeof x === 'string' ? x : x?.name || x?.id)).filter(Boolean);
+    if (names.length) { list = [...new Set(names)]; fresh = true; }
+  } catch (err) {
+    console.error('Pollinations: список моделей недоступен:', err.message);
+  }
+  // при неудаче повторим попытку примерно через 10 минут
+  pollModelsCache = { at: fresh ? Date.now() : Date.now() - 50 * 60 * 1000, list };
+  return list;
+}
+
+function parseModelKey(key) {
+  const [provider, ...rest] = String(key || '').split('::');
+  return { provider, model: rest.join('::') || undefined };
+}
+
+// Порядок попыток: выбранная модель первой, затем остальные по цепочке
+function buildAttempts(selectedKey) {
+  const base = providerChain().map((name) => ({ provider: name, model: name === 'pollinations' ? 'flux' : undefined }));
+  const sel = parseModelKey(selectedKey);
+  if (!selectedKey || !IMAGE_PROVIDERS[sel.provider]) return base;
+  const rest = base.filter((a) => !(a.provider === sel.provider && (a.model || '') === (sel.model === 'default' ? '' : sel.model || '')));
+  return [{ provider: sel.provider, model: sel.model === 'default' ? undefined : sel.model }, ...rest];
+}
+
 // ---------- ЗАДАНИЯ ----------
 function activeCount() {
   let n = 0;
@@ -178,25 +239,41 @@ function activeCount() {
   return n;
 }
 
-async function runJob(job, prompt, opts) {
+async function runJob(job, prompt, opts, ctx) {
   job.status = 'running';
   job.updatedAt = Date.now();
 
+  // 1. Перевод русского описания на английский (Flux плохо понимает русский)
+  let finalPrompt = prompt;
+  if (ctx.translate && CYRILLIC.test(prompt)) {
+    job.stage = 'Перевожу описание на английский';
+    job.updatedAt = Date.now();
+    const t = await toEnglishPrompt(prompt, ctx.kind, ctx.textModel, job);
+    if (t) {
+      finalPrompt = t.prompt;
+    } else {
+      job.notes.push('Не удалось перевести описание: отправлено как есть, на русском качество обычно хуже');
+    }
+  }
+  job.finalPrompt = finalPrompt;
+
+  // 2. Генерация по цепочке провайдеров
   let image = null;
-  for (const name of providerChain()) {
-    const provider = IMAGE_PROVIDERS[name];
-    job.stage = provider.label;
+  for (const attempt of buildAttempts(ctx.model)) {
+    const provider = IMAGE_PROVIDERS[attempt.provider];
+    const label = provider.label + (attempt.model ? ' / ' + attempt.model : '');
+    job.stage = label;
     job.updatedAt = Date.now();
     const started = Date.now();
     try {
-      image = await withTimeout(provider.run(prompt, opts), provider.timeoutMs, provider.label);
-      job.attempts.push({ provider: name, ok: true, ms: Date.now() - started });
-      job.provider = name;
+      image = await withTimeout(provider.run(finalPrompt, { ...opts, model: attempt.model }), provider.timeoutMs, label);
+      job.attempts.push({ provider: attempt.provider, model: attempt.model || null, ok: true, ms: Date.now() - started });
+      job.provider = attempt.provider + (attempt.model ? '/' + attempt.model : '');
       break;
     } catch (err) {
       const message = String(err?.message || err).slice(0, 300);
-      job.attempts.push({ provider: name, ok: false, ms: Date.now() - started, error: message });
-      console.error(`Изображение: ${name} не сработал:`, message);
+      job.attempts.push({ provider: attempt.provider, model: attempt.model || null, ok: false, ms: Date.now() - started, error: message });
+      console.error(`Изображение: ${label} не сработал:`, message);
     }
   }
 
@@ -228,6 +305,8 @@ function publicJob(job) {
     provider: job.provider,
     error: job.error,
     attempts: job.attempts,
+    finalPrompt: job.finalPrompt,
+    notes: job.notes,
     elapsedMs: Date.now() - job.createdAt,
   };
 }
@@ -252,6 +331,8 @@ export function registerImageRoutes(app) {
       status: 'queued',
       stage: '',
       attempts: [],
+      notes: [],
+      finalPrompt: null,
       imageUrl: null,
       provider: null,
       error: null,
@@ -261,13 +342,36 @@ export function registerImageRoutes(app) {
     jobs.set(job.id, job);
 
     const opts = { width: clampSize(req.body?.width), height: clampSize(req.body?.height) };
-    runJob(job, prompt.slice(0, MAX_PROMPT_LEN), opts).catch((err) => {
+    const ctx = {
+      model: req.body?.model ? String(req.body.model) : undefined,
+      textModel: req.body?.textModel ? String(req.body.textModel) : undefined,
+      kind: ['character', 'location', 'item'].includes(req.body?.kind) ? req.body.kind : 'free',
+      translate: req.body?.translate !== false,
+    };
+    runJob(job, prompt.slice(0, MAX_PROMPT_LEN), opts, ctx).catch((err) => {
       job.status = 'failed';
       job.error = String(err?.message || err);
       job.updatedAt = Date.now();
     });
 
     res.status(202).json({ success: true, jobId: job.id });
+  });
+
+  // Список моделей изображений для выпадающего списка
+  app.get('/api/image-models', async (req, res) => {
+    const poll = await pollinationsModels();
+    const models = poll.map((m) => ({
+      key: `pollinations::${m}`,
+      name: m,
+      provider: 'Pollinations',
+      note: m === 'flux' ? 'по умолчанию' : '',
+    }));
+    models.push({ key: 'perchance::default', name: 'Perchance', provider: 'Perchance', note: 'резерв, не проверен' });
+    const teamo = providerConfig('Teamorouter');
+    if (teamo && process.env[teamo.keyEnv]) {
+      models.push({ key: 'teamo::gpt-image-2', name: 'GPT Image 2', provider: 'Teamorouter', note: 'может требовать кредиты' });
+    }
+    res.json({ models, default: 'pollinations::flux' });
   });
 
   // Опрос статуса
