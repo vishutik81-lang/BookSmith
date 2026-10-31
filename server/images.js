@@ -46,14 +46,17 @@ function sniffMime(buf) {
   return null;
 }
 
-async function fetchBuffer(url, { timeoutMs }) {
+async function fetchBuffer(url, { timeoutMs, headers }) {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(url, { signal: ctrl.signal });
+    const res = await fetch(url, { signal: ctrl.signal, headers });
     if (!res.ok) {
       const body = (await res.text().catch(() => '')).replace(/\s+/g, ' ').slice(0, 200);
-      throw new Error(`HTTP ${res.status} ${body}`.trim());
+      const e = new Error(`HTTP ${res.status} ${body}`.trim());
+      e.status = res.status;
+      e.body = body;
+      throw e;
     }
     return Buffer.from(await res.arrayBuffer());
   } catch (err) {
@@ -61,6 +64,23 @@ async function fetchBuffer(url, { timeoutMs }) {
     throw err;
   } finally {
     clearTimeout(timer);
+  }
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// При перегрузке сервис просит подождать ("Retry after 10s"): ждём и пробуем ещё раз
+async function getWithRetry(url, { headers, timeoutMs }) {
+  try {
+    return await fetchBuffer(url, { headers, timeoutMs });
+  } catch (err) {
+    if (err.status === 429 || err.status === 503) {
+      const m = /retry after (\d+)\s*s/i.exec(err.body || '');
+      const wait = Math.min(m ? Number(m[1]) : 8, 10);
+      await sleep(wait * 1000);
+      return await fetchBuffer(url, { headers, timeoutMs });
+    }
+    throw err;
   }
 }
 
@@ -145,19 +165,40 @@ function runSerial(fn) {
 const IMAGE_PROVIDERS = {
   pollinations: {
     label: 'Pollinations',
-    timeoutMs: 60000,
+    timeoutMs: 150000,
     async run(prompt, opts) {
-      const seed = Math.floor(Math.random() * 1e9);
-      const w = opts.width || 768;
-      const h = opts.height || 1024;
-      const url =
-        `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}` +
-        `?width=${w}&height=${h}&seed=${seed}&nologo=true&model=${encodeURIComponent(opts.model || 'flux')}`;
-      const buffer = await fetchBuffer(url, { timeoutMs: 55000 });
-      const mime = sniffMime(buffer);
-      // Иногда сервис отвечает текстом об ошибке вместо картинки
-      if (!mime) throw new Error('вернул не изображение: ' + buffer.toString('utf8', 0, 150).replace(/\s+/g, ' '));
-      return { buffer, mime };
+      // POLLINATIONS_API_KEY (необязательно): ключ с enter.pollinations.ai, даёт доступ без лимитов "классического" API
+      const key = process.env.POLLINATIONS_API_KEY;
+      const model = opts.model || 'flux';
+      const enc = encodeURIComponent(prompt);
+      const q =
+        `?width=${opts.width || 768}&height=${opts.height || 1024}` +
+        `&seed=${Math.floor(Math.random() * 1e9)}&nologo=true&model=${encodeURIComponent(model)}`;
+      const targets = [
+        {
+          name: 'gen.pollinations.ai',
+          url: `https://gen.pollinations.ai/image/${enc}${q}`,
+          headers: key ? { Authorization: `Bearer ${key}` } : {},
+        },
+        { name: 'image.pollinations.ai (classic)', url: `https://image.pollinations.ai/prompt/${enc}${q}`, headers: {} },
+      ];
+      const errors = [];
+      for (const t of targets) {
+        try {
+          const buffer = await getWithRetry(t.url, { headers: t.headers, timeoutMs: 30000 });
+          const mime = sniffMime(buffer);
+          // Иногда сервис отвечает текстом об ошибке вместо картинки
+          if (!mime) throw new Error('вернул не изображение: ' + buffer.toString('utf8', 0, 150).replace(/\s+/g, ' '));
+          return { buffer, mime };
+        } catch (err) {
+          let msg = String(err?.message || err);
+          if ((err.status === 401 || err.status === 402 || err.status === 403) && !key) {
+            msg += ' (нужен ключ: enter.pollinations.ai, добавьте POLLINATIONS_API_KEY на Render)';
+          }
+          errors.push(`${t.name}: ${msg}`);
+        }
+      }
+      throw new Error(errors.join(' ; '));
     },
   },
 
@@ -204,14 +245,18 @@ async function pollinationsModels() {
   if (pollModelsCache.list && Date.now() - pollModelsCache.at < 60 * 60 * 1000) return pollModelsCache.list;
   let list = ['flux', 'turbo'];
   let fresh = false;
-  try {
-    const buf = await fetchBuffer('https://image.pollinations.ai/models', { timeoutMs: 5000 });
-    const data = JSON.parse(buf.toString('utf8'));
-    const raw = Array.isArray(data) ? data : Object.keys(data || {});
-    const names = raw.map((x) => (typeof x === 'string' ? x : x?.name || x?.id)).filter(Boolean);
-    if (names.length) { list = [...new Set(names)]; fresh = true; }
-  } catch (err) {
-    console.error('Pollinations: список моделей недоступен:', err.message);
+  const key = process.env.POLLINATIONS_API_KEY;
+  const urls = ['https://gen.pollinations.ai/image/models', 'https://image.pollinations.ai/models'];
+  for (const url of urls) {
+    try {
+      const buf = await fetchBuffer(url, { timeoutMs: 5000, headers: key ? { Authorization: `Bearer ${key}` } : {} });
+      const data = JSON.parse(buf.toString('utf8'));
+      const raw = Array.isArray(data) ? data : Object.keys(data || {});
+      const names = raw.map((x) => (typeof x === 'string' ? x : x?.name || x?.id)).filter(Boolean);
+      if (names.length) { list = [...new Set(names)]; fresh = true; break; }
+    } catch (err) {
+      console.error(`Pollinations: список моделей (${url}) недоступен:`, err.message);
+    }
   }
   // при неудаче повторим попытку примерно через 10 минут
   pollModelsCache = { at: fresh ? Date.now() : Date.now() - 50 * 60 * 1000, list };
