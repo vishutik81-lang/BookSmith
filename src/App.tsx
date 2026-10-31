@@ -211,8 +211,8 @@ const handleGenerateImage = async (projectId: string, entityId: string, entityTy
     const start = await startRes.json()
     if (!startRes.ok || !start.jobId) throw new Error(start.error || `Сервер ответил ${startRes.status}`)
 
-    // Опрашиваем сервер каждые 2 секунды, максимум 4 минуты
-    const deadline = Date.now() + 4 * 60 * 1000
+    // Опрашиваем сервер каждые 2 секунды, максимум 6 минут
+    const deadline = Date.now() + 6 * 60 * 1000
     let job: any = null
     while (Date.now() < deadline) {
       await new Promise(r => setTimeout(r, 2000))
