@@ -1272,22 +1272,22 @@ const modelIcon = (m: any) => m.keyConfigured === false ? '🔑' : m.status === 
         >
           💾 Сохранить референс
         </button>
-        <button
-  onClick={() => handleGenerateImage(activeBookId!, editingCharacter.id, 'character')}
-  disabled={imageJob.status === 'running'}
-  style={{ flex: 1, padding: '6px', background: '#fdfbf7', color: '#7a4b3a', border: '1px solid #7a4b3a', borderRadius: '4px', cursor: imageJob.status === 'running' ? 'wait' : 'pointer', fontSize: '0.8rem', opacity: imageJob.status === 'running' ? 0.6 : 1 }}
->
-  {imageJob.status === 'running' ? '⏳ Генерация…' : '✨ Сгенерировать'}
-</button>
-
+                <button
+          onClick={() => handleGenerateImage(activeBookId!, editingCharacter.id, 'character')}
+          disabled={imageJob.status === 'running'}
+          style={{ flex: 1, padding: '6px', background: '#fdfbf7', color: '#7a4b3a', border: '1px solid #7a4b3a', borderRadius: '4px', cursor: imageJob.status === 'running' ? 'wait' : 'pointer', fontSize: '0.8rem', opacity: imageJob.status === 'running' ? 0.6 : 1 }}
+        >
+          {imageJob.status === 'running' ? '⏳ Генерация…' : '✨ Сгенерировать'}
+        </button>
       </div>
+
+      {imageJob.message && (
+        <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: imageJob.status === 'failed' ? '#991b1b' : '#7a6b5d' }}>
+          {imageJob.message}
+        </div>
+      )}
     </div>
   </div>
-  {imageJob.message && (
-  <div style={{ fontSize: '0.75rem', lineHeight: 1.4, color: imageJob.status === 'failed' ? '#991b1b' : '#7a6b5d' }}>
-    {imageJob.message}
-  </div>
-)}
 )}
 {/* === КОНЕЦ БЛОКА ИЗОБРАЖЕНИЙ === */}
 
