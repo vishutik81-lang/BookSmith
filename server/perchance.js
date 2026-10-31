@@ -123,7 +123,14 @@ export async function generateImage(prompt) {
     await new Promise(resolve => setTimeout(resolve, 2000));
     
     // Извлекаем URL сгенерированного изображения
-    const resultImg = await page.$eval('img', img => img.src);
+   const resultImg = await page.evaluate(() => {
+  const candidates = [...document.querySelectorAll('img')]
+    .filter(i => i.width > 200 && i.height > 200 && i.src);
+  candidates.sort((a, b) => b.width * b.height - a.width * a.height);
+  return candidates[0]?.src || null;
+});
+if (!resultImg) throw new Error('Не удалось найти готовое изображение на странице');
+
     console.log('✅ Изображение сгенерировано:', resultImg);
     
     return { success: true, imageUrl: resultImg };
