@@ -50,7 +50,6 @@ function App() {
   const [ratio, setRatio] = useState(50)
   const [bookTitle, setBookTitle] = useState('Новая история')
   const [hasBook, setHasBook] = useState(false)
-  const [scope, setScope] = useState<'global' | 'work'>('global')
   const [showCreate, setShowCreate] = useState(false)
   const [newTitle, setNewTitle] = useState('')
   const [showRight, setShowRight] = useState(true)
@@ -60,8 +59,6 @@ function App() {
   const selectModule = (id: ModuleId) => {
     setActive(id)
     if (split) setLeftModule(id)
-    if (id === 'library') setScope('global')
-    else if (hasBook && !globalModules.some(m => m.id === id)) setScope('work')
   }
   const onDividerDown = (e: React.MouseEvent<HTMLDivElement>) => {
     e.preventDefault()
@@ -96,7 +93,7 @@ function App() {
 
     <main className="main-area">
       <header className="topbar">
-        <div className="breadcrumbs"><span>BookSmith</span><b>/</b><strong>{active === 'library' ? 'Библиотека' : scope === 'global' ? 'Общее пространство' : bookTitle}</strong>{active !== 'library' && <><b>/</b><span>{current.label}</span></>}</div>
+        <div className="breadcrumbs"><span>BookSmith</span><b>/</b><strong>{active === 'library' ? 'Библиотека' : current.label}</strong>{active !== 'library' && <><b>/</b><span>{current.label}</span></>}</div>
         <div className="top-actions">
           <button className={split ? 'toolbar-button selected' : 'toolbar-button'} onClick={() => setSplit(v => !v)}><span>◫</span>{split ? 'Одна панель' : 'Две панели'}</button>
           <button className="toolbar-button" onClick={() => setShowRight(v => !v)}>{showRight ? 'Скрыть контекст' : 'Контекст'}</button>
@@ -105,19 +102,19 @@ function App() {
       </header>
 
       <div className="work-titlebar">
-        <div><div className="eyebrow">{active === 'library' ? 'ВАША ТВОРЧЕСКАЯ МАСТЕРСКАЯ' : scope === 'global' ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h1>{split ? 'Рабочее пространство' : current.label}</h1><p>{split ? 'Откройте два раздела одновременно и настройте рабочее пространство под свою задачу.' : descriptions[active]}</p></div>
+        <div><div className="eyebrow">{active === 'library' ? 'ВАША ТВОРЧЕСКАЯ МАСТЕРСКАЯ' : current.global ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h1>{split ? 'Рабочее пространство' : current.label}</h1><p>{split ? 'Откройте два раздела одновременно и настройте рабочее пространство под свою задачу.' : descriptions[active]}</p></div>
         <div className="title-actions"><span className="saved-label"><span className="status-dot"/> Автосохранение</span>{active === 'library' && <button className="primary-button" onClick={() => { setNewTitle(''); setShowCreate(true) }}>＋ Новый проект</button>}</div>
       </div>
 
       <div className="work-content">
         <div className="panes" style={split ? { gridTemplateColumns: showRight ? `${ratio}% 6px minmax(0, 1fr)` : 'minmax(0, 1fr)' } : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
-          <Panel module={split ? allModules.find(m => m.id === leftModule)! : current} scope={scope} hasBook={hasBook} bookTitle={bookTitle} onSelect={setLeftModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
+          <Panel key={split ? leftModule : active} module={split ? allModules.find(m => m.id === leftModule)! : current} hasBook={hasBook} bookTitle={bookTitle} onSelect={setLeftModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
           {split && <div className="splitter" onMouseDown={onDividerDown}><span/></div>}
-          {split && showRight && <Panel module={allModules.find(m => m.id === rightModule)!} scope={scope} hasBook={hasBook} bookTitle={bookTitle} onSelect={setRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
+          {split && showRight && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule)!} scope={scope} hasBook={hasBook} bookTitle={bookTitle} onSelect={setRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
         </div>
         {showRight && !split && <aside className="context-panel">
           <div className="context-head"><span>КОНТЕКСТ И ИНСТРУМЕНТЫ</span><button className="icon-button" onClick={() => setShowRight(false)}>×</button></div>
-          <div className="context-card"><div className="context-icon">✧</div><strong>{scope === 'work' && hasBook ? bookTitle : 'Общее пространство'}</strong><p>{scope === 'work' && hasBook ? 'Вы работаете в контексте выбранной книги. Общие материалы остаются доступны.' : 'Здесь доступны материалы и инструменты, не привязанные к одной книге.'}</p>{!hasBook && <button className="outline-button" onClick={() => selectModule('library')}>Открыть библиотеку</button>}</div>
+          <div className="context-card"><div className="context-icon">✧</div><strong>{current.label}</strong><p>{'Контекст и инструменты выбранного раздела.'}</p>{!hasBook && <button className="outline-button" onClick={() => selectModule('library')}>Открыть библиотеку</button>}</div>
           
         </aside>}
       </div>
@@ -131,7 +128,7 @@ function NavItem({ item, active, onClick }: { item: ModuleItem; active: boolean;
   return <button className={active ? 'nav-item active' : 'nav-item'} onClick={onClick}><span className="nav-icon">{item.icon}</span><span>{item.label}</span>{item.planned && <span className="planned-dot" title="Запланировано"/>}</button>
 }
 
-function Panel({ module, scope, hasBook, bookTitle, onSelect, onOpenBook, onCreate, secondary = false }: { module: ModuleItem; scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; onSelect: (id: ModuleId) => void; onOpenBook: () => void; onCreate: () => void; secondary?: boolean }) {
+function Panel({ module, hasBook, bookTitle, onSelect, onOpenBook, onCreate, secondary = false }: { module: ModuleItem; hasBook: boolean; bookTitle: string; onSelect: (id: ModuleId) => void; onOpenBook: () => void; onCreate: () => void; secondary?: boolean }) {
   const [text, setText] = useState('')
   const [panelScope, setPanelScope] = useState<'global' | 'work'>(module.global ? 'global' : 'work')
   const [librarySearch, setLibrarySearch] = useState('')
