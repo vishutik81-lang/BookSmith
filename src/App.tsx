@@ -110,7 +110,7 @@ function App() {
         <div className="panes" style={split ? { gridTemplateColumns: showRight ? `${ratio}% 6px minmax(0, 1fr)` : 'minmax(0, 1fr)' } : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
           <Panel key={split ? leftModule : active} module={split ? allModules.find(m => m.id === leftModule)! : current} hasBook={hasBook} bookTitle={bookTitle} onSelect={setLeftModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
           {split && <div className="splitter" onMouseDown={onDividerDown}><span/></div>}
-          {split && showRight && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule)!} scope={scope} hasBook={hasBook} bookTitle={bookTitle} onSelect={setRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
+          {split && showRight && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule)!} hasBook={hasBook} bookTitle={bookTitle} onSelect={setRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
         </div>
         {showRight && !split && <aside className="context-panel">
           <div className="context-head"><span>КОНТЕКСТ И ИНСТРУМЕНТЫ</span><button className="icon-button" onClick={() => setShowRight(false)}>×</button></div>
