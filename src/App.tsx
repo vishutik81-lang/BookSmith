@@ -55,7 +55,7 @@ function App() {
   const [showRight, setShowRight] = useState(true)
 
   const current = allModules.find(m => m.id === active) ?? { id: 'library' as ModuleId, label: 'Библиотека', icon: '▤' }
-  const openBook = () => { setHasBook(true); setScope('work'); setActive('manuscript') }
+  const openBook = () => { setHasBook(true); setActive('manuscript') }
   const selectModule = (id: ModuleId) => {
     setActive(id)
     if (split) setLeftModule(id)
