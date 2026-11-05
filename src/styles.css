@@ -35,3 +35,28 @@
 .needs-book-state h3{font:600 23px 'Playfair Display',serif;margin:8px 0}
 .needs-book-state p{font-size:12px;line-height:1.75;color:#858a80;margin:0 auto 20px;max-width:440px}
 @media(max-width:760px){.sidebar-brand{justify-content:center;padding:0 0 14px}.sidebar-brand>span{display:none}.scope-select{max-width:120px;font-size:9px}.library-intro{padding:18px}.library-intro h2{font-size:27px}.library-project-card{gap:12px}}
+
+/* Refined panel controls, search and vertical library cards */
+.topbar .toolbar-button{white-space:nowrap}
+.work-titlebar .title-actions .primary-button{display:none}
+.panel-scope-select{max-width:190px;border:1px solid #e3e6df;background:#fff;color:#626a5f;border-radius:7px;padding:7px 9px;font-size:10px}
+.library-toolbar{display:flex;align-items:center;gap:8px;margin-left:auto;min-width:0}
+.library-toolbar input{width:190px;min-width:80px;border:1px solid #e5e8e0;border-radius:7px;padding:7px 10px;font-size:10px;outline-color:#82977c}
+.library-toolbar select{max-width:120px;border:1px solid #e5e8e0;border-radius:7px;padding:7px 8px;background:white;color:#626a5f;font-size:10px}
+.library-workspace{max-width:1100px}
+.library-project-card{display:flex;flex-direction:column;align-items:stretch;gap:0;width:240px;padding:12px;vertical-align:top}
+.library-project-card .project-cover{width:100%;height:260px}
+.library-project-card .project-cover span{font-size:68px}
+.library-project-info{padding:13px 3px 4px;gap:6px}
+.library-project-info strong{font:600 17px 'Playfair Display',serif}
+.library-project-info span{font-size:10px;color:#858a80}
+.library-project-info .project-status{color:#66805f;font-weight:600;margin-top:3px}
+.library-no-results{padding:30px 10px;border:1px dashed #e1e5dc;border-radius:9px;color:#858a80;font-size:11px;max-width:450px}
+.context-section{display:none}
+@media(max-width:760px){
+ .library-toolbar{gap:4px}
+ .library-toolbar input{width:110px}
+ .library-toolbar select{max-width:90px}
+ .library-project-card{width:min(100%,260px)}
+ .library-project-card .project-cover{height:220px}
+}
