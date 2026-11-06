@@ -167,7 +167,6 @@ const draftTools: DraftTool[] = [
   { id: 'write', label: 'Написать текст', icon: '✦', group: 'Создание', prompt: 'Напиши фрагмент текста по следующему замыслу. Сохраняй заданный контекст и не добавляй события, противоречащие вводным.' },
   { id: 'continue', label: 'Продолжить', icon: '↗', group: 'Создание', prompt: 'Продолжи текст с того места, где он остановился. Сохрани голос повествования, темп и логику сцены.' },
   { id: 'scene', label: 'Создать сцену', icon: '▤', group: 'Создание', prompt: 'Создай сцену с указанной целью, конфликтом и изменением состояния персонажей.' },
-  { id: 'dialogue', label: 'Создать диалог', icon: '◌', group: 'Создание', prompt: 'Напиши диалог с индивидуальной речью участников, подтекстом и естественной динамикой.' },
   { id: 'ideas', label: 'Развить идею', icon: '✧', group: 'Развитие', prompt: 'Предложи несколько направлений развития идеи. Не выбирай за автора единственный вариант.' },
   { id: 'plot', label: 'Сюжетные события', icon: '⌁', group: 'Развитие', prompt: 'Предложи возможные события, причинно-следственные связи и последствия для сюжетной линии.' },
   { id: 'character', label: 'Разработать персонажа', icon: '♙', group: 'Развитие', prompt: 'Помоги разработать персонажа: мотивы, противоречия, поведение, речь и развитие.' },
@@ -185,7 +184,10 @@ const draftGroups = ['Создание', 'Развитие', 'Редактиро
 function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string }) {
   const [activeTool, setActiveTool] = useState('write')
   const [activeTab, setActiveTab] = useState<'tools' | 'history' | 'results'>('tools')
-  const [showSettings, setShowSettings] = useState(true)
+  const [showSettings, setShowSettings] = useState(false)
+  const [showCatalog, setShowCatalog] = useState(true)
+  const [assistantVisible, setAssistantVisible] = useState(true)
+  const [followup, setFollowup] = useState('')
   const [showStyleLibrary, setShowStyleLibrary] = useState(false)
   const [model, setModel] = useState('GPT-6')
   const [style, setStyle] = useState('Собственный голос')
@@ -218,12 +220,20 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
     setActiveTab('results')
     setNotice('Это демонстрационный результат макета: подключение модели и реальная генерация пока не включены.')
   }
+  const resultText = '— Возможно, ты всё-таки пришёл, — раздался голос из темноты.\\nОн узнал его сразу, хотя не слышал много лет.\\n\\n— Я думал, ты уехал.\\n— Я тоже так думал, — ответил голос.'
   const applyResult = (mode: string) => {
-    if (mode === 'Вставить в текст' || mode === 'Применить к рабочему тексту') {
-      setWorkingText(old => old + '\\n\\n' + '— Возможно, ты всё-таки пришёл, — раздался голос из темноты.\\nОн узнал его сразу, хотя не слышал много лет.')
+    if (mode === 'Вставить в конец рабочего текста') {
+      setWorkingText(old => old + '\\n\\n' + resultText)
+      setNotice('Фрагмент добавлен в конец рабочего текста. Предложение сохранено.')
+      return
+    }
+    if (mode === 'Заменить рабочий текст') {
+      setWorkingText(resultText)
+      setNotice('Рабочий текст заменён демонстрационным фрагментом.')
+      return
     }
     setResultStatus(mode === 'Отложить' ? 'Отложено' : mode === 'Отклонить' ? 'Отклонено' : 'Принято')
-    setNotice('Статус предложения изменён: ' + mode.toLowerCase() + '.')
+    setNotice(mode === 'Принять предложение' ? 'Предложение принято. Рабочий текст не изменён.' : 'Статус предложения изменён: ' + mode.toLowerCase() + '.')
   }
   const sliderNames = [
     ['Креативность', 'От строгого следования заданию до свободного поиска'],
@@ -237,7 +247,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
     { name: 'Эпическое фэнтези', desc: 'Масштаб, мифологичность, выразительный мир и историческая глубина' },
     { name: 'Лирическое повествование', desc: 'Ритм, метафоричность, внимание к внутренним переживаниям' },
   ]
-  return <div className="draft-workbench">
+  return <div className={assistantVisible ? "draft-workbench" : "draft-workbench assistant-collapsed"}>
     <section className="draft-editor-pane">
       <div className="draft-pane-heading">
         <div><div className="eyebrow">РАБОЧИЙ ТЕКСТ</div><strong>Текущий фрагмент</strong></div>
@@ -256,7 +266,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
     <section className="draft-assistant-pane">
       <div className="draft-assistant-top">
         <div className="draft-assistant-title"><div className="draft-ai-mark">✧</div><div><strong>ИИ-партнёр</strong><span>Задача: работа над сценой у архива</span></div></div>
-        <button className="draft-icon-action" title="Настройки панели">•••</button>
+        <button className="draft-collapse-button" onClick={() => setAssistantVisible(false)}>Свернуть панель ИИ</button>
       </div>
       <div className="draft-tabs">
         <button className={activeTab === 'tools' ? 'active' : ''} onClick={() => setActiveTab('tools')}>Инструменты</button>
@@ -266,7 +276,8 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
       <div className="draft-assistant-scroll">
         {activeTab === 'tools' && <>
           <div className="draft-tool-catalog">
-            <div className="draft-section-label">КАТАЛОГ ИНСТРУМЕНТОВ</div>
+            <div className="draft-catalog-heading"><div className="draft-section-label">КАТАЛОГ ИНСТРУМЕНТОВ</div><button onClick={() => setShowCatalog(v => !v)}>{showCatalog ? 'Свернуть каталог' : 'Показать каталог'}</button></div>
+            {showCatalog && <>
             {draftGroups.map(group => <div className="draft-tool-group" key={group}>
               <div className="draft-tool-group-title">{group}</div>
               <div className="draft-tool-grid">{draftTools.filter(t => t.group === group).map(t => <button key={t.id} className={activeTool === t.id ? 'draft-tool active' : 'draft-tool'} onClick={() => chooseTool(t.id)}><span>{t.icon}</span>{t.label}</button>)}</div>
@@ -302,11 +313,12 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
           </div>
         </>}
         {activeTab === 'history' && <div className="draft-history-view"><div className="draft-section-label">ИСТОРИЯ РАБОТЫ</div><h3>Последние действия</h3><p>Запросы, обсуждения и решения сохраняются в рамках рабочей задачи.</p>{history.map((item,i)=><button className="draft-history-item" key={item.title + '-' + i} onClick={()=>{setRequest(item.title);setActiveTab('tools')}}><span className="draft-history-icon">{i===0?'↗':'◷'}</span><span><b>{item.title}</b><small>{item.time}</small></span><em>{item.status}</em></button>)}<div className="draft-history-note">Одна задача может содержать несколько сессий. Здесь будет доступно продолжение предыдущей сессии и просмотр принятых решений.</div></div>}
-        {activeTab === 'results' && <div className="draft-result-view"><div className="draft-section-label">РЕЗУЛЬТАТ ИИ · ДЕМО</div><div className="draft-result-card"><div className="draft-result-head"><strong>Возможное продолжение сцены</strong><span className="draft-status-pill">{resultStatus}</span></div><p>— Возможно, ты всё-таки пришёл, — раздался голос из темноты.</p><p>Он узнал его сразу, хотя не слышал много лет. Рука сама потянулась к дверной ручке, но остановилась в нескольких сантиметрах от холодного металла.</p><p>— Я думал, ты уехал.</p><p>— Я тоже так думал, — ответил голос.</p><div className="draft-result-origin">Источник: «Продолжить сцену» · {model} · {style}</div><div className="draft-result-actions"><button className="draft-accept" onClick={()=>applyResult('Применить к рабочему тексту')}>Применить к рабочему тексту</button><button onClick={()=>applyResult('Вставить в текст')}>Вставить</button><button onClick={()=>setNotice('Создана демонстрационная альтернативная версия.')}>Ещё вариант</button><button onClick={()=>applyResult('Отложить')}>Отложить</button><button onClick={()=>applyResult('Отклонить')}>Отклонить</button></div></div><div className="draft-result-separation"><b>Важно:</b> принятие предложения и вставка в рабочий текст — разные действия. В Рукопись ничего не переносится автоматически.</div></div>}
+        {activeTab === 'results' && <div className="draft-result-view"><div className="draft-section-label">РЕЗУЛЬТАТ ИИ · ДЕМО</div><div className="draft-result-card"><div className="draft-result-head"><strong>Возможное продолжение сцены</strong><span className="draft-status-pill">{resultStatus}</span></div><p>— Возможно, ты всё-таки пришёл, — раздался голос из темноты.</p><p>Он узнал его сразу, хотя не слышал много лет. Рука сама потянулась к дверной ручке, но остановилась в нескольких сантиметрах от холодного металла.</p><p>— Я думал, ты уехал.</p><p>— Я тоже так думал, — ответил голос.</p><div className="draft-result-origin">Источник: «Продолжить сцену» · {model} · {style}</div><div className="draft-result-actions"><button className="draft-accept" onClick={()=>applyResult('Принять предложение')}>Принять предложение</button><button onClick={()=>applyResult('Вставить в конец рабочего текста')}>Вставить в конец текста</button><button onClick={()=>applyResult('Заменить рабочий текст')}>Заменить рабочий текст</button><button onClick={()=>setNotice('Создана демонстрационная альтернативная версия.')}>Ещё вариант</button><button onClick={()=>applyResult('Отложить')}>Отложить</button><button onClick={()=>applyResult('Отклонить')}>Отклонить</button></div></div><div className="draft-result-separation"><b>Важно:</b> принятие предложения меняет только его статус. Вставка или замена текста — отдельные действия. В рабочей версии замена будет доступна для выделенного фрагмента или позиции курсора. В Рукопись ничего не переносится автоматически.</div></div>}
       </div>
       {notice && <div className="draft-notice"><span>{notice}</span><button onClick={()=>setNotice('')}>×</button></div>}
-      <div className="draft-chat-composer"><textarea placeholder="Уточните запрос или продолжите обсуждение…" onChange={e=>setExtra(e.target.value)} value={extra}/><div><span>Обсуждение текущей задачи</span><button onClick={()=>{setActiveTab('tools');setRequest(extra || request);setNotice('Уточнение добавлено в форму запроса.')}}>Отправить ↗</button></div></div>
+      {activeTab === 'results' && <div className="draft-chat-composer"><textarea placeholder="Уточните полученный результат или задайте вопрос по нему…" onChange={e=>setFollowup(e.target.value)} value={followup}/><div><span>Обсуждение текущего результата</span><button disabled={!followup.trim()} onClick={()=>{setNotice('Уточнение добавлено в обсуждение текущего результата (демо).');setFollowup('')}}>Обсудить ↗</button></div></div>}
     </section>
+    {!assistantVisible && <button className="draft-show-assistant" onClick={() => setAssistantVisible(true)}>✧ Показать панель ИИ</button>}
   </div>
 }
 
