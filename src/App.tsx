@@ -282,6 +282,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
               <div className="draft-tool-group-title">{group}</div>
               <div className="draft-tool-grid">{draftTools.filter(t => t.group === group).map(t => <button key={t.id} className={activeTool === t.id ? 'draft-tool active' : 'draft-tool'} onClick={() => chooseTool(t.id)}><span>{t.icon}</span>{t.label}</button>)}</div>
             </div>)}
+            </>}
           </div>
           <div className="draft-request-card">
             <div className="draft-request-title"><div><div className="draft-section-label">ТЕКУЩИЙ ИНСТРУМЕНТ</div><strong>{tool.icon} {tool.label}</strong></div><span className="draft-demo-label">Макет</span></div>
