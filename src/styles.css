@@ -611,3 +611,27 @@
 .draft-side-pane .draft-side-tabs button>span{flex:0 0 auto}
 .draft-planning-chat-foot{display:flex;flex-direction:row;justify-content:flex-end;align-items:center}
 @media(max-width:680px){.draft-scope-topline{min-height:25px;padding-inline:8px}.draft-scope-select{font-size:9px}.draft-side-pane .draft-side-tabs button{padding-inline:0;gap:1px}}
+
+
+/* Readability pass: quiet editor typography and tab labels only. */
+.draft-side-pane .draft-side-tabs button{font-size:9px;letter-spacing:normal}
+.draft-side-pane .draft-side-tabs button small{font-size:9px}
+.draft-quiet-view{font-size:13px}
+.draft-quiet-heading h3{font-size:17px;line-height:1.3}
+.draft-quiet-heading p{font-size:12px;line-height:1.55;color:#727d6d}
+.draft-quiet-count{font-size:11px}
+.draft-quiet-summary span{font-size:12px;line-height:1.55;color:#687463}
+.draft-quiet-summary button{font-size:11px;line-height:1.4}
+.draft-finding-top strong{font-size:13px;line-height:1.45}
+.draft-finding-priority{font-size:10px}
+.draft-finding-select p{font-size:12px;line-height:1.6;color:#596454}
+.draft-finding-source{font-size:11px;line-height:1.5}
+.draft-finding-status{font-size:11px}
+.draft-finding-status select{font-size:11px;min-height:30px}
+.draft-finding-explanation{font-size:11px;line-height:1.55}
+.draft-selected-finding{font-size:12px;line-height:1.55}
+.draft-selected-finding button{font-size:11px}
+@media(max-width:680px){
+ .draft-side-pane .draft-side-tabs button{font-size:9px}
+ .draft-side-pane .draft-side-tabs button small{font-size:9px}
+}
