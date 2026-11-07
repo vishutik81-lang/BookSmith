@@ -334,3 +334,11 @@
   .draft-workbench .draft-tool{font-size:9px;padding:6px}
   .draft-workbench .draft-request-card{padding:8px}
 }
+
+
+/* Stable app-level split: panel internals must not change the outer grid. */
+.work-content{align-items:stretch;min-height:0}
+.panes{height:100%;align-self:stretch;grid-template-rows:minmax(0,1fr)}
+.panes.split-layout{display:grid!important;grid-template-rows:minmax(0,1fr)!important;min-height:0}
+.panes.split-layout>.panel{height:100%;min-height:0}
+.panes.split-layout>.splitter{height:100%;min-height:0}
