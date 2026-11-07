@@ -204,7 +204,7 @@ const draftGroups = ['Создание', 'Развитие', 'Редактиро
 
 function DraftWorkspace({ scope, hasBook, bookTitle, onScopeChange, showContext, activeMode, setActiveMode, mainView, setMainView }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; onScopeChange: (scope: 'global' | 'work') => void; showContext: boolean; activeMode: 'text' | 'planning'; setActiveMode: (mode: 'text' | 'planning') => void; mainView: 'work' | 'discussion'; setMainView: (view: 'work' | 'discussion') => void }) {
   const [rightTab, setRightTab] = useState<'tools' | 'planning' | 'history' | 'quiet'>('tools')
-  const [openSections, setOpenSections] = useState({ request: true, context: false, settings: false, planning: true })
+  const [openSections, setOpenSections] = useState({ request: true, context: false, settings: false, result: true, planning: true })
   const [openGroup, setOpenGroup] = useState('Создание')
   const [assistantVisible, setAssistantVisible] = useState(true)
   const [showCatalog, setShowCatalog] = useState(false)
@@ -220,6 +220,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, onScopeChange, showContext,
   const [resultStatus, setResultStatus] = useState('Предложение')
   const [notice, setNotice] = useState('')
   const [followup, setFollowup] = useState('')
+  const [resultDestination, setResultDestination] = useState('Конец рабочего текста')
   const [selectedTask, setSelectedTask] = useState(0)
   const [selectedFinding, setSelectedFinding] = useState(1)
   const [history, setHistory] = useState([
@@ -250,7 +251,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, onScopeChange, showContext,
   const resultText = '— Возможно, ты всё-таки пришёл, — раздался голос из темноты.\nОн узнал его сразу, хотя не слышал много лет.\n\n— Я думал, ты уехал.\n— Я тоже так думал, — ответил голос.'
   const selectedIssue = findings.find(item => item.id === selectedFinding) ?? findings[0]
   const toggleSection = (key: keyof typeof openSections) => setOpenSections(old => ({ ...old, [key]: !old[key] }))
-  const setAllSections = (value: boolean) => setOpenSections({ request: value, context: value, settings: value, planning: value })
+  const setAllSections = (value: boolean) => setOpenSections({ request: value, context: value, settings: value, result: value, planning: value })
   const chooseTool = (id: string) => {
     const selected = draftTools.find(t => t.id === id)
     if (selected) setRequest(selected.prompt)
@@ -268,15 +269,20 @@ function DraftWorkspace({ scope, hasBook, bookTitle, onScopeChange, showContext,
     setNotice('Демонстрационный макет: генерация и подключение модели пока не включены.')
   }
   const applyResult = (mode: string) => {
-    if (mode === 'Вставить в конец рабочего текста') {
-      setWorkingText(old => old + '\n\n' + resultText)
-      setNotice('Фрагмент добавлен в конец рабочего текста. Рукопись не затронута.')
+    if (mode === 'Вставить в текст') {
+      setWorkingText(old => resultDestination === 'В начало рабочего текста' ? resultText + '\n\n' + old : old + '\n\n' + resultText)
+      setNotice(`Фрагмент добавлен: ${resultDestination.toLowerCase()}. Рукопись не затронута.`)
       return
     }
-    if (mode === 'Заменить рабочий текст') {
+    if (mode === 'Заменить текст') {
       setWorkingText(resultText)
       setMainView('work')
       setNotice('Рабочий текст заменён демонстрационным фрагментом.')
+      return
+    }
+    if (mode === 'Сохранить отдельно') {
+      setResultStatus('Сохранено отдельно')
+      setNotice('Результат сохранён как отдельный вариант (демо).')
       return
     }
     setResultStatus(mode === 'Отложить' ? 'Отложено' : mode === 'Отклонить' ? 'Отклонено' : 'Принято')
@@ -321,13 +327,11 @@ function DraftWorkspace({ scope, hasBook, bookTitle, onScopeChange, showContext,
           <div className="draft-result-version"><b>Вариант 1</b><span>Предложение · {model} · {style}</span></div>
           <div className="draft-result-text">{resultText}</div>
           <div className="draft-result-origin">Исходный запрос: {(history[selectedTask]?.title ?? request) || 'Продолжить сцену у архива'}</div>
-          <div className="draft-result-actions"><button className="draft-accept" onClick={() => applyResult('Принять предложение')}>Принять</button><button onClick={() => applyResult('Вставить в конец рабочего текста')}>Вставить в текст</button><button onClick={() => applyResult('Заменить рабочий текст')}>Заменить текст</button><button onClick={() => setNotice('Создана демонстрационная альтернативная версия.')}>Ещё вариант</button><button onClick={() => applyResult('Отложить')}>Отложить</button><button onClick={() => applyResult('Отклонить')}>Отклонить</button></div>
-          <div className="draft-result-destination"><b>Место применения</b><span>Предложено: конец текущего рабочего фрагмента</span><small>Применение всегда подтверждает автор. В Рукопись ничего не переносится автоматически.</small></div>
+          
         </div> : <div className="draft-large-result">
           <textarea className="draft-plan-editor draft-plan-result" defaultValue={'Глава 1 · Завязка\nЗнакомство с героем и обстоятельствами. Старый архив становится отправной точкой.\n\nГлава 2 · Развитие\nПоявление препятствия, возвращение человека из прошлого, первый выбор героя.\n\nГлава 3 · Перелом\nРаскрытие причины возвращения и последствия решения героя.'}/>
 
         </div>}
-        {activeMode === 'text' && <div className="draft-discussion-history"><b>Ход работы</b><span>Запрос автора</span><span>Предложение модели</span><span>Ручная правка и уточнения сохраняются в рамках этой задачи</span></div>}
       </div>}
       {notice && <div className="draft-notice"><span>{notice}</span><button onClick={() => setNotice('')}>×</button></div>}
 
@@ -383,6 +387,26 @@ function DraftWorkspace({ scope, hasBook, bookTitle, onScopeChange, showContext,
                 <div className="draft-volume-row"><label>Объём текста</label><select defaultValue="По необходимости"><option>Очень кратко</option><option>Примерно как исходный</option><option>Немного подробнее</option><option>Развёрнуто</option><option>По необходимости</option></select></div>
               </div>}
             </section>
+            {activeMode === 'text' && mainView === 'discussion' && <section className="draft-accordion-section draft-result-accordion">
+              <button className="draft-accordion-head" aria-expanded={openSections.result} onClick={() => toggleSection('result')}><span><b>04</b><strong>Результат ИИ</strong><small>{resultStatus} · действия с предложением</small></span><i>{openSections.result ? '−' : '+'}</i></button>
+              {openSections.result && <div className="draft-accordion-content">
+                <div className="draft-result-destination">
+                  <b>Место применения</b>
+                  <select value={resultDestination} onChange={e => setResultDestination(e.target.value)}>
+                    <option>Конец рабочего текста</option>
+                    <option>Начало рабочего текста</option>
+                  </select>
+                </div>
+                <div className="draft-result-actions draft-result-actions-panel">
+                  <button onClick={() => applyResult('Вставить в текст')}>Вставить в текст</button>
+                  <button onClick={() => applyResult('Заменить текст')}>Заменить текст</button>
+                  <button onClick={() => applyResult('Сохранить отдельно')}>Сохранить отдельно</button>
+                  <button onClick={() => setNotice('Создана демонстрационная альтернативная версия.')}>Ещё вариант</button>
+                  <button onClick={() => applyResult('Отложить')}>Отложить</button>
+                  <button onClick={() => applyResult('Отклонить')}>Отклонить</button>
+                </div>
+              </div>}
+            </section>}
           </div>
           <button className="draft-send-button" disabled={!request.trim()} onClick={submitRequest}>{activeMode === 'text' ? 'Отправить запрос' : 'Обсудить план'} <span>↗</span></button>
           <div className="draft-request-foot">Каждая задача хранит запрос, контекст, варианты и решения автора.</div>
