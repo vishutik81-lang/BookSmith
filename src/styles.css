@@ -256,3 +256,16 @@
  .draft-workbench.assistant-collapsed{height:100%;min-height:0;grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr);overflow:hidden}
  .draft-workbench.assistant-collapsed .draft-editor-pane{min-height:0}
 }
+
+
+/* Outer split layout: keep modules side by side; never turn them into a vertical stack */
+@media(max-width:760px){
+  .work-content{overflow-x:auto;overflow-y:hidden}
+  .panes{display:grid!important;flex-direction:initial!important;min-width:720px;flex:1 0 720px}
+  .panes .panel{min-height:0;min-width:0}
+  .panes .splitter{display:flex}
+  .panes .panel-body{min-width:0}
+}
+/* Draft's own editor/assistant split is independent from the app-level split */
+.draft-workbench.compact-outer-layout{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+.draft-workbench.compact-outer-layout.assistant-collapsed{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
