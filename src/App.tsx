@@ -185,7 +185,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
   const [activeTool, setActiveTool] = useState('write')
   const [activeTab, setActiveTab] = useState<'tools' | 'history' | 'results'>('tools')
   const [showSettings, setShowSettings] = useState(false)
-  const [showCatalog, setShowCatalog] = useState(true)
+  const [openGroup, setOpenGroup] = useState('')
   const [assistantVisible, setAssistantVisible] = useState(true)
   const [followup, setFollowup] = useState('')
   const [showStyleLibrary, setShowStyleLibrary] = useState(false)
@@ -276,13 +276,13 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
       <div className="draft-assistant-scroll">
         {activeTab === 'tools' && <>
           <div className="draft-tool-catalog">
-            <div className="draft-catalog-heading"><div className="draft-section-label">КАТАЛОГ ИНСТРУМЕНТОВ</div><button onClick={() => setShowCatalog(v => !v)}>{showCatalog ? 'Свернуть каталог' : 'Показать каталог'}</button></div>
-            {showCatalog && <>
+            <div className="draft-catalog-heading"><div className="draft-section-label">КАТАЛОГ ИНСТРУМЕНТОВ</div><span>Выберите раздел</span></div>
             {draftGroups.map(group => <div className="draft-tool-group" key={group}>
-              <div className="draft-tool-group-title">{group}</div>
-              <div className="draft-tool-grid">{draftTools.filter(t => t.group === group).map(t => <button key={t.id} className={activeTool === t.id ? 'draft-tool active' : 'draft-tool'} onClick={() => chooseTool(t.id)}><span>{t.icon}</span>{t.label}</button>)}</div>
+              <button className={openGroup === group ? 'draft-tool-group-title expanded' : 'draft-tool-group-title'} aria-expanded={openGroup === group} onClick={() => setOpenGroup(current => current === group ? '' : group)}>
+                <span>{group}</span><span className="draft-group-chevron">{openGroup === group ? '−' : '+'}</span>
+              </button>
+              {openGroup === group && <div className="draft-tool-grid">{draftTools.filter(t => t.group === group).map(t => <button key={t.id} className={activeTool === t.id ? 'draft-tool active' : 'draft-tool'} onClick={() => chooseTool(t.id)}><span>{t.icon}</span>{t.label}</button>)}</div>}
             </div>)}
-            </>}
           </div>
           <div className="draft-request-card">
             <div className="draft-request-title"><div><div className="draft-section-label">ТЕКУЩИЙ ИНСТРУМЕНТ</div><strong>{tool.icon} {tool.label}</strong></div><span className="draft-demo-label">Макет</span></div>
