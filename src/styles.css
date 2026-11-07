@@ -600,3 +600,14 @@
 .draft-planning-chat-foot button{align-self:flex-end;border:0;border-radius:5px;background:#536b53;color:#fff;padding:8px 14px;font-size:10px;font-weight:650}
 .draft-planning-chat-foot button:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:680px){.draft-side-pane .draft-side-tabs button{font-size:7px}.draft-side-pane .draft-side-tabs button>span{font-size:9px}}
+
+
+/* Draft scope label belongs above the right-side tools, opposite the mode switch. */
+.draft-scope-topline{display:flex;align-items:center;justify-content:flex-end;min-height:28px;padding:3px 12px;background:#fbfcfa;border-bottom:1px solid #edf0eb}
+.draft-scope-topline>span{font-size:9px;letter-spacing:.07em;color:#879080;font-weight:650}
+.draft-scope-select{max-width:100%;border:0;background:transparent;color:#75816e;text-align:right;font-size:10px;font-weight:600;outline:none;cursor:pointer}
+.draft-side-pane .draft-side-tabs{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.draft-side-pane .draft-side-tabs button{padding-left:0;padding-right:0;gap:2px;letter-spacing:-.02em}
+.draft-side-pane .draft-side-tabs button>span{flex:0 0 auto}
+.draft-planning-chat-foot{display:flex;flex-direction:row;justify-content:flex-end;align-items:center}
+@media(max-width:680px){.draft-scope-topline{min-height:25px;padding-inline:8px}.draft-scope-select{font-size:9px}.draft-side-pane .draft-side-tabs button{padding-inline:0;gap:1px}}
