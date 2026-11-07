@@ -269,3 +269,9 @@
 /* Draft's own editor/assistant split is independent from the app-level split */
 .draft-workbench.compact-outer-layout{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
 .draft-workbench.compact-outer-layout.assistant-collapsed{grid-template-columns:minmax(0,1fr);grid-template-rows:minmax(0,1fr)}
+
+/* Keep the single-panel mobile layout full width; scroll horizontally only for an actual split */
+@media(max-width:760px){
+  .panes:has(.secondary-panel){min-width:720px;flex:1 0 720px}
+  .panes:not(:has(.secondary-panel)){min-width:0;flex:1 1 auto}
+}
