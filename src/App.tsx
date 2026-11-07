@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 type ModuleId = 'library' | 'manuscript' | 'draft' | 'dialogue' | 'notes' | 'research' | 'chapters' | 'scenes' | 'characters' | 'plotlines' | 'world' | 'images' | 'history' | 'export' | 'relations' | 'prompts'
 type ModuleItem = { id: ModuleId; label: string; icon: string; planned?: boolean; global?: boolean }
@@ -202,6 +202,7 @@ function DraftWorkspace({ compactLayout, scope, hasBook, bookTitle, showContext 
   const [showSettings, setShowSettings] = useState(false)
   const [openGroup, setOpenGroup] = useState('')
   const [assistantVisible, setAssistantVisible] = useState(!compactLayout)
+  useEffect(() => { if (compactLayout) setAssistantVisible(false) }, [compactLayout])
   const [followup, setFollowup] = useState('')
   const [showStyleLibrary, setShowStyleLibrary] = useState(false)
   const [model, setModel] = useState('GPT-6')
@@ -262,7 +263,7 @@ function DraftWorkspace({ compactLayout, scope, hasBook, bookTitle, showContext 
     { name: 'Эпическое фэнтези', desc: 'Масштаб, мифологичность, выразительный мир и историческая глубина' },
     { name: 'Лирическое повествование', desc: 'Ритм, метафоричность, внимание к внутренним переживаниям' },
   ]
-  return <div className={assistantVisible ? "draft-workbench" : "draft-workbench assistant-collapsed"}>
+  return <div className={`draft-workbench${assistantVisible ? "" : " assistant-collapsed"}${compactLayout ? " compact-outer-layout" : ""}`}>
     <section className="draft-editor-pane">
       <div className="draft-pane-heading">
         <div><div className="eyebrow">РАБОЧИЙ ТЕКСТ</div><strong>Текущий фрагмент</strong></div>
