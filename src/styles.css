@@ -544,3 +544,34 @@
  .draft-header-nav button{height:25px;font-size:8px;padding-inline:4px}
  .draft-panel-tabbar .panel-tab select{max-width:110px}
 }
+
+
+/* Draft navigation correction: contextual views stay in the main workspace;
+   AI actions and request controls stay in the right panel. */
+.panel-tabbar.draft-panel-tabbar{justify-content:flex-start;gap:clamp(10px,1.4vw,22px)}
+.draft-header-nav{flex:0 0 auto;overflow:visible}
+.draft-header-mode{border-right:0;padding-right:0}
+.draft-main-top{display:block!important;flex-shrink:0;background:#fff;border-bottom:1px solid #e8ece5}
+.draft-main-pane .draft-view-tabs{display:flex;align-items:center;gap:5px;padding:8px 13px 0}
+.draft-main-pane .draft-view-tabs button{border:1px solid transparent;border-radius:6px 6px 0 0;background:transparent;padding:8px 11px;color:#818a7d;font-size:11px;white-space:nowrap;cursor:pointer}
+.draft-main-pane .draft-view-tabs button.active{border-color:#e5eae2;border-bottom-color:#fff;background:#fff;color:#526b4e;font-weight:650}
+.draft-side-pane .draft-side-tabs{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:0;padding:4px 5px 0;border-bottom:1px solid #edf0eb}
+.draft-side-pane .draft-side-tabs button{display:flex;align-items:center;justify-content:center;gap:3px;min-width:0;min-height:38px;padding:6px 2px;border-bottom:2px solid transparent;border-right:0;font-size:9px;white-space:nowrap}
+.draft-side-pane .draft-side-tabs button.active{color:#526b4e;border-bottom-color:#71886a;background:transparent}
+.draft-side-pane .draft-side-tabs button>span{width:auto;font-size:11px}
+.draft-side-pane .draft-side-tabs button small{margin-left:1px;font-size:8px}
+@media(max-width:900px){
+ .draft-header-nav{gap:4px}
+ .draft-header-mode{padding-right:0}
+ .draft-main-pane .draft-view-tabs{padding-inline:7px}
+ .draft-main-pane .draft-view-tabs button{padding-inline:7px;font-size:10px}
+ .draft-side-pane .draft-side-tabs button{font-size:8px;gap:2px}
+}
+@media(max-width:680px){
+ .panel-tabbar.draft-panel-tabbar{height:43px;min-height:43px;flex-wrap:nowrap}
+ .draft-header-nav{flex:0 0 auto;order:0;padding:0}
+ .draft-header-mode{padding:0}
+ .draft-header-nav button{height:27px;font-size:8px;padding-inline:4px}
+ .draft-panel-tabbar .panel-tab select{max-width:100px}
+ .draft-side-pane .draft-side-tabs button{font-size:8px}
+}
