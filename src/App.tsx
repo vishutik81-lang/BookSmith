@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 
 type ModuleId = 'library' | 'manuscript' | 'draft' | 'dialogue' | 'notes' | 'research' | 'chapters' | 'scenes' | 'characters' | 'plotlines' | 'world' | 'images' | 'history' | 'export' | 'relations' | 'prompts'
 type ModuleItem = { id: ModuleId; label: string; icon: string; planned?: boolean; global?: boolean }
@@ -169,7 +169,7 @@ function Panel({ module, showContext, nestedSplit, hasBook, bookTitle, scope, on
       <>{module.id !== 'draft' && <><div className="panel-heading"><div><div className="eyebrow">{module.planned ? 'ЗАПЛАНИРОВАННЫЙ МОДУЛЬ' : module.global ? (scope === 'global' ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'РАБОЧАЯ ОБЛАСТЬ КНИГИ') : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h2>{module.label}</h2></div>{module.id === 'manuscript' && <span className="readiness-pill">Текущий текст</span>}</div><p className="panel-description">{descriptions[module.id]}</p></>}
       {module.planned ? <div className="planned-state"><div className="planned-symbol">✧</div><h3>Модуль в планах</h3><p>Представление уже включено в структуру приложения. Функциональность будет добавлена на следующих этапах.</p><span className="planned-tag">Запланировано</span></div> :
       module.id === 'manuscript' ? <div className="editor-shell"><div className="editor-toolbar"><button title="Жирный">B</button><button title="Курсив">I</button><button title="Заголовок">H</button><span className="toolbar-divider"/><button title="Отменить">↶</button><button title="Повторить">↷</button><span className="toolbar-spacer"/><span className="editor-status">Автосохранение</span></div><div className="manuscript-editor" contentEditable suppressContentEditableWarning><h2>Глава первая</h2><p className="editor-placeholder">Начните писать свою историю…</p><p>Рукопись — канонический текст книги. Вы можете редактировать его вручную. Изменения, подготовленные ИИ, попадут сюда только после вашего подтверждения.</p></div><div className="editor-footer"><span>Глава 1 · 0 слов</span><span>Русский · Без названия сцены</span></div></div> :
-      module.id === 'draft' ? <DraftWorkspace compactLayout={nestedSplit} scope={scope} hasBook={hasBook} bookTitle={bookTitle} showContext={showContext} /> :
+      module.id === 'draft' ? <DraftWorkspace scope={scope} hasBook={hasBook} bookTitle={bookTitle} showContext={showContext} /> :
       module.id === 'dialogue' ? <div className="planned-state dialogue-state"><div className="planned-symbol">◌</div><h3>Диалог персонажей</h3><p>Настройте участников, сцену и цель разговора. Каждый ход модели будет запускаться отдельно по вашему нажатию.</p><button className="outline-button" onClick={() => onSelect('characters')}>Выбрать персонажей</button></div> :
       <div className="module-placeholder"><div className="module-placeholder-icon">{module.icon}</div><h3>{module.label}</h3><p>Рабочее представление раздела будет развиваться отдельно. Сейчас мы формируем общий каркас и постоянную навигацию приложения.</p><button className="outline-button" onClick={() => onSelect('draft')}>Открыть Черновик</button></div>}</>}
     </div>
@@ -196,13 +196,12 @@ const draftTools: DraftTool[] = [
 ]
 const draftGroups = ['Создание', 'Развитие', 'Редактирование', 'Анализ']
 
-function DraftWorkspace({ compactLayout, scope, hasBook, bookTitle, showContext }: { compactLayout: boolean; scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean }) {
+function DraftWorkspace({ scope, hasBook, bookTitle, showContext }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean }) {
   const [activeTool, setActiveTool] = useState('write')
   const [activeTab, setActiveTab] = useState<'tools' | 'history' | 'results'>('tools')
   const [showSettings, setShowSettings] = useState(false)
   const [openGroup, setOpenGroup] = useState('')
-  const [assistantVisible, setAssistantVisible] = useState(!compactLayout)
-  useEffect(() => { if (compactLayout) setAssistantVisible(false) }, [compactLayout])
+  const [assistantVisible, setAssistantVisible] = useState(true)
   const [followup, setFollowup] = useState('')
   const [showStyleLibrary, setShowStyleLibrary] = useState(false)
   const [model, setModel] = useState('GPT-6')
@@ -263,7 +262,7 @@ function DraftWorkspace({ compactLayout, scope, hasBook, bookTitle, showContext 
     { name: 'Эпическое фэнтези', desc: 'Масштаб, мифологичность, выразительный мир и историческая глубина' },
     { name: 'Лирическое повествование', desc: 'Ритм, метафоричность, внимание к внутренним переживаниям' },
   ]
-  return <div className={`draft-workbench${assistantVisible ? "" : " assistant-collapsed"}${compactLayout ? " compact-outer-layout" : ""}`}>
+  return <div className={`draft-workbench${assistantVisible ? "" : " assistant-collapsed"}`}>
     <section className="draft-editor-pane">
       <div className="draft-pane-heading">
         <div><div className="eyebrow">РАБОЧИЙ ТЕКСТ</div><strong>Текущий фрагмент</strong></div>
