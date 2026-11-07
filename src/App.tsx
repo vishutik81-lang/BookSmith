@@ -57,7 +57,8 @@ function App() {
   const [showSecondPanel, setShowSecondPanel] = useState(true)
   const [showContext, setShowContext] = useState(true)
 
-  const current = allModules.find(m => m.id === active) ?? { id: 'library' as ModuleId, label: 'Библиотека', icon: '▤' }
+  const activeModule = split ? leftModule : active
+  const current = allModules.find(m => m.id === activeModule) ?? { id: 'library' as ModuleId, label: 'Библиотека', icon: '▤' }
   const openBook = () => { setHasBook(true); setActive('manuscript'); if (split) setLeftModule('manuscript') }
   const toggleSplit = () => {
     if (split) {
@@ -72,6 +73,9 @@ function App() {
   const selectLeftModule = (id: ModuleId) => {
     setLeftModule(id)
     setActive(id)
+  }
+  const selectRightModule = (id: ModuleId) => {
+    setRightModule(id)
   }
   const selectModule = (id: ModuleId) => {
     if (id === 'library') {
@@ -97,16 +101,16 @@ function App() {
   return <div className="workspace">
     <aside className="sidebar">
       <div className="brand sidebar-brand"><div className="brand-mark">B</div><span>BookSmith</span></div>
-      <button className={active === 'library' ? 'nav-item active library-nav-item' : 'nav-item library-nav-item'} onClick={() => selectModule('library')}>
+      <button className={activeModule === 'library' ? 'nav-item active library-nav-item' : 'nav-item library-nav-item'} onClick={() => selectModule('library')}>
         <span className="nav-icon">▤</span><span>Библиотека</span>
       </button>
       <div className="nav-caption">ОБЩЕЕ ПРОСТРАНСТВО</div>
       <nav className="module-nav">
-        {globalModules.map(item => <NavItem key={item.id} item={item} active={active === item.id} onClick={() => selectModule(item.id)} />)}
+        {globalModules.map(item => <NavItem key={item.id} item={item} active={activeModule === item.id} onClick={() => selectModule(item.id)} />)}
       </nav>
       <div className="nav-caption book-nav-caption">{hasBook ? 'ТЕКУЩАЯ КНИГА' : 'РАБОТА С КНИГОЙ'}</div>
       <nav className="module-nav book-module-nav">
-        {bookModules.map(item => <NavItem key={item.id} item={item} active={active === item.id} onClick={() => selectModule(item.id)} />)}
+        {bookModules.map(item => <NavItem key={item.id} item={item} active={activeModule === item.id} onClick={() => selectModule(item.id)} />)}
       </nav>
       <div className="sidebar-bottom">
         <div className="sync-status"><span className="status-dot"/> Интерфейс готов к работе</div>
@@ -116,7 +120,7 @@ function App() {
 
     <main className="main-area">
       <header className="topbar">
-        <div className="breadcrumbs"><span>BookSmith</span><b>/</b><strong>{active === 'library' ? 'Библиотека' : current.label}</strong>{active !== 'library' && <><b>/</b><span>{current.label}</span></>}</div>
+        <div className="breadcrumbs"><span>BookSmith</span><b>/</b><strong>{activeModule === 'library' ? 'Библиотека' : current.label}</strong>{activeModule !== 'library' && <><b>/</b><span>{current.label}</span></>}</div>
         <div className="top-actions">
           <button className={split ? 'toolbar-button selected' : 'toolbar-button'} onClick={toggleSplit}><span>◫</span>{split ? 'Одна панель' : 'Две панели'}</button>
           <button className="toolbar-button" onClick={() => setShowContext(v => !v)}>{showContext ? 'Скрыть контекст' : 'Показать контекст'}</button>
@@ -125,15 +129,15 @@ function App() {
       </header>
 
       <div className="work-titlebar">
-        <div><div className="eyebrow">{active === 'library' ? 'ВАША ТВОРЧЕСКАЯ МАСТЕРСКАЯ' : current.global ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h1>{split ? 'Рабочее пространство' : current.label}</h1><p>{split ? 'Откройте два раздела одновременно и настройте рабочее пространство под свою задачу.' : descriptions[active]}</p></div>
-        <div className="title-actions"><span className="saved-label"><span className="status-dot"/> Автосохранение</span>{active === 'library' && <button className="primary-button" onClick={() => { setNewTitle(''); setShowCreate(true) }}>＋ Новый проект</button>}</div>
+        <div><div className="eyebrow">{activeModule === 'library' ? 'ВАША ТВОРЧЕСКАЯ МАСТЕРСКАЯ' : current.global ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h1>{split ? 'Рабочее пространство' : current.label}</h1><p>{split ? 'Откройте два раздела одновременно и настройте рабочее пространство под свою задачу.' : descriptions[active]}</p></div>
+        <div className="title-actions"><span className="saved-label"><span className="status-dot"/> Автосохранение</span>{activeModule === 'library' && <button className="primary-button" onClick={() => { setNewTitle(''); setShowCreate(true) }}>＋ Новый проект</button>}</div>
       </div>
 
       <div className="work-content">
-        <div className="panes" style={split ? { gridTemplateColumns: showSecondPanel ? `${ratio}% 6px minmax(0, 1fr)` : 'minmax(0, 1fr)' } : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
+        <div className={split ? "panes split-layout" : "panes single-layout"} style={split ? { gridTemplateColumns: showSecondPanel ? `${ratio}% 6px minmax(0, 1fr)` : 'minmax(0, 1fr)' } : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
           <Panel key={split ? leftModule : active} module={split ? (allModules.find(m => m.id === leftModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }) : current} showContext={showContext} nestedSplit={split} hasBook={hasBook} bookTitle={bookTitle} scope={leftScope} onScopeChange={setLeftScope} onSelect={(id) => { if (split) selectLeftModule(id); else selectModule(id) }} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
           {split && showSecondPanel && <div className="splitter" onMouseDown={onDividerDown}><span/></div>}
-          {split && showSecondPanel && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }} showContext={showContext} nestedSplit={split} hasBook={hasBook} bookTitle={bookTitle} scope={rightScope} onScopeChange={setRightScope} onSelect={setRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
+          {split && showSecondPanel && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }} showContext={showContext} nestedSplit={split} hasBook={hasBook} bookTitle={bookTitle} scope={rightScope} onScopeChange={setRightScope} onSelect={selectRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
         </div>
         {showContext && !split && active !== 'draft' && <aside className="context-panel">
           <div className="context-head"><span>КОНТЕКСТ И ИНСТРУМЕНТЫ</span><button className="icon-button" onClick={() => setShowContext(false)}>×</button></div>
