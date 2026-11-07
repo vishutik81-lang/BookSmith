@@ -263,7 +263,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
       <div className="draft-editor-footer"><span>{workingText.trim().split(/\\s+/).filter(Boolean).length} слов · Русский</span><span>Рабочий текст Черновика</span></div>
       <div className="draft-selection-bar"><span>⌖ Контекст запроса</span><button onClick={() => setRequest(old => old || 'Работай с выделенным фрагментом текста.')}>Использовать весь текст</button><button onClick={() => setNotice('Выделение фрагмента показано как элемент макета.')}>Выделить фрагмент</button></div>
     </section>
-    <section className="draft-assistant-pane">
+    {assistantVisible && <section className="draft-assistant-pane">
       <div className="draft-assistant-top">
         <div className="draft-assistant-title"><div className="draft-ai-mark">✧</div><div><strong>ИИ-партнёр</strong><span>Задача: работа над сценой у архива</span></div></div>
         <button className="draft-collapse-button" onClick={() => setAssistantVisible(false)}>Свернуть панель ИИ</button>
@@ -305,7 +305,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
               </div>)}
               <div className="draft-preset-row"><label>Набор настроек</label><select value={preset} onChange={e => {setPreset(e.target.value);if(e.target.value==='Мрачная фантастика')setLevels([5,3,5,5]);if(e.target.value==='Спокойная проза')setLevels([2,1,5,1]);if(e.target.value==='Авторский баланс')setLevels([4,2,5,2])}}><option>Авторский баланс</option><option>Спокойная проза</option><option>Мрачная фантастика</option><option>Пользовательский</option></select></div>
               <div className="draft-style-block"><div className="draft-style-head"><div><label className="draft-field-label">Стиль повествования</label><strong>{style}</strong></div><button onClick={() => setShowStyleLibrary(v => !v)}>Библиотека стилей⌄</button></div>
-                <p>Профиль применяется к текущему запросу и не меняет стиль всей книги.</p>
+                <p>Профиль используется при генерации и редактировании, в том числе для инструмента «Изменить стиль». На стиль всей книги он не влияет.</p>
                 {showStyleLibrary && <div className="draft-style-library">{styleCards.map(card => <button key={card.name} className={style===card.name?'selected':''} onClick={() => {setStyle(card.name);setShowStyleLibrary(false)}}><b>{card.name}</b><span>{card.desc}</span></button>)}</div>}
               </div>
             </div>}
@@ -318,7 +318,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
       </div>
       {notice && <div className="draft-notice"><span>{notice}</span><button onClick={()=>setNotice('')}>×</button></div>}
       {activeTab === 'results' && <div className="draft-chat-composer"><textarea placeholder="Уточните полученный результат или задайте вопрос по нему…" onChange={e=>setFollowup(e.target.value)} value={followup}/><div><span>Обсуждение текущего результата</span><button disabled={!followup.trim()} onClick={()=>{setNotice('Уточнение добавлено в обсуждение текущего результата (демо).');setFollowup('')}}>Обсудить ↗</button></div></div>}
-    </section>
+    </section>}
     {!assistantVisible && <button className="draft-show-assistant" onClick={() => setAssistantVisible(true)}>✧ Показать панель ИИ</button>}
   </div>
 }
