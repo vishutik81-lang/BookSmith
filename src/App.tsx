@@ -299,7 +299,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, se
   return <div className={'draft-workbench draft-workbench-v3' + (assistantVisible ? '' : ' assistant-collapsed')}>
     <section className="draft-editor-pane draft-main-pane">
       <div className="draft-main-top"><div className="draft-view-tabs"><button className={mainView === 'work' ? 'active' : ''} onClick={() => setMainView('work')}>{activeMode === 'text' ? 'Рабочий текст' : 'Структура плана'}</button><button className={mainView === 'discussion' ? 'active' : ''} onClick={() => setMainView('discussion')}>Обсуждение и результаты</button></div></div>
-      {showContext && <div className="draft-context-line"><span>⌂ {context}</span><span>{activeMode === 'text' ? 'Без привязки к главе или сцене' : 'План произведения'}</span><button onClick={() => setNotice('Привязка к произведению, главе или сцене — демонстрационный элемент.')}>＋ Привязать</button></div>}
+      {showContext && !(activeMode === 'planning' && mainView === 'discussion') && <div className="draft-context-line"><span>⌂ {context}</span><span>Без привязки к главе или сцене</span><button onClick={() => setNotice('Привязка к произведению, главе или сцене — демонстрационный элемент.')}>＋ Привязать</button></div>}
       {mainView === 'work' && activeMode === 'text' && <>
         <div className="draft-formatbar">
           <button title="Жирный"><b>B</b></button><button title="Курсив"><i>I</i></button><button title="Заголовок">H</button><span/>
@@ -327,7 +327,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, se
           <textarea className="draft-plan-editor draft-plan-result" defaultValue={'Глава 1 · Завязка\nЗнакомство с героем и обстоятельствами. Старый архив становится отправной точкой.\n\nГлава 2 · Развитие\nПоявление препятствия, возвращение человека из прошлого, первый выбор героя.\n\nГлава 3 · Перелом\nРаскрытие причины возвращения и последствия решения героя.'}/>
           <div className="draft-result-actions"><button className="draft-accept" onClick={() => setNotice('Вариант плана принят в рабочую структуру. Рукопись не затронута.')}>Принять вариант плана</button><button onClick={() => setNotice('Сохранено как отдельный вариант плана.')}>Сохранить отдельно</button><button onClick={() => setNotice('Запрошен бы следующий вариант после подключения ИИ.')}>Ещё вариант</button><button onClick={() => setResultStatus('Отложено')}>Отложить</button></div>
         </div>}
-        <div className="draft-discussion-history"><b>Ход работы</b><span>Запрос автора</span><span>Предложение модели</span><span>Ручная правка и уточнения сохраняются в рамках этой задачи</span></div>
+        {activeMode === 'text' && <div className="draft-discussion-history"><b>Ход работы</b><span>Запрос автора</span><span>Предложение модели</span><span>Ручная правка и уточнения сохраняются в рамках этой задачи</span></div>}
       </div>}
       {notice && <div className="draft-notice"><span>{notice}</span><button onClick={() => setNotice('')}>×</button></div>}
       {mainView === 'discussion' && <div className="draft-chat-composer draft-main-composer"><textarea placeholder="Уточните задачу, попросите альтернативу или внесите правку…" onChange={e => setFollowup(e.target.value)} value={followup}/><div><span>Продолжение текущей задачи · результат остаётся в Черновике</span><button disabled={!followup.trim()} onClick={() => { setNotice('Уточнение добавлено в текущую задачу (демо).'); setFollowup('') }}>Обсудить ↗</button></div></div>}
