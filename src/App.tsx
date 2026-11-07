@@ -387,7 +387,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, onScopeChange, showContext,
                 <div className="draft-volume-row"><label>Объём текста</label><select defaultValue="По необходимости"><option>Очень кратко</option><option>Примерно как исходный</option><option>Немного подробнее</option><option>Развёрнуто</option><option>По необходимости</option></select></div>
               </div>}
             </section>
-            {activeMode === 'text' && mainView === 'discussion' && <section className="draft-accordion-section draft-result-accordion">
+            {activeMode === 'text' && <section className="draft-accordion-section draft-result-accordion">
               <button className="draft-accordion-head" aria-expanded={openSections.result} onClick={() => toggleSection('result')}><span><b>04</b><strong>Результат ИИ</strong><small>{resultStatus} · действия с предложением</small></span><i>{openSections.result ? '−' : '+'}</i></button>
               {openSections.result && <div className="draft-accordion-content">
                 <div className="draft-result-destination">
