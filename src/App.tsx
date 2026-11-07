@@ -204,7 +204,7 @@ const draftGroups = ['Создание', 'Развитие', 'Редактиро
 
 function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, setActiveMode, mainView, setMainView }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean; activeMode: 'text' | 'planning'; setActiveMode: (mode: 'text' | 'planning') => void; mainView: 'work' | 'discussion'; setMainView: (view: 'work' | 'discussion') => void }) {
   const [rightTab, setRightTab] = useState<'tools' | 'history' | 'quiet'>('tools')
-  const [openSections, setOpenSections] = useState({ request: true, context: false, settings: false })
+  const [openSections, setOpenSections] = useState({ request: true, context: false, settings: false, planning: true })
   const [openGroup, setOpenGroup] = useState('Создание')
   const [assistantVisible, setAssistantVisible] = useState(true)
   const [showCatalog, setShowCatalog] = useState(false)
@@ -250,7 +250,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, se
   const resultText = '— Возможно, ты всё-таки пришёл, — раздался голос из темноты.\nОн узнал его сразу, хотя не слышал много лет.\n\n— Я думал, ты уехал.\n— Я тоже так думал, — ответил голос.'
   const selectedIssue = findings.find(item => item.id === selectedFinding) ?? findings[0]
   const toggleSection = (key: keyof typeof openSections) => setOpenSections(old => ({ ...old, [key]: !old[key] }))
-  const setAllSections = (value: boolean) => setOpenSections({ request: value, context: value, settings: value })
+  const setAllSections = (value: boolean) => setOpenSections({ request: value, context: value, settings: value, planning: value })
   const chooseTool = (id: string) => {
     const selected = draftTools.find(t => t.id === id)
     if (selected) setRequest(selected.prompt)
@@ -325,7 +325,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, se
           <div className="draft-result-destination"><b>Место применения</b><span>Предложено: конец текущего рабочего фрагмента</span><small>Применение всегда подтверждает автор. В Рукопись ничего не переносится автоматически.</small></div>
         </div> : <div className="draft-large-result">
           <textarea className="draft-plan-editor draft-plan-result" defaultValue={'Глава 1 · Завязка\nЗнакомство с героем и обстоятельствами. Старый архив становится отправной точкой.\n\nГлава 2 · Развитие\nПоявление препятствия, возвращение человека из прошлого, первый выбор героя.\n\nГлава 3 · Перелом\nРаскрытие причины возвращения и последствия решения героя.'}/>
-          <div className="draft-result-actions"><button className="draft-accept" onClick={() => setNotice('Вариант плана принят в рабочую структуру. Рукопись не затронута.')}>Принять вариант плана</button><button onClick={() => setNotice('Сохранено как отдельный вариант плана.')}>Сохранить отдельно</button><button onClick={() => setNotice('Запрошен бы следующий вариант после подключения ИИ.')}>Ещё вариант</button><button onClick={() => setResultStatus('Отложено')}>Отложить</button></div>
+
         </div>}
         {activeMode === 'text' && <div className="draft-discussion-history"><b>Ход работы</b><span>Запрос автора</span><span>Предложение модели</span><span>Ручная правка и уточнения сохраняются в рамках этой задачи</span></div>}
       </div>}
@@ -381,6 +381,10 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, se
                 <div className="draft-volume-row"><label>Объём текста</label><select defaultValue="По необходимости"><option>Очень кратко</option><option>Примерно как исходный</option><option>Немного подробнее</option><option>Развёрнуто</option><option>По необходимости</option></select></div>
               </div>}
             </section>
+            {activeMode === 'planning' && <section className="draft-accordion-section draft-planning-actions-section">
+              <button className="draft-accordion-head" aria-expanded={openSections.planning} onClick={() => toggleSection('planning')}><span><b>04</b><strong>Планирование</strong><small>Действия с вариантом плана</small></span><i>{openSections.planning ? '−' : '+'}</i></button>
+              {openSections.planning && <div className="draft-accordion-content"><div className="draft-planning-actions"><button className="draft-accept" onClick={() => setNotice('Вариант плана принят в рабочую структуру. Рукопись не затронута.')}>Принять вариант плана</button><button onClick={() => setNotice('Сохранено как отдельный вариант плана.')}>Сохранить отдельно</button><button onClick={() => setNotice('Запрошен бы следующий вариант после подключения ИИ.')}>Ещё вариант</button><button onClick={() => setResultStatus('Отложено')}>Отложить</button></div></div>}
+            </section>}
           </div>
           <button className="draft-send-button" disabled={!request.trim()} onClick={submitRequest}>{activeMode === 'text' ? 'Отправить запрос' : 'Обсудить план'} <span>↗</span></button>
           <div className="draft-request-foot">Каждая задача хранит запрос, контекст, варианты и решения автора.</div>
