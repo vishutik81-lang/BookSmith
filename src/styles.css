@@ -516,3 +516,31 @@
  .draft-side-tabs button{font-size:8px}
  .draft-side-tabs button>span{width:13px}
 }
+
+
+/* Compact Draft navigation moved into the existing panel header row */
+.panel-tabbar.draft-panel-tabbar{justify-content:flex-start;gap:clamp(10px,1.4vw,22px);overflow:hidden;padding:0 10px}
+.draft-panel-tabbar .panel-tab{flex:0 0 auto}
+.draft-panel-tabbar .panel-tab select{max-width:125px}
+.draft-header-nav{display:flex;align-items:center;gap:clamp(7px,1.2vw,18px);min-width:0;flex:1;overflow:hidden}
+.draft-header-mode,.draft-header-view{display:flex;align-items:center;gap:3px;min-width:0;white-space:nowrap}
+.draft-header-mode{padding-right:clamp(6px,1vw,14px);border-right:1px solid #e8ece5}
+.draft-header-nav button{height:29px;border:1px solid transparent;border-radius:5px;background:transparent;color:#818a7d;padding:0 clamp(5px,.75vw,11px);font-size:clamp(9px,.72vw,11px);white-space:nowrap;cursor:pointer}
+.draft-header-nav button.active{background:#f1f5ee;border-color:#e1e9dc;color:#536c4d;font-weight:650}
+.draft-main-top{display:none!important}
+.draft-main-pane{padding-top:0}
+.draft-panel-body{padding-top:10px!important}
+@media(max-width:900px){
+ .panel-tabbar.draft-panel-tabbar{gap:7px;padding-inline:7px}
+ .draft-header-nav{gap:5px}
+ .draft-header-mode{padding-right:5px}
+ .draft-header-nav button{padding-inline:5px;font-size:9px}
+ .draft-panel-tabbar .panel-tab select{max-width:100px}
+}
+@media(max-width:680px){
+ .panel-tabbar.draft-panel-tabbar{height:auto;min-height:43px;flex-wrap:wrap;align-content:center;gap:2px}
+ .draft-header-nav{flex:1 1 100%;order:2;padding:0 0 4px 22px}
+ .draft-panel-tabbar .panel-tab{min-height:34px}
+ .draft-header-nav button{height:25px;font-size:8px;padding-inline:4px}
+ .draft-panel-tabbar .panel-tab select{max-width:110px}
+}
