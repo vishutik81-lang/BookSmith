@@ -201,49 +201,70 @@ const draftTools: DraftTool[] = [
 const draftGroups = ['Создание', 'Развитие', 'Редактирование', 'Анализ']
 
 function DraftWorkspace({ scope, hasBook, bookTitle, showContext }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean }) {
-  const [activeTool, setActiveTool] = useState('write')
-  const [activeTab, setActiveTab] = useState<'tools' | 'history' | 'results'>('tools')
-  const [showSettings, setShowSettings] = useState(false)
-  const [openGroup, setOpenGroup] = useState('')
+  const [activeMode, setActiveMode] = useState<'text' | 'dialogue' | 'planning' | 'history' | 'quiet'>('text')
+  const [openSections, setOpenSections] = useState({ request: true, context: true, settings: false, result: false })
+  const [openGroup, setOpenGroup] = useState('Создание')
   const [assistantVisible, setAssistantVisible] = useState(true)
-  const [followup, setFollowup] = useState('')
+  const [showCatalog, setShowCatalog] = useState(false)
   const [showStyleLibrary, setShowStyleLibrary] = useState(false)
-  const [model, setModel] = useState('GPT-6')
+  const [model, setModel] = useState('Автоматический выбор')
   const [style, setStyle] = useState('Собственный голос')
   const [preset, setPreset] = useState('Авторский баланс')
-  const [levels, setLevels] = useState([4, 2, 5, 2])
+  const [levels, setLevels] = useState([4, 2, 5, 4, 2])
   const [request, setRequest] = useState('')
   const [extra, setExtra] = useState('')
-  const [workingText, setWorkingText] = useState('Ветер с моря приносил запах соли и мокрого дерева. На узкой улице уже зажигали фонари, и их свет ложился на камни длинными неровными полосами.\\n\\nОн остановился у двери старого архива. За ней кто-то двигал мебель — медленно, словно не хотел, чтобы его услышали.\\n\\nНа мгновение ему показалось, что за мутным стеклом мелькнула знакомая фигура. Но когда он подошёл ближе, внутри снова стало тихо.')
+  const [workingText, setWorkingText] = useState('Ветер с моря приносил запах соли и мокрого дерева. На узкой улице уже зажигали фонари, и их свет ложился на камни длинными неровными полосами.\n\nОн остановился у двери старого архива. За ней кто-то двигал мебель — медленно, словно не хотел, чтобы его услышали.\n\nНа мгновение ему показалось, что за мутным стеклом мелькнула знакомая фигура. Но когда он подошёл ближе, внутри снова стало тихо.')
   const [resultStatus, setResultStatus] = useState('Предложение')
   const [notice, setNotice] = useState('')
+  const [followup, setFollowup] = useState('')
   const [history, setHistory] = useState([
     { title: 'Продолжить сцену у архива', time: 'Сегодня, 16:42', status: 'Есть результат' },
     { title: 'Проверить мотивацию героя', time: 'Сегодня, 15:18', status: 'Отложено' },
     { title: 'Три варианта развития эпизода', time: 'Вчера, 20:06', status: 'Сохранено' },
   ])
-  const tool = draftTools.find(t => t.id === activeTool) ?? draftTools[0]
+  const [findings, setFindings] = useState([
+    { id: 1, title: 'Несоответствие внешности персонажа', detail: 'В первой главе героиня описана блондинкой, а в третьей — рыжей. Пока нет объяснения изменения.', source: 'Глава 1 · Глава 3', priority: 'Высокая', status: 'Требует внимания' },
+    { id: 2, title: 'Мотивация героя в сцене', detail: 'Решение героя пока не полностью согласуется с его предыдущими действиями и страхом разоблачения.', source: 'Глава 2 · Сцена 3', priority: 'Средняя', status: 'Новое' },
+    { id: 3, title: 'Временная последовательность', detail: 'Между прибытием и разговором прошло меньше времени, чем требуется по описанию пути.', source: 'Глава 4', priority: 'Средняя', status: 'Проверяется' },
+    { id: 4, title: 'Повтор образа', detail: 'Образ холодного металла встречается несколько раз на небольшом участке текста.', source: 'Глава 2 · Сцена 3', priority: 'Низкая', status: 'Отложено' },
+  ])
+  const tool = draftTools.find(t => t.id === 'write') ?? draftTools[0]
   const context = scope === 'work' && hasBook ? bookTitle : 'Общее пространство'
-  const updateLevel = (index: number, value: number) => setLevels(old => old.map((n, i) => i === index ? value : n))
+  const sliderNames = [
+    ['Креативность', 'Степень свободы при поиске решений'],
+    ['Реализм', 'От условности до достоверности'],
+    ['Откровенность', 'Уровень откровенности содержания'],
+    ['Эмоциональность', 'Сила эмоционального выражения'],
+    ['Детализация насилия', 'Подробность изображения насилия'],
+  ]
+  const styleCards = [
+    { name: 'Собственный голос', desc: 'Образность, узнаваемая интонация и авторская манера' },
+    { name: 'Классическая проза', desc: 'Выверенная композиция и ясная речь' },
+    { name: 'Эпическое фэнтези', desc: 'Масштаб, мифологичность и выразительный мир' },
+    { name: 'Лирическое повествование', desc: 'Ритм, метафоричность и внутренние переживания' },
+  ]
+  const toggleSection = (key: keyof typeof openSections) => setOpenSections(old => ({ ...old, [key]: !old[key] }))
+  const setAllSections = (value: boolean) => setOpenSections({ request: value, context: value, settings: value, result: value })
   const chooseTool = (id: string) => {
-    setActiveTool(id)
     const selected = draftTools.find(t => t.id === id)
     if (selected) setRequest(selected.prompt)
-    setActiveTab('tools')
-    setNotice('')
+    setShowCatalog(false)
+    setActiveMode('text')
+    setOpenSections(old => ({ ...old, request: true }))
   }
   const submitRequest = () => {
     if (!request.trim()) return
-    setHistory(old => [{ title: tool.label, time: 'Только что', status: 'Демо-запрос' }, ...old])
+    setHistory(old => [{ title: request.length > 58 ? request.slice(0, 58) + '…' : request, time: 'Только что', status: 'Демо-запрос' }, ...old])
     setResultStatus('Предложение')
-    setActiveTab('results')
-    setNotice('Это демонстрационный результат макета: подключение модели и реальная генерация пока не включены.')
+    setActiveMode('text')
+    setOpenSections(old => ({ ...old, result: true }))
+    setNotice('Демонстрационный макет: генерация и подключение модели пока не включены.')
   }
-  const resultText = '— Возможно, ты всё-таки пришёл, — раздался голос из темноты.\\nОн узнал его сразу, хотя не слышал много лет.\\n\\n— Я думал, ты уехал.\\n— Я тоже так думал, — ответил голос.'
+  const resultText = '— Возможно, ты всё-таки пришёл, — раздался голос из темноты.\nОн узнал его сразу, хотя не слышал много лет.\n\n— Я думал, ты уехал.\n— Я тоже так думал, — ответил голос.'
   const applyResult = (mode: string) => {
     if (mode === 'Вставить в конец рабочего текста') {
-      setWorkingText(old => old + '\\n\\n' + resultText)
-      setNotice('Фрагмент добавлен в конец рабочего текста. Предложение сохранено.')
+      setWorkingText(old => old + '\n\n' + resultText)
+      setNotice('Фрагмент добавлен в конец рабочего текста. Рукопись не затронута.')
       return
     }
     if (mode === 'Заменить рабочий текст') {
@@ -252,91 +273,98 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext }: { scope: 'gl
       return
     }
     setResultStatus(mode === 'Отложить' ? 'Отложено' : mode === 'Отклонить' ? 'Отклонено' : 'Принято')
-    setNotice(mode === 'Принять предложение' ? 'Предложение принято. Рабочий текст не изменён.' : 'Статус предложения изменён: ' + mode.toLowerCase() + '.')
+    setNotice(mode === 'Принять предложение' ? 'Предложение принято. Текст не изменён автоматически.' : 'Статус предложения изменён: ' + mode.toLowerCase() + '.')
   }
-  const sliderNames = [
-    ['Креативность', 'От строгого следования заданию до свободного поиска'],
-    ['Откровенность (NSFW)', 'Уровень откровенности содержания'],
-    ['Реализм', 'От условности до физической и бытовой достоверности'],
-    ['Жестокость', 'Подробность изображения насилия и ран'],
+  const updateLevel = (index: number, value: number) => setLevels(old => old.map((n, i) => i === index ? value : n))
+  const updateFinding = (id: number, status: string) => setFindings(old => old.map(item => item.id === id ? { ...item, status } : item))
+  const modeTabs = [
+    { id: 'text' as const, label: 'Работа с текстом', icon: '✎' },
+    { id: 'dialogue' as const, label: 'Диалог с ИИ', icon: '◌' },
+    { id: 'planning' as const, label: 'Планирование', icon: '☷' },
+    { id: 'history' as const, label: 'История задач', icon: '↶', count: history.length },
+    { id: 'quiet' as const, label: 'Тихий редактор', icon: '⌕', count: findings.filter(x => !['Решено', 'Отклонено'].includes(x.status)).length },
   ]
-  const styleCards = [
-    { name: 'Собственный голос', desc: 'Ваш профиль: образность, сдержанная эмоциональность, психологическая глубина' },
-    { name: 'Классическая проза', desc: 'Выверенная композиция, ясная речь, внимание к деталям' },
-    { name: 'Эпическое фэнтези', desc: 'Масштаб, мифологичность, выразительный мир и историческая глубина' },
-    { name: 'Лирическое повествование', desc: 'Ритм, метафоричность, внимание к внутренним переживаниям' },
-  ]
-  return <div className={`draft-workbench${assistantVisible ? "" : " assistant-collapsed"}`}>
+  return <div className={'draft-workbench' + (assistantVisible ? '' : ' assistant-collapsed')}>
     <section className="draft-editor-pane">
       <div className="draft-pane-heading">
         <div><div className="eyebrow">РАБОЧИЙ ТЕКСТ</div><strong>Текущий фрагмент</strong></div>
         <div className="draft-editor-actions"><span className="draft-save-state"><i/> Сохранено</span><button title="Дополнительные действия">•••</button></div>
       </div>
-      {showContext && <div className="draft-context-line"><span>⌂ {context}</span><span>Без привязки к главе или сцене</span><button onClick={()=>setNotice('Привязка к произведению, главе или сцене — демонстрационный элемент.')}>＋ Привязать</button></div>}
+      {showContext && <div className="draft-context-line"><span>⌂ {context}</span><span>Без привязки к главе или сцене</span><button onClick={() => setNotice('Привязка к произведению, главе или сцене — демонстрационный элемент.')}>＋ Привязать</button></div>}
       <div className="draft-formatbar">
         <button title="Жирный"><b>B</b></button><button title="Курсив"><i>I</i></button><button title="Заголовок">H</button><span/>
         <button title="Отменить">↶</button><button title="Повторить">↷</button><span className="draft-format-spacer"/>
         <button>Выделенный фрагмент⌄</button>
       </div>
       <textarea className="draft-editor-text" value={workingText} onChange={e => setWorkingText(e.target.value)} aria-label="Рабочий текст Черновика"/>
-      <div className="draft-editor-footer"><span>{workingText.trim().split(/\\s+/).filter(Boolean).length} слов · Русский</span><span>Рабочий текст Черновика</span></div>
-      <div className="draft-selection-bar"><span>⌖ Контекст запроса</span><button onClick={() => setRequest(old => old || 'Работай с выделенным фрагментом текста.')}>Использовать весь текст</button><button onClick={() => setNotice('Выделение фрагмента показано как элемент макета.')}>Выделить фрагмент</button></div>
+      <div className="draft-editor-footer"><span>{workingText.trim().split(/\s+/).filter(Boolean).length} слов · Русский</span><span>Рабочий текст Черновика</span></div>
+      <div className="draft-selection-bar"><span>⌖ Контекст запроса</span><button onClick={() => { setRequest(old => old || 'Работай с текущим рабочим текстом.'); setOpenSections(old => ({ ...old, request: true })) }}>Использовать весь текст</button><button onClick={() => setNotice('Выделение фрагмента показано как элемент макета.')}>Выделить фрагмент</button></div>
     </section>
     {assistantVisible && <section className="draft-assistant-pane">
       <div className="draft-assistant-top">
-        <div className="draft-assistant-title"><div className="draft-ai-mark">✧</div><div><strong>ИИ-партнёр</strong><span>Задача: работа над сценой у архива</span></div></div>
-        <button className="draft-collapse-button" onClick={() => setAssistantVisible(false)}>Свернуть панель ИИ</button>
+        <div className="draft-assistant-title"><div className="draft-ai-mark">✧</div><div><strong>Мастерская ИИ</strong><span>Творческая работа · {context}</span></div></div>
+        <button className="draft-collapse-button" onClick={() => setAssistantVisible(false)}>Свернуть панель</button>
       </div>
-      <div className="draft-tabs">
-        <button className={activeTab === 'tools' ? 'active' : ''} onClick={() => setActiveTab('tools')}>Инструменты</button>
-        <button className={activeTab === 'history' ? 'active' : ''} onClick={() => setActiveTab('history')}>История <small>3</small></button>
-        <button className={activeTab === 'results' ? 'active' : ''} onClick={() => setActiveTab('results')}>Предложения <small>1</small></button>
-      </div>
+      <nav className="draft-mode-tabs" aria-label="Режимы Черновика">
+        {modeTabs.map(tab => <button key={tab.id} className={activeMode === tab.id ? 'active' : ''} onClick={() => setActiveMode(tab.id)}><span>{tab.icon}</span>{tab.label}{tab.count !== undefined && <small>{tab.count}</small>}</button>)}
+      </nav>
       <div className="draft-assistant-scroll">
-        {activeTab === 'tools' && <>
-          <div className="draft-tool-catalog">
-            <div className="draft-catalog-heading"><div className="draft-section-label">КАТАЛОГ ИНСТРУМЕНТОВ</div><span>Выберите раздел</span></div>
-            {draftGroups.map(group => <div className="draft-tool-group" key={group}>
-              <button className={openGroup === group ? 'draft-tool-group-title expanded' : 'draft-tool-group-title'} aria-expanded={openGroup === group} onClick={() => setOpenGroup(current => current === group ? '' : group)}>
-                <span>{group}</span><span className="draft-group-chevron">{openGroup === group ? '−' : '+'}</span>
-              </button>
-              {openGroup === group && <div className="draft-tool-grid">{draftTools.filter(t => t.group === group).map(t => <button key={t.id} className={activeTool === t.id ? 'draft-tool active' : 'draft-tool'} onClick={() => chooseTool(t.id)}><span>{t.icon}</span>{t.label}</button>)}</div>}
-            </div>)}
+        {activeMode === 'text' && <>
+          <div className="draft-accordion-toolbar"><span>ПОДГОТОВКА ЗАДАЧИ</span><button onClick={() => setAllSections(!Object.values(openSections).every(Boolean))}>{Object.values(openSections).every(Boolean) ? 'Свернуть всё' : 'Развернуть всё'}</button></div>
+          <div className="draft-accordion">
+            <section className="draft-accordion-section">
+              <button className="draft-accordion-head" aria-expanded={openSections.request} onClick={() => toggleSection('request')}><span><b>01</b><strong>Запрос</strong><small>Что нужно сделать</small></span><i>{openSections.request ? '−' : '+'}</i></button>
+              {openSections.request && <div className="draft-accordion-content">
+                <div className="draft-request-title"><div><div className="draft-section-label">СВОБОДНАЯ ФОРМУЛИРОВКА</div><strong>Опишите задачу своими словами</strong></div><span className="draft-demo-label">Макет</span></div>
+                <textarea className="draft-request-input" value={request} onChange={e => setRequest(e.target.value)} placeholder="Например: мне не нравится эта сцена, персонаж зажат и не раскрылся. Давай перепишем свободнее и добавим эмоциональности…"/>
+                <textarea className="draft-extra-input" value={extra} onChange={e => setExtra(e.target.value)} placeholder="Дополнительные пожелания или ограничения (необязательно)…"/>
+                <div className="draft-catalog-inline"><button onClick={() => setShowCatalog(v => !v)}>＋ Выбрать инструмент <span>{showCatalog ? '−' : '⌄'}</span></button><small>Можно работать и без выбора инструмента</small></div>
+                {showCatalog && <div className="draft-tool-catalog">{draftGroups.map(group => <div className="draft-tool-group" key={group}><button className={openGroup === group ? 'draft-tool-group-title expanded' : 'draft-tool-group-title'} onClick={() => setOpenGroup(old => old === group ? '' : group)}><span>{group}</span><span className="draft-group-chevron">{openGroup === group ? '−' : '+'}</span></button>{openGroup === group && <div className="draft-tool-grid">{draftTools.filter(t => t.group === group).map(t => <button key={t.id} className="draft-tool" onClick={() => chooseTool(t.id)}><span>{t.icon}</span>{t.label}</button>)}</div>}</div>)}</div>}
+                <div className="draft-request-foot">Автор формулирует намерение — ИИ самостоятельно подбирает операцию и технический запрос.</div>
+              </div>}
+            </section>
+            <section className="draft-accordion-section">
+              <button className="draft-accordion-head" aria-expanded={openSections.context} onClick={() => toggleSection('context')}><span><b>02</b><strong>Контекст</strong><small>{context} · 3 источника</small></span><i>{openSections.context ? '−' : '+'}</i></button>
+              {openSections.context && <div className="draft-accordion-content">
+                <div className="draft-context-summary"><span>Сейчас подключено</span><b>3 материала</b></div>
+                <div className="draft-source-list">
+                  <label><input type="checkbox" defaultChecked/><span><b>Рабочий фрагмент</b><small>Текущий текст редактора</small></span><em>Текст</em></label>
+                  <label><input type="checkbox" defaultChecked/><span><b>Персонажи сцены</b><small>Карточки и состояние на момент событий</small></span><em>Персонажи</em></label>
+                  <label><input type="checkbox" defaultChecked/><span><b>Предыдущие события</b><small>Краткая история и причинные связи</small></span><em>Сюжет</em></label>
+                </div>
+                <button className="draft-context-more" onClick={() => setNotice('Дополнительные источники: план, лор, предметы, заметки и исследования — демонстрационные элементы.')}>＋ Добавить источник контекста</button>
+                <div className="draft-context-note">Контекст помогает понять задачу, но не определяет место сохранения результата.</div>
+              </div>}
+            </section>
+            <section className="draft-accordion-section">
+              <button className="draft-accordion-head" aria-expanded={openSections.settings} onClick={() => toggleSection('settings')}><span><b>03</b><strong>Настройки генерации</strong><small>Auto · Авторский баланс</small></span><i>{openSections.settings ? '−' : '+'}</i></button>
+              {openSections.settings && <div className="draft-accordion-content">
+                <label className="draft-field-label">Модель для этой задачи</label>
+                <select className="draft-model-select" value={model} onChange={e => setModel(e.target.value)}><option>Автоматический выбор</option><option>GPT-6</option><option>GPT-5.6</option><option>GPT-5.5</option><option>Модель подключённого провайдера</option></select>
+                <div className="draft-preset-row"><label>Профиль параметров</label><select value={preset} onChange={e => { setPreset(e.target.value); if (e.target.value === 'Авторский баланс') setLevels([4, 2, 5, 4, 2]); if (e.target.value === 'Спокойная проза') setLevels([2, 5, 1, 2, 1]); if (e.target.value === 'Мрачная фантастика') setLevels([5, 4, 4, 5, 5]) }}><option>Авторский баланс</option><option>Спокойная проза</option><option>Мрачная фантастика</option><option>Пользовательский</option></select></div>
+                {sliderNames.map(([name, desc], i) => <div className="draft-slider-row" key={name}><div className="draft-slider-label"><b>{name}</b><span>{levels[i]} / 6 · Auto</span></div><input type="range" min="1" max="6" step="1" value={levels[i]} onChange={e => updateLevel(i, Number(e.target.value))}/><small>{desc}</small></div>)}
+                <div className="draft-style-block"><div className="draft-style-head"><div><label className="draft-field-label">Стиль повествования</label><strong>{style}</strong></div><button onClick={() => setShowStyleLibrary(v => !v)}>Библиотека стилей⌄</button></div><p>Стиль и эмоциональность — разные настройки. Локальный выбор не меняет концепцию произведения.</p>{showStyleLibrary && <div className="draft-style-library">{styleCards.map(card => <button key={card.name} className={style === card.name ? 'selected' : ''} onClick={() => { setStyle(card.name); setShowStyleLibrary(false) }}><b>{card.name}</b><span>{card.desc}</span></button>)}</div>}</div>
+                <div className="draft-volume-row"><label>Объём текста</label><select defaultValue="По необходимости"><option>Очень кратко</option><option>Примерно как исходный</option><option>Немного подробнее</option><option>Развёрнуто</option><option>По необходимости</option></select></div>
+              </div>}
+            </section>
+            <section className="draft-accordion-section">
+              <button className="draft-accordion-head" aria-expanded={openSections.result} onClick={() => toggleSection('result')}><span><b>04</b><strong>Результат</strong><small>{resultStatus}</small></span><i>{openSections.result ? '−' : '+'}</i></button>
+              {openSections.result && <div className="draft-accordion-content">
+                <div className="draft-result-card"><div className="draft-result-head"><strong>Возможное продолжение сцены</strong><span className="draft-status-pill">{resultStatus}</span></div><p>— Возможно, ты всё-таки пришёл, — раздался голос из темноты.</p><p>Он узнал его сразу, хотя не слышал много лет. Рука сама потянулась к дверной ручке, но остановилась в нескольких сантиметрах от холодного металла.</p><p>— Я думал, ты уехал.</p><p>— Я тоже так думал, — ответил голос.</p><div className="draft-result-origin">Источник: «Продолжить сцену» · {model} · {style}</div><div className="draft-result-actions"><button className="draft-accept" onClick={() => applyResult('Принять предложение')}>Принять</button><button onClick={() => applyResult('Вставить в конец рабочего текста')}>Вставить в текст</button><button onClick={() => applyResult('Заменить рабочий текст')}>Заменить</button><button onClick={() => setNotice('Создана демонстрационная альтернативная версия.')}>Ещё вариант</button><button onClick={() => applyResult('Отложить')}>Отложить</button><button onClick={() => applyResult('Отклонить')}>Отклонить</button></div></div>
+                <div className="draft-result-destination"><b>Место применения</b><span>Предложено: конец текущего рабочего фрагмента</span><small>Применение всегда подтверждает автор. В Рукопись ничего не переносится автоматически.</small></div>
+              </div>}
+            </section>
           </div>
-          <div className="draft-request-card">
-            <div className="draft-request-title"><div><div className="draft-section-label">ТЕКУЩИЙ ИНСТРУМЕНТ</div><strong>{tool.icon} {tool.label}</strong></div><span className="draft-demo-label">Макет</span></div>
-            <label className="draft-field-label">Запрос</label>
-            <textarea className="draft-request-input" value={request} onChange={e => setRequest(e.target.value)} placeholder="Опишите, что нужно сделать…"/>
-            <label className="draft-field-label">Дополнительные инструкции</label>
-            <textarea className="draft-extra-input" value={extra} onChange={e => setExtra(e.target.value)} placeholder="Что важно учесть? Чего избегать?"/>
-            <div className="draft-request-meta"><span>Контекст: <b>{context}</b></span><button onClick={() => setNotice('Выбор источников контекста будет доступен в рабочей версии.')}>Изменить контекст⌄</button></div>
-            <div className="draft-settings-heading"><strong>Параметры запроса</strong><button onClick={() => setShowSettings(v => !v)}>{showSettings ? 'Свернуть' : 'Настроить'}⌄</button></div>
-            {showSettings && <div className="draft-settings-body">
-              <label className="draft-field-label">Модель</label>
-              <select className="draft-model-select" value={model} onChange={e => setModel(e.target.value)}>
-                <option>GPT-6</option><option>GPT-5.6</option><option>GPT-5.5</option><option>Модель из подключённого провайдера</option>
-              </select>
-              <div className="draft-slider-head"><span>Тонкая настройка генерации</span><button onClick={() => {setLevels([4,2,5,2]);setPreset('Пользовательский')}}>Сбросить</button></div>
-              {sliderNames.map(([name,desc],i) => <div className="draft-slider-row" key={name}>
-                <div className="draft-slider-label"><b>{name}</b><span>{levels[i]} / 6</span></div>
-                <input type="range" min="1" max="6" step="1" value={levels[i]} onChange={e => updateLevel(i, Number(e.target.value))}/>
-                <small>{desc}</small>
-              </div>)}
-              <div className="draft-preset-row"><label>Набор настроек</label><select value={preset} onChange={e => {setPreset(e.target.value);if(e.target.value==='Мрачная фантастика')setLevels([5,3,5,5]);if(e.target.value==='Спокойная проза')setLevels([2,1,5,1]);if(e.target.value==='Авторский баланс')setLevels([4,2,5,2])}}><option>Авторский баланс</option><option>Спокойная проза</option><option>Мрачная фантастика</option><option>Пользовательский</option></select></div>
-              <div className="draft-style-block"><div className="draft-style-head"><div><label className="draft-field-label">Стиль повествования</label><strong>{style}</strong></div><button onClick={() => setShowStyleLibrary(v => !v)}>Библиотека стилей⌄</button></div>
-                <p>Профиль используется при генерации и редактировании, в том числе для инструмента «Изменить стиль». На стиль всей книги он не влияет.</p>
-                {showStyleLibrary && <div className="draft-style-library">{styleCards.map(card => <button key={card.name} className={style===card.name?'selected':''} onClick={() => {setStyle(card.name);setShowStyleLibrary(false)}}><b>{card.name}</b><span>{card.desc}</span></button>)}</div>}
-              </div>
-            </div>}
-            <button className="draft-send-button" disabled={!request.trim()} onClick={submitRequest}>Отправить запрос <span>↗</span></button>
-            <div className="draft-request-foot">Настройки относятся только к этому запросу · Рукопись не изменяется</div>
-          </div>
+          <button className="draft-send-button" disabled={!request.trim()} onClick={submitRequest}>Отправить запрос <span>↗</span></button>
+          <div className="draft-request-foot">Запрос, настройки и результат сохраняются в карточке задачи.</div>
         </>}
-        {activeTab === 'history' && <div className="draft-history-view"><div className="draft-section-label">ИСТОРИЯ РАБОТЫ</div><h3>Последние действия</h3><p>Запросы, обсуждения и решения сохраняются в рамках рабочей задачи.</p>{history.map((item,i)=><button className="draft-history-item" key={item.title + '-' + i} onClick={()=>{setRequest(item.title);setActiveTab('tools')}}><span className="draft-history-icon">{i===0?'↗':'◷'}</span><span><b>{item.title}</b><small>{item.time}</small></span><em>{item.status}</em></button>)}<div className="draft-history-note">Одна задача может содержать несколько сессий. Здесь будет доступно продолжение предыдущей сессии и просмотр принятых решений.</div></div>}
-        {activeTab === 'results' && <div className="draft-result-view"><div className="draft-section-label">РЕЗУЛЬТАТ ИИ · ДЕМО</div><div className="draft-result-card"><div className="draft-result-head"><strong>Возможное продолжение сцены</strong><span className="draft-status-pill">{resultStatus}</span></div><p>— Возможно, ты всё-таки пришёл, — раздался голос из темноты.</p><p>Он узнал его сразу, хотя не слышал много лет. Рука сама потянулась к дверной ручке, но остановилась в нескольких сантиметрах от холодного металла.</p><p>— Я думал, ты уехал.</p><p>— Я тоже так думал, — ответил голос.</p><div className="draft-result-origin">Источник: «Продолжить сцену» · {model} · {style}</div><div className="draft-result-actions"><button className="draft-accept" onClick={()=>applyResult('Принять предложение')}>Принять предложение</button><button onClick={()=>applyResult('Вставить в конец рабочего текста')}>Вставить в конец текста</button><button onClick={()=>applyResult('Заменить рабочий текст')}>Заменить рабочий текст</button><button onClick={()=>setNotice('Создана демонстрационная альтернативная версия.')}>Ещё вариант</button><button onClick={()=>applyResult('Отложить')}>Отложить</button><button onClick={()=>applyResult('Отклонить')}>Отклонить</button></div></div><div className="draft-result-separation"><b>Важно:</b> принятие предложения меняет только его статус. Вставка или замена текста — отдельные действия. В рабочей версии замена будет доступна для выделенного фрагмента или позиции курсора. В Рукопись ничего не переносится автоматически.</div></div>}
+        {activeMode === 'dialogue' && <div className="draft-mode-placeholder"><div className="draft-section-label">ТВОРЧЕСКИЙ ДИАЛОГ</div><h3>Исследуйте сцену через разговор</h3><p>Выберите персонажей, задайте ситуацию и цель. Диалог можно будет вести по ходам, управляя участниками и направлением сцены.</p><div className="draft-dialogue-preview"><div><b>Участники</b><span>Героиня · Собеседник</span></div><div><b>Ситуация</b><span>Встреча у старого архива</span></div><div><b>Управление</b><span>Следующий ход — по команде автора</span></div></div><button onClick={() => setNotice('Настройка участников и сцены — визуальный макет следующего этапа.')}>＋ Настроить диалог</button></div>}
+        {activeMode === 'planning' && <div className="draft-mode-placeholder"><div className="draft-section-label">СТРУКТУРА ПРОИЗВЕДЕНИЯ</div><h3>План — ориентир, а не ограничение</h3><p>Создавайте план произведения, частей, глав и сцен. Можно писать без плана, а затем вместе с ИИ встроить готовую сцену в общую историю.</p><div className="draft-plan-tree"><div><b>Произведение</b><small>Общий замысел и центральный конфликт</small></div><div><b>Глава 1 · Завязка</b><small>Знакомство с героем и обстоятельствами</small></div><div><b>Глава 2 · Развитие</b><small>Появление препятствия и первый выбор</small></div><div><b>Глава 3 · Перелом</b><small>Последствия решения героя</small></div></div><button onClick={() => setNotice('Редактирование плана — демонстрационный элемент.')}>＋ Добавить элемент плана</button></div>}
+        {activeMode === 'history' && <div className="draft-history-view"><div className="draft-section-label">ИСТОРИЯ РАБОТЫ</div><h3>Карточки задач</h3><p>Каждая самостоятельная задача хранит запрос, контекст, варианты, обсуждение и решения автора.</p>{history.map((item, i) => <button className="draft-history-item" key={item.title + '-' + i} onClick={() => { setRequest(item.title); setActiveMode('text'); setOpenSections(old => ({ ...old, request: true })) }}><span className="draft-history-icon">{i === 0 ? '↗' : '◷'}</span><span><b>{item.title}</b><small>{item.time}</small></span><em>{item.status}</em></button>)}<div className="draft-history-note">Продолжения и альтернативы хранятся внутри задачи. Здесь можно вернуться к прошлым решениям.</div></div>}
+        {activeMode === 'quiet' && <div className="draft-quiet-view"><div className="draft-quiet-heading"><div><div className="draft-section-label">ФОНОВЫЙ АНАЛИЗ · ДЕМО</div><h3>Тихий редактор</h3><p>Замечания накапливаются здесь. Текст не исправляется автоматически.</p></div><span className="draft-quiet-count">{findings.filter(x => !['Решено', 'Отклонено'].includes(x.status)).length} активных</span></div><div className="draft-quiet-summary"><span>Новые изменения текста могут изменить актуальность замечаний.</span><button onClick={() => setNotice('Повторный анализ будет доступен после подключения модулей и ИИ.')}>↻ Проверить актуальность</button></div>{findings.map(item => <article className="draft-finding-card" key={item.id}><div className="draft-finding-top"><strong>{item.title}</strong><span className={'draft-finding-priority ' + (item.priority === 'Высокая' ? 'high' : item.priority === 'Средняя' ? 'medium' : 'low')}>{item.priority}</span></div><p>{item.detail}</p><div className="draft-finding-source">⌖ {item.source}</div><div className="draft-finding-status"><span>Статус: <b>{item.status}</b></span><select value={item.status} onChange={e => updateFinding(item.id, e.target.value)}><option>Новое</option><option>Требует внимания</option><option>Проверяется</option><option>Решено</option><option>Частично решено</option><option>Отклонено</option><option>Отложено</option><option>Осознанное решение</option></select></div>{item.id === 1 && <div className="draft-finding-explanation">Пример повторной проверки: если автор позже объяснит изменение внешности (например, героиня покрасила волосы), редактор должен пересмотреть замечание и отметить его решённым, если противоречие действительно устранено.</div>}</article>)}</div>}
       </div>
-      {notice && <div className="draft-notice"><span>{notice}</span><button onClick={()=>setNotice('')}>×</button></div>}
-      {activeTab === 'results' && <div className="draft-chat-composer"><textarea placeholder="Уточните полученный результат или задайте вопрос по нему…" onChange={e=>setFollowup(e.target.value)} value={followup}/><div><span>Обсуждение текущего результата</span><button disabled={!followup.trim()} onClick={()=>{setNotice('Уточнение добавлено в обсуждение текущего результата (демо).');setFollowup('')}}>Обсудить ↗</button></div></div>}
+      {notice && <div className="draft-notice"><span>{notice}</span><button onClick={() => setNotice('')}>×</button></div>}
+      {activeMode === 'text' && <div className="draft-chat-composer"><textarea placeholder="Уточните задачу или продолжите обсуждение…" onChange={e => setFollowup(e.target.value)} value={followup}/><div><span>Продолжение текущей задачи</span><button disabled={!followup.trim()} onClick={() => { setNotice('Уточнение добавлено в текущую задачу (демо).'); setFollowup('') }}>Обсудить ↗</button></div></div>}
     </section>}
     {!assistantVisible && <button className="draft-show-assistant" onClick={() => setAssistantVisible(true)}>✧ Показать панель ИИ</button>}
   </div>
