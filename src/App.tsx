@@ -157,12 +157,14 @@ function NavItem({ item, active, onClick }: { item: ModuleItem; active: boolean;
 
 function Panel({ module, showContext, hasBook, bookTitle, scope, onScopeChange, onSelect, onOpenBook, onCreate, secondary = false }: { module: ModuleItem; showContext: boolean; nestedSplit: boolean; hasBook: boolean; bookTitle: string; scope: 'global' | 'work'; onScopeChange: (scope: 'global' | 'work') => void; onSelect: (id: ModuleId) => void; onOpenBook: () => void; onCreate: () => void; secondary?: boolean }) {
   const [text, setText] = useState('')
+  const [draftMode, setDraftMode] = useState<'text' | 'planning'>('text')
+  const [draftView, setDraftView] = useState<'work' | 'discussion'>('work')
   const [librarySearch, setLibrarySearch] = useState('')
   const [libraryFilter, setLibraryFilter] = useState('all')
   const showDemoProject = (libraryFilter === 'all' || libraryFilter === 'in-progress') && ('пример проекта фантастика новая история'.includes(librarySearch.toLowerCase()))
   const needsBook = !module.global && module.id !== 'library'
   return <section className={secondary ? 'panel secondary-panel' : 'panel'}>
-    <div className="panel-tabbar"><div className="panel-tab"><span className="nav-icon">{module.icon}</span><select value={module.id} onChange={e => onSelect(e.target.value as ModuleId)} aria-label="Выбрать раздел"><option value="library">Библиотека</option>{globalModules.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}{bookModules.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select><span className="tab-chevron">⌄</span></div>{module.id === 'library' ? <div className="library-toolbar"><input value={librarySearch} onChange={e => setLibrarySearch(e.target.value)} placeholder="⌕ Поиск проектов…" aria-label="Поиск проектов"/><select value={libraryFilter} onChange={e => setLibraryFilter(e.target.value)} aria-label="Фильтр проектов"><option value="all">Все проекты</option><option value="in-progress">В работе</option><option value="completed">Завершённые</option></select></div> : module.global && hasBook ? <select className="panel-scope-select" value={scope} onChange={e => onScopeChange(e.target.value as 'global' | 'work')} aria-label="Контекст раздела"><option value="global">Общее пространство</option><option value="work">В книге: {bookTitle}</option></select> : <span className="panel-context-label">{module.global ? 'ОБЩЕЕ ПРОСТРАНСТВО' : bookTitle}</span>}</div>
+    <div className={"panel-tabbar" + (module.id === 'draft' ? " draft-panel-tabbar" : "")}><div className="panel-tab"><span className="nav-icon">{module.icon}</span><select value={module.id} onChange={e => onSelect(e.target.value as ModuleId)} aria-label="Выбрать раздел"><option value="library">Библиотека</option>{globalModules.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}{bookModules.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select><span className="tab-chevron">⌄</span></div>{module.id === 'draft' && <div className="draft-header-nav"><div className="draft-header-mode"><button className={draftMode === 'text' ? "active" : ""} onClick={() => { setDraftMode('text'); setDraftView('work') }}>✎ Работа с текстом</button><button className={draftMode === 'planning' ? "active" : ""} onClick={() => { setDraftMode('planning'); setDraftView('work') }}>☷ Планирование</button></div><div className="draft-header-view"><button className={draftView === 'work' ? "active" : ""} onClick={() => setDraftView('work')}>{draftMode === 'text' ? "Рабочий текст" : "Структура плана"}</button><button className={draftView === 'discussion' ? "active" : ""} onClick={() => setDraftView('discussion')}>Обсуждение и результаты</button></div></div>}{module.id === 'library' ? <div className="library-toolbar"><input value={librarySearch} onChange={e => setLibrarySearch(e.target.value)} placeholder="⌕ Поиск проектов…" aria-label="Поиск проектов"/><select value={libraryFilter} onChange={e => setLibraryFilter(e.target.value)} aria-label="Фильтр проектов"><option value="all">Все проекты</option><option value="in-progress">В работе</option><option value="completed">Завершённые</option></select></div> : module.global && hasBook ? <select className="panel-scope-select" value={scope} onChange={e => onScopeChange(e.target.value as 'global' | 'work')} aria-label="Контекст раздела"><option value="global">Общее пространство</option><option value="work">В книге: {bookTitle}</option></select> : <span className="panel-context-label">{module.global ? 'ОБЩЕЕ ПРОСТРАНСТВО' : bookTitle}</span>}</div>
     <div className={module.id === 'draft' ? "panel-body draft-panel-body" : "panel-body"}>
       {module.id === 'library' ? <div className="library-workspace">
         <div className="library-intro"><div className="eyebrow">ВАША БИБЛИОТЕКА</div><h2>Истории начинаются здесь.</h2><p>Книги, проекты и материалы собраны в одном рабочем пространстве. Остальные разделы доступны в меню слева — даже если книга ещё не создана.</p><button className="primary-button" onClick={onCreate}>＋ Создать проект</button></div>
@@ -173,7 +175,7 @@ function Panel({ module, showContext, hasBook, bookTitle, scope, onScopeChange, 
       <>{module.id !== 'draft' && <><div className="panel-heading"><div><div className="eyebrow">{module.planned ? 'ЗАПЛАНИРОВАННЫЙ МОДУЛЬ' : module.global ? (scope === 'global' ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'РАБОЧАЯ ОБЛАСТЬ КНИГИ') : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h2>{module.label}</h2></div>{module.id === 'manuscript' && <span className="readiness-pill">Текущий текст</span>}</div><p className="panel-description">{descriptions[module.id]}</p></>}
       {module.planned ? <div className="planned-state"><div className="planned-symbol">✧</div><h3>Модуль в планах</h3><p>Представление уже включено в структуру приложения. Функциональность будет добавлена на следующих этапах.</p><span className="planned-tag">Запланировано</span></div> :
       module.id === 'manuscript' ? <div className="editor-shell"><div className="editor-toolbar"><button title="Жирный">B</button><button title="Курсив">I</button><button title="Заголовок">H</button><span className="toolbar-divider"/><button title="Отменить">↶</button><button title="Повторить">↷</button><span className="toolbar-spacer"/><span className="editor-status">Автосохранение</span></div><div className="manuscript-editor" contentEditable suppressContentEditableWarning><h2>Глава первая</h2><p className="editor-placeholder">Начните писать свою историю…</p><p>Рукопись — канонический текст книги. Вы можете редактировать его вручную. Изменения, подготовленные ИИ, попадут сюда только после вашего подтверждения.</p></div><div className="editor-footer"><span>Глава 1 · 0 слов</span><span>Русский · Без названия сцены</span></div></div> :
-      module.id === 'draft' ? <DraftWorkspace scope={scope} hasBook={hasBook} bookTitle={bookTitle} showContext={showContext} /> :
+      module.id === 'draft' ? <DraftWorkspace scope={scope} hasBook={hasBook} bookTitle={bookTitle} showContext={showContext} activeMode={draftMode} setActiveMode={setDraftMode} mainView={draftView} setMainView={setDraftView} /> :
       module.id === 'dialogue' ? <div className="planned-state dialogue-state"><div className="planned-symbol">◌</div><h3>Диалог персонажей</h3><p>Настройте участников, сцену и цель разговора. Каждый ход модели будет запускаться отдельно по вашему нажатию.</p><button className="outline-button" onClick={() => onSelect('characters')}>Выбрать персонажей</button></div> :
       <div className="module-placeholder"><div className="module-placeholder-icon">{module.icon}</div><h3>{module.label}</h3><p>Рабочее представление раздела будет развиваться отдельно. Сейчас мы формируем общий каркас и постоянную навигацию приложения.</p><button className="outline-button" onClick={() => onSelect('draft')}>Открыть Черновик</button></div>}</>}
     </div>
@@ -200,9 +202,7 @@ const draftTools: DraftTool[] = [
 ]
 const draftGroups = ['Создание', 'Развитие', 'Редактирование', 'Анализ']
 
-function DraftWorkspace({ scope, hasBook, bookTitle, showContext }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean }) {
-  const [activeMode, setActiveMode] = useState<'text' | 'planning'>('text')
-  const [mainView, setMainView] = useState<'work' | 'discussion'>('work')
+function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, setActiveMode, mainView, setMainView }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean; activeMode: 'text' | 'planning'; setActiveMode: (mode: 'text' | 'planning') => void; mainView: 'work' | 'discussion'; setMainView: (view: 'work' | 'discussion') => void }) {
   const [rightTab, setRightTab] = useState<'tools' | 'history' | 'quiet'>('tools')
   const [openSections, setOpenSections] = useState({ request: true, context: false, settings: false })
   const [openGroup, setOpenGroup] = useState('Создание')
@@ -298,21 +298,6 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext }: { scope: 'gl
   }
   return <div className={'draft-workbench draft-workbench-v3' + (assistantVisible ? '' : ' assistant-collapsed')}>
     <section className="draft-editor-pane draft-main-pane">
-      <div className="draft-main-top">
-        <div className="draft-main-heading">
-          <div><div className="eyebrow">ЧЕРНОВИК · РАБОЧАЯ МАСТЕРСКАЯ</div><strong>{activeMode === 'text' ? 'Работа с текстом' : 'Планирование'}</strong></div>
-          <div className="draft-editor-actions"><span className="draft-save-state"><i/> Сохранено</span><button title="Дополнительные действия">•••</button></div>
-        </div>
-        <nav className="draft-primary-tabs" aria-label="Рабочие режимы">
-          <button className={activeMode === 'text' ? 'active' : ''} onClick={() => { setActiveMode('text'); setMainView('work') }}>✎ Работа с текстом</button>
-          <button className={activeMode === 'planning' ? 'active' : ''} onClick={() => { setActiveMode('planning'); setMainView('work') }}>☷ Планирование</button>
-        </nav>
-        <div className="draft-view-tabs">
-          <button className={mainView === 'work' ? 'active' : ''} onClick={() => setMainView('work')}>{activeMode === 'text' ? 'Рабочий текст' : 'Структура плана'}</button>
-          <button className={mainView === 'discussion' ? 'active' : ''} onClick={() => setMainView('discussion')}>Обсуждение и результаты</button>
-          {mainView === 'discussion' && <span className="draft-view-context">{activeMode === 'text' ? 'Результат задачи' : 'Обсуждение плана'}</span>}
-        </div>
-      </div>
       {showContext && <div className="draft-context-line"><span>⌂ {context}</span><span>{activeMode === 'text' ? 'Без привязки к главе или сцене' : 'План произведения'}</span><button onClick={() => setNotice('Привязка к произведению, главе или сцене — демонстрационный элемент.')}>＋ Привязать</button></div>}
       {mainView === 'work' && activeMode === 'text' && <>
         <div className="draft-formatbar">
