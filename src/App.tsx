@@ -117,9 +117,9 @@ function App() {
 
       <div className="work-content">
         <div className="panes" style={split ? { gridTemplateColumns: showSecondPanel ? `${ratio}% 6px minmax(0, 1fr)` : 'minmax(0, 1fr)' } : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
-          <Panel key={split ? leftModule : active} module={split ? (allModules.find(m => m.id === leftModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }) : current} showContext={showContext} hasBook={hasBook} bookTitle={bookTitle} scope={leftScope} onScopeChange={setLeftScope} onSelect={selectModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
+          <Panel key={split ? leftModule : active} module={split ? (allModules.find(m => m.id === leftModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }) : current} showContext={showContext} hasBook={hasBook} bookTitle={bookTitle} scope={leftScope} onScopeChange={setLeftScope} onSelect={(id) => { if (split) setLeftModule(id); else selectModule(id) }} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
           {split && <div className="splitter" onMouseDown={onDividerDown}><span/></div>}
-          {split && showSecondPanel && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }} showContext={showContext} hasBook={hasBook} bookTitle={bookTitle} scope={rightScope} onScopeChange={setRightScope} onSelect={(id) => { if (id === 'library') selectModule('library'); else setRightModule(id) }} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
+          {split && showSecondPanel && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }} showContext={showContext} hasBook={hasBook} bookTitle={bookTitle} scope={rightScope} onScopeChange={setRightScope} onSelect={setRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
         </div>
         {showContext && !split && active !== 'draft' && <aside className="context-panel">
           <div className="context-head"><span>КОНТЕКСТ И ИНСТРУМЕНТЫ</span><button className="icon-button" onClick={() => setShowContext(false)}>×</button></div>
