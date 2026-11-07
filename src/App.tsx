@@ -44,7 +44,7 @@ const descriptions: Record<ModuleId, string> = {
 
 function App() {
   const [active, setActive] = useState<ModuleId>('library')
-  const [leftModule, setLeftModule] = useState<ModuleId>('draft')
+  const [leftModule, setLeftModule] = useState<ModuleId>('library')
   const [rightModule, setRightModule] = useState<ModuleId>('notes')
   const [leftScope, setLeftScope] = useState<'global' | 'work'>('global')
   const [rightScope, setRightScope] = useState<'global' | 'work'>('global')
@@ -58,7 +58,21 @@ function App() {
   const [showContext, setShowContext] = useState(true)
 
   const current = allModules.find(m => m.id === active) ?? { id: 'library' as ModuleId, label: 'Библиотека', icon: '▤' }
-  const openBook = () => { setHasBook(true); setActive('manuscript') }
+  const openBook = () => { setHasBook(true); setActive('manuscript'); if (split) setLeftModule('manuscript') }
+  const toggleSplit = () => {
+    if (split) {
+      setActive(leftModule)
+      setSplit(false)
+      return
+    }
+    setLeftModule(active)
+    setRightModule(active === 'notes' ? 'draft' : 'notes')
+    setSplit(true)
+  }
+  const selectLeftModule = (id: ModuleId) => {
+    setLeftModule(id)
+    setActive(id)
+  }
   const selectModule = (id: ModuleId) => {
     if (id === 'library') {
       setActive('library')
@@ -104,7 +118,7 @@ function App() {
       <header className="topbar">
         <div className="breadcrumbs"><span>BookSmith</span><b>/</b><strong>{active === 'library' ? 'Библиотека' : current.label}</strong>{active !== 'library' && <><b>/</b><span>{current.label}</span></>}</div>
         <div className="top-actions">
-          <button className={split ? 'toolbar-button selected' : 'toolbar-button'} onClick={() => setSplit(v => !v)}><span>◫</span>{split ? 'Одна панель' : 'Две панели'}</button>
+          <button className={split ? 'toolbar-button selected' : 'toolbar-button'} onClick={toggleSplit}><span>◫</span>{split ? 'Одна панель' : 'Две панели'}</button>
           <button className="toolbar-button" onClick={() => setShowContext(v => !v)}>{showContext ? 'Скрыть контекст' : 'Показать контекст'}</button>
           <button className="avatar">А</button>
         </div>
@@ -117,9 +131,9 @@ function App() {
 
       <div className="work-content">
         <div className="panes" style={split ? { gridTemplateColumns: showSecondPanel ? `${ratio}% 6px minmax(0, 1fr)` : 'minmax(0, 1fr)' } : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
-          <Panel key={split ? leftModule : active} module={split ? (allModules.find(m => m.id === leftModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }) : current} showContext={showContext} hasBook={hasBook} bookTitle={bookTitle} scope={leftScope} onScopeChange={setLeftScope} onSelect={(id) => { if (split) setLeftModule(id); else selectModule(id) }} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
-          {split && <div className="splitter" onMouseDown={onDividerDown}><span/></div>}
-          {split && showSecondPanel && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }} showContext={showContext} hasBook={hasBook} bookTitle={bookTitle} scope={rightScope} onScopeChange={setRightScope} onSelect={setRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
+          <Panel key={split ? leftModule : active} module={split ? (allModules.find(m => m.id === leftModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }) : current} showContext={showContext} nestedSplit={split} hasBook={hasBook} bookTitle={bookTitle} scope={leftScope} onScopeChange={setLeftScope} onSelect={(id) => { if (split) selectLeftModule(id); else selectModule(id) }} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
+          {split && showSecondPanel && <div className="splitter" onMouseDown={onDividerDown}><span/></div>}
+          {split && showSecondPanel && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }} showContext={showContext} nestedSplit={split} hasBook={hasBook} bookTitle={bookTitle} scope={rightScope} onScopeChange={setRightScope} onSelect={setRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
         </div>
         {showContext && !split && active !== 'draft' && <aside className="context-panel">
           <div className="context-head"><span>КОНТЕКСТ И ИНСТРУМЕНТЫ</span><button className="icon-button" onClick={() => setShowContext(false)}>×</button></div>
@@ -137,7 +151,7 @@ function NavItem({ item, active, onClick }: { item: ModuleItem; active: boolean;
   return <button className={active ? 'nav-item active' : 'nav-item'} onClick={onClick}><span className="nav-icon">{item.icon}</span><span>{item.label}</span>{item.planned && <span className="planned-dot" title="Запланировано"/>}</button>
 }
 
-function Panel({ module, showContext, hasBook, bookTitle, scope, onScopeChange, onSelect, onOpenBook, onCreate, secondary = false }: { module: ModuleItem; showContext: boolean; hasBook: boolean; bookTitle: string; scope: 'global' | 'work'; onScopeChange: (scope: 'global' | 'work') => void; onSelect: (id: ModuleId) => void; onOpenBook: () => void; onCreate: () => void; secondary?: boolean }) {
+function Panel({ module, showContext, nestedSplit, hasBook, bookTitle, scope, onScopeChange, onSelect, onOpenBook, onCreate, secondary = false }: { module: ModuleItem; showContext: boolean; nestedSplit: boolean; hasBook: boolean; bookTitle: string; scope: 'global' | 'work'; onScopeChange: (scope: 'global' | 'work') => void; onSelect: (id: ModuleId) => void; onOpenBook: () => void; onCreate: () => void; secondary?: boolean }) {
   const [text, setText] = useState('')
   const [librarySearch, setLibrarySearch] = useState('')
   const [libraryFilter, setLibraryFilter] = useState('all')
@@ -155,7 +169,7 @@ function Panel({ module, showContext, hasBook, bookTitle, scope, onScopeChange, 
       <>{module.id !== 'draft' && <><div className="panel-heading"><div><div className="eyebrow">{module.planned ? 'ЗАПЛАНИРОВАННЫЙ МОДУЛЬ' : module.global ? (scope === 'global' ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'РАБОЧАЯ ОБЛАСТЬ КНИГИ') : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h2>{module.label}</h2></div>{module.id === 'manuscript' && <span className="readiness-pill">Текущий текст</span>}</div><p className="panel-description">{descriptions[module.id]}</p></>}
       {module.planned ? <div className="planned-state"><div className="planned-symbol">✧</div><h3>Модуль в планах</h3><p>Представление уже включено в структуру приложения. Функциональность будет добавлена на следующих этапах.</p><span className="planned-tag">Запланировано</span></div> :
       module.id === 'manuscript' ? <div className="editor-shell"><div className="editor-toolbar"><button title="Жирный">B</button><button title="Курсив">I</button><button title="Заголовок">H</button><span className="toolbar-divider"/><button title="Отменить">↶</button><button title="Повторить">↷</button><span className="toolbar-spacer"/><span className="editor-status">Автосохранение</span></div><div className="manuscript-editor" contentEditable suppressContentEditableWarning><h2>Глава первая</h2><p className="editor-placeholder">Начните писать свою историю…</p><p>Рукопись — канонический текст книги. Вы можете редактировать его вручную. Изменения, подготовленные ИИ, попадут сюда только после вашего подтверждения.</p></div><div className="editor-footer"><span>Глава 1 · 0 слов</span><span>Русский · Без названия сцены</span></div></div> :
-      module.id === 'draft' ? <DraftWorkspace scope={scope} hasBook={hasBook} bookTitle={bookTitle} showContext={showContext} /> :
+      module.id === 'draft' ? <DraftWorkspace compactLayout={nestedSplit} scope={scope} hasBook={hasBook} bookTitle={bookTitle} showContext={showContext} /> :
       module.id === 'dialogue' ? <div className="planned-state dialogue-state"><div className="planned-symbol">◌</div><h3>Диалог персонажей</h3><p>Настройте участников, сцену и цель разговора. Каждый ход модели будет запускаться отдельно по вашему нажатию.</p><button className="outline-button" onClick={() => onSelect('characters')}>Выбрать персонажей</button></div> :
       <div className="module-placeholder"><div className="module-placeholder-icon">{module.icon}</div><h3>{module.label}</h3><p>Рабочее представление раздела будет развиваться отдельно. Сейчас мы формируем общий каркас и постоянную навигацию приложения.</p><button className="outline-button" onClick={() => onSelect('draft')}>Открыть Черновик</button></div>}</>}
     </div>
@@ -182,12 +196,12 @@ const draftTools: DraftTool[] = [
 ]
 const draftGroups = ['Создание', 'Развитие', 'Редактирование', 'Анализ']
 
-function DraftWorkspace({ scope, hasBook, bookTitle, showContext }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean }) {
+function DraftWorkspace({ compactLayout, scope, hasBook, bookTitle, showContext }: { compactLayout: boolean; scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean }) {
   const [activeTool, setActiveTool] = useState('write')
   const [activeTab, setActiveTab] = useState<'tools' | 'history' | 'results'>('tools')
   const [showSettings, setShowSettings] = useState(false)
   const [openGroup, setOpenGroup] = useState('')
-  const [assistantVisible, setAssistantVisible] = useState(true)
+  const [assistantVisible, setAssistantVisible] = useState(!compactLayout)
   const [followup, setFollowup] = useState('')
   const [showStyleLibrary, setShowStyleLibrary] = useState(false)
   const [model, setModel] = useState('GPT-6')
