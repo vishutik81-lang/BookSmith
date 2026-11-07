@@ -334,7 +334,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext }: { scope: 'gl
         {activeMode === 'text' ? <div className="draft-large-result">
           <div className="draft-result-version"><b>Вариант 1</b><span>Предложение · {model} · {style}</span></div>
           <div className="draft-result-text">{resultText}</div>
-          <div className="draft-result-origin">Исходный запрос: {history[selectedTask]?.title ?? request || 'Продолжить сцену у архива'}</div>
+          <div className="draft-result-origin">Исходный запрос: {(history[selectedTask]?.title ?? request) || 'Продолжить сцену у архива'}</div>
           <div className="draft-result-actions"><button className="draft-accept" onClick={() => applyResult('Принять предложение')}>Принять</button><button onClick={() => applyResult('Вставить в конец рабочего текста')}>Вставить в текст</button><button onClick={() => applyResult('Заменить рабочий текст')}>Заменить текст</button><button onClick={() => setNotice('Создана демонстрационная альтернативная версия.')}>Ещё вариант</button><button onClick={() => applyResult('Отложить')}>Отложить</button><button onClick={() => applyResult('Отклонить')}>Отклонить</button></div>
           <div className="draft-result-destination"><b>Место применения</b><span>Предложено: конец текущего рабочего фрагмента</span><small>Применение всегда подтверждает автор. В Рукопись ничего не переносится автоматически.</small></div>
         </div> : <div className="draft-large-result">
