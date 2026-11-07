@@ -203,7 +203,7 @@ const draftTools: DraftTool[] = [
 const draftGroups = ['Создание', 'Развитие', 'Редактирование', 'Анализ']
 
 function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, setActiveMode, mainView, setMainView }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean; activeMode: 'text' | 'planning'; setActiveMode: (mode: 'text' | 'planning') => void; mainView: 'work' | 'discussion'; setMainView: (view: 'work' | 'discussion') => void }) {
-  const [rightTab, setRightTab] = useState<'tools' | 'history' | 'quiet'>('tools')
+  const [rightTab, setRightTab] = useState<'tools' | 'planning' | 'history' | 'quiet'>('tools')
   const [openSections, setOpenSections] = useState({ request: true, context: false, settings: false, planning: true })
   const [openGroup, setOpenGroup] = useState('Создание')
   const [assistantVisible, setAssistantVisible] = useState(true)
@@ -330,7 +330,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, se
         {activeMode === 'text' && <div className="draft-discussion-history"><b>Ход работы</b><span>Запрос автора</span><span>Предложение модели</span><span>Ручная правка и уточнения сохраняются в рамках этой задачи</span></div>}
       </div>}
       {notice && <div className="draft-notice"><span>{notice}</span><button onClick={() => setNotice('')}>×</button></div>}
-      {mainView === 'discussion' && <div className="draft-chat-composer draft-main-composer"><textarea placeholder="Уточните задачу, попросите альтернативу или внесите правку…" onChange={e => setFollowup(e.target.value)} value={followup}/><div><span>Продолжение текущей задачи · результат остаётся в Черновике</span><button disabled={!followup.trim()} onClick={() => { setNotice('Уточнение добавлено в текущую задачу (демо).'); setFollowup('') }}>Обсудить ↗</button></div></div>}
+
     </section>
     {assistantVisible && <section className="draft-assistant-pane draft-side-pane">
       <div className="draft-assistant-top">
@@ -339,6 +339,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, se
       </div>
       <nav className="draft-mode-tabs draft-side-tabs" aria-label="Инструменты и сопровождение">
         <button className={rightTab === 'tools' ? 'active' : ''} onClick={() => setRightTab('tools')}><span>✧</span>Инструменты ИИ</button>
+        <button className={rightTab === 'planning' ? 'active' : ''} onClick={() => setRightTab('planning')}><span>☷</span>Планирование</button>
         <button className={rightTab === 'history' ? 'active' : ''} onClick={() => setRightTab('history')}><span>↶</span>История задач<small>{history.length}</small></button>
         <button className={rightTab === 'quiet' ? 'active' : ''} onClick={() => setRightTab('quiet')}><span>⌕</span>Тихий редактор<small>{findings.filter(x => !['Решено', 'Отклонено'].includes(x.status)).length}</small></button>
       </nav>
@@ -381,14 +382,19 @@ function DraftWorkspace({ scope, hasBook, bookTitle, showContext, activeMode, se
                 <div className="draft-volume-row"><label>Объём текста</label><select defaultValue="По необходимости"><option>Очень кратко</option><option>Примерно как исходный</option><option>Немного подробнее</option><option>Развёрнуто</option><option>По необходимости</option></select></div>
               </div>}
             </section>
-            {activeMode === 'planning' && <section className="draft-accordion-section draft-planning-actions-section">
-              <button className="draft-accordion-head" aria-expanded={openSections.planning} onClick={() => toggleSection('planning')}><span><b>04</b><strong>Планирование</strong><small>Действия с вариантом плана</small></span><i>{openSections.planning ? '−' : '+'}</i></button>
-              {openSections.planning && <div className="draft-accordion-content"><div className="draft-planning-actions"><button className="draft-accept" onClick={() => setNotice('Вариант плана принят в рабочую структуру. Рукопись не затронута.')}>Принять вариант плана</button><button onClick={() => setNotice('Сохранено как отдельный вариант плана.')}>Сохранить отдельно</button><button onClick={() => setNotice('Запрошен бы следующий вариант после подключения ИИ.')}>Ещё вариант</button><button onClick={() => setResultStatus('Отложено')}>Отложить</button></div></div>}
-            </section>}
           </div>
           <button className="draft-send-button" disabled={!request.trim()} onClick={submitRequest}>{activeMode === 'text' ? 'Отправить запрос' : 'Обсудить план'} <span>↗</span></button>
           <div className="draft-request-foot">Каждая задача хранит запрос, контекст, варианты и решения автора.</div>
         </>}
+        {rightTab === 'planning' && <div className="draft-planning-panel">
+          <div className="draft-section-label">РАБОТА С ПЛАНОМ</div>
+          <h3>Действия с вариантом</h3>
+          {activeMode === 'planning' ? <div className="draft-planning-actions"><button className="draft-accept" onClick={() => setNotice('Вариант плана принят в рабочую структуру. Рукопись не затронута.')}>Принять вариант плана</button><button onClick={() => setNotice('Сохранено как отдельный вариант плана.')}>Сохранить отдельно</button><button onClick={() => setNotice('Запрошен бы следующий вариант после подключения ИИ.')}>Ещё вариант</button><button onClick={() => setResultStatus('Отложено')}>Отложить</button></div> : <p className="draft-planning-hint">Переключитесь в режим «Планирование», чтобы управлять вариантами плана.</p>}
+          <div className="draft-planning-divider"/>
+          <div className="draft-section-label">ОБСУЖДЕНИЕ ПЛАНА</div>
+          <textarea className="draft-planning-chat-input" placeholder="Уточните задачу, попросите альтернативу или внесите правку…" onChange={e => setFollowup(e.target.value)} value={followup}/>
+          <div className="draft-planning-chat-foot"><span>Продолжение текущей задачи · результат остаётся в Черновике</span><button disabled={!followup.trim()} onClick={() => { setNotice('Уточнение добавлено в текущую задачу (демо).'); setFollowup('') }}>Обсудить ↗</button></div>
+        </div>}
         {rightTab === 'history' && <div className="draft-history-view">
           <div className="draft-section-label">ИСТОРИЯ РАБОТЫ</div><h3>Карточки задач</h3><p>Выберите задачу, чтобы открыть её материалы в большой рабочей области. Привязка к главам и сценам сохраняется.</p>
           {history.map((item, i) => <button className={selectedTask === i ? 'draft-history-item selected' : 'draft-history-item'} key={item.title + '-' + i} onClick={() => openTask(i)}><span className="draft-history-icon">{item.kind === 'План' ? '☷' : '↗'}</span><span><b>{item.title}</b><small>{item.time} · {item.location}</small></span><em>{item.status}</em></button>)}
