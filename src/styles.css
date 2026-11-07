@@ -575,3 +575,9 @@
  .draft-panel-tabbar .panel-tab select{max-width:100px}
  .draft-side-pane .draft-side-tabs button{font-size:8px}
 }
+
+
+/* Planning actions live in the right-side Planning accordion section. */
+.draft-planning-actions{display:flex;flex-direction:column;gap:7px}
+.draft-planning-actions button{width:100%;min-height:34px;padding:8px 10px;border:1px solid #e2e7de;border-radius:5px;background:#fff;color:#65705f;text-align:left;font-size:10px;cursor:pointer}
+.draft-planning-actions button.draft-accept{background:#536b53;border-color:#536b53;color:#fff;font-weight:650}
