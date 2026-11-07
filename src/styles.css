@@ -581,3 +581,22 @@
 .draft-planning-actions{display:flex;flex-direction:column;gap:7px}
 .draft-planning-actions button{width:100%;min-height:34px;padding:8px 10px;border:1px solid #e2e7de;border-radius:5px;background:#fff;color:#65705f;text-align:left;font-size:10px;cursor:pointer}
 .draft-planning-actions button.draft-accept{background:#536b53;border-color:#536b53;color:#fff;font-weight:650}
+
+
+/* Four horizontal tabs: AI tools, planning, task history, quiet editor. */
+.draft-side-pane .draft-side-tabs{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.draft-side-pane .draft-side-tabs button{font-size:8px;gap:2px;padding-inline:1px}
+.draft-side-pane .draft-side-tabs button>span{font-size:10px}
+.draft-planning-panel{padding:14px 12px;display:flex;flex-direction:column;gap:10px}
+.draft-planning-panel h3{margin:0;color:#344334;font-size:14px}
+.draft-planning-panel .draft-planning-actions{display:flex;flex-direction:column;gap:7px}
+.draft-planning-panel .draft-planning-actions button{width:100%;min-height:34px;padding:8px 10px;border:1px solid #e2e7de;border-radius:5px;background:#fff;color:#65705f;text-align:left;font-size:10px;cursor:pointer}
+.draft-planning-panel .draft-planning-actions button.draft-accept{background:#536b53;border-color:#536b53;color:#fff;font-weight:650}
+.draft-planning-hint{margin:0;color:#7b8477;font-size:10px;line-height:1.5}
+.draft-planning-divider{height:1px;background:#e9ede6;margin:3px 0}
+.draft-planning-chat-input{width:100%;min-height:112px;resize:vertical;border:1px solid #dfe5da;border-radius:6px;padding:10px;font:inherit;font-size:11px;line-height:1.5;color:#394438;background:#fff}
+.draft-planning-chat-foot{display:flex;flex-direction:column;gap:8px}
+.draft-planning-chat-foot span{font-size:9px;line-height:1.4;color:#879080}
+.draft-planning-chat-foot button{align-self:flex-end;border:0;border-radius:5px;background:#536b53;color:#fff;padding:8px 14px;font-size:10px;font-weight:650}
+.draft-planning-chat-foot button:disabled{opacity:.4;cursor:not-allowed}
+@media(max-width:680px){.draft-side-pane .draft-side-tabs button{font-size:7px}.draft-side-pane .draft-side-tabs button>span{font-size:9px}}
