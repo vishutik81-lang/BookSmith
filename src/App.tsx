@@ -54,7 +54,8 @@ function App() {
   const [hasBook, setHasBook] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [newTitle, setNewTitle] = useState('')
-  const [showRight, setShowRight] = useState(true)
+  const [showSecondPanel, setShowSecondPanel] = useState(true)
+  const [showContext, setShowContext] = useState(true)
 
   const current = allModules.find(m => m.id === active) ?? { id: 'library' as ModuleId, label: 'Библиотека', icon: '▤' }
   const openBook = () => { setHasBook(true); setActive('manuscript') }
@@ -104,7 +105,7 @@ function App() {
         <div className="breadcrumbs"><span>BookSmith</span><b>/</b><strong>{active === 'library' ? 'Библиотека' : current.label}</strong>{active !== 'library' && <><b>/</b><span>{current.label}</span></>}</div>
         <div className="top-actions">
           <button className={split ? 'toolbar-button selected' : 'toolbar-button'} onClick={() => setSplit(v => !v)}><span>◫</span>{split ? 'Одна панель' : 'Две панели'}</button>
-          <button className="toolbar-button" onClick={() => setShowRight(v => !v)}>{showRight ? 'Скрыть контекст' : 'Контекст'}</button>
+          <button className="toolbar-button" onClick={() => setShowContext(v => !v)}>{showContext ? 'Скрыть контекст' : 'Показать контекст'}</button>
           <button className="avatar">А</button>
         </div>
       </header>
@@ -115,13 +116,13 @@ function App() {
       </div>
 
       <div className="work-content">
-        <div className="panes" style={split ? { gridTemplateColumns: showRight ? `${ratio}% 6px minmax(0, 1fr)` : 'minmax(0, 1fr)' } : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
-          <Panel key={split ? leftModule : active} module={split ? allModules.find(m => m.id === leftModule)! : current} hasBook={hasBook} bookTitle={bookTitle} scope={leftScope} onScopeChange={setLeftScope} onSelect={selectModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
+        <div className="panes" style={split ? { gridTemplateColumns: showSecondPanel ? `${ratio}% 6px minmax(0, 1fr)` : 'minmax(0, 1fr)' } : { gridTemplateColumns: 'minmax(0, 1fr)' }}>
+          <Panel key={split ? leftModule : active} module={split ? (allModules.find(m => m.id === leftModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }) : current} showContext={showContext} hasBook={hasBook} bookTitle={bookTitle} scope={leftScope} onScopeChange={setLeftScope} onSelect={selectModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} />
           {split && <div className="splitter" onMouseDown={onDividerDown}><span/></div>}
-          {split && showRight && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule)!} hasBook={hasBook} bookTitle={bookTitle} scope={rightScope} onScopeChange={setRightScope} onSelect={(id) => { if (id === 'library') selectModule('library'); else setRightModule(id) }} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
+          {split && showSecondPanel && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }} showContext={showContext} hasBook={hasBook} bookTitle={bookTitle} scope={rightScope} onScopeChange={setRightScope} onSelect={(id) => { if (id === 'library') selectModule('library'); else setRightModule(id) }} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
         </div>
-        {showRight && !split && active !== 'draft' && <aside className="context-panel">
-          <div className="context-head"><span>КОНТЕКСТ И ИНСТРУМЕНТЫ</span><button className="icon-button" onClick={() => setShowRight(false)}>×</button></div>
+        {showContext && !split && active !== 'draft' && <aside className="context-panel">
+          <div className="context-head"><span>КОНТЕКСТ И ИНСТРУМЕНТЫ</span><button className="icon-button" onClick={() => setShowContext(false)}>×</button></div>
           <div className="context-card"><div className="context-icon">✧</div><strong>{current.label}</strong><p>{'Контекст и инструменты выбранного раздела.'}</p>{!hasBook && <button className="outline-button" onClick={() => selectModule('library')}>Открыть библиотеку</button>}</div>
           
         </aside>}
@@ -136,7 +137,7 @@ function NavItem({ item, active, onClick }: { item: ModuleItem; active: boolean;
   return <button className={active ? 'nav-item active' : 'nav-item'} onClick={onClick}><span className="nav-icon">{item.icon}</span><span>{item.label}</span>{item.planned && <span className="planned-dot" title="Запланировано"/>}</button>
 }
 
-function Panel({ module, hasBook, bookTitle, scope, onScopeChange, onSelect, onOpenBook, onCreate, secondary = false }: { module: ModuleItem; hasBook: boolean; bookTitle: string; scope: 'global' | 'work'; onScopeChange: (scope: 'global' | 'work') => void; onSelect: (id: ModuleId) => void; onOpenBook: () => void; onCreate: () => void; secondary?: boolean }) {
+function Panel({ module, showContext, hasBook, bookTitle, scope, onScopeChange, onSelect, onOpenBook, onCreate, secondary = false }: { module: ModuleItem; showContext: boolean; hasBook: boolean; bookTitle: string; scope: 'global' | 'work'; onScopeChange: (scope: 'global' | 'work') => void; onSelect: (id: ModuleId) => void; onOpenBook: () => void; onCreate: () => void; secondary?: boolean }) {
   const [text, setText] = useState('')
   const [librarySearch, setLibrarySearch] = useState('')
   const [libraryFilter, setLibraryFilter] = useState('all')
@@ -154,7 +155,7 @@ function Panel({ module, hasBook, bookTitle, scope, onScopeChange, onSelect, onO
       <>{module.id !== 'draft' && <><div className="panel-heading"><div><div className="eyebrow">{module.planned ? 'ЗАПЛАНИРОВАННЫЙ МОДУЛЬ' : module.global ? (scope === 'global' ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'РАБОЧАЯ ОБЛАСТЬ КНИГИ') : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h2>{module.label}</h2></div>{module.id === 'manuscript' && <span className="readiness-pill">Текущий текст</span>}</div><p className="panel-description">{descriptions[module.id]}</p></>}
       {module.planned ? <div className="planned-state"><div className="planned-symbol">✧</div><h3>Модуль в планах</h3><p>Представление уже включено в структуру приложения. Функциональность будет добавлена на следующих этапах.</p><span className="planned-tag">Запланировано</span></div> :
       module.id === 'manuscript' ? <div className="editor-shell"><div className="editor-toolbar"><button title="Жирный">B</button><button title="Курсив">I</button><button title="Заголовок">H</button><span className="toolbar-divider"/><button title="Отменить">↶</button><button title="Повторить">↷</button><span className="toolbar-spacer"/><span className="editor-status">Автосохранение</span></div><div className="manuscript-editor" contentEditable suppressContentEditableWarning><h2>Глава первая</h2><p className="editor-placeholder">Начните писать свою историю…</p><p>Рукопись — канонический текст книги. Вы можете редактировать его вручную. Изменения, подготовленные ИИ, попадут сюда только после вашего подтверждения.</p></div><div className="editor-footer"><span>Глава 1 · 0 слов</span><span>Русский · Без названия сцены</span></div></div> :
-      module.id === 'draft' ? <DraftWorkspace scope={scope} hasBook={hasBook} bookTitle={bookTitle} /> :
+      module.id === 'draft' ? <DraftWorkspace scope={scope} hasBook={hasBook} bookTitle={bookTitle} showContext={showContext} /> :
       module.id === 'dialogue' ? <div className="planned-state dialogue-state"><div className="planned-symbol">◌</div><h3>Диалог персонажей</h3><p>Настройте участников, сцену и цель разговора. Каждый ход модели будет запускаться отдельно по вашему нажатию.</p><button className="outline-button" onClick={() => onSelect('characters')}>Выбрать персонажей</button></div> :
       <div className="module-placeholder"><div className="module-placeholder-icon">{module.icon}</div><h3>{module.label}</h3><p>Рабочее представление раздела будет развиваться отдельно. Сейчас мы формируем общий каркас и постоянную навигацию приложения.</p><button className="outline-button" onClick={() => onSelect('draft')}>Открыть Черновик</button></div>}</>}
     </div>
@@ -181,7 +182,7 @@ const draftTools: DraftTool[] = [
 ]
 const draftGroups = ['Создание', 'Развитие', 'Редактирование', 'Анализ']
 
-function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string }) {
+function DraftWorkspace({ scope, hasBook, bookTitle, showContext }: { scope: 'global' | 'work'; hasBook: boolean; bookTitle: string; showContext: boolean }) {
   const [activeTool, setActiveTool] = useState('write')
   const [activeTab, setActiveTab] = useState<'tools' | 'history' | 'results'>('tools')
   const [showSettings, setShowSettings] = useState(false)
@@ -253,7 +254,7 @@ function DraftWorkspace({ scope, hasBook, bookTitle }: { scope: 'global' | 'work
         <div><div className="eyebrow">РАБОЧИЙ ТЕКСТ</div><strong>Текущий фрагмент</strong></div>
         <div className="draft-editor-actions"><span className="draft-save-state"><i/> Сохранено</span><button title="Дополнительные действия">•••</button></div>
       </div>
-      <div className="draft-context-line"><span>⌂ {context}</span><span>Без привязки к главе или сцене</span><button onClick={()=>setNotice('Привязка к произведению, главе или сцене — демонстрационный элемент.')}>＋ Привязать</button></div>
+      {showContext && <div className="draft-context-line"><span>⌂ {context}</span><span>Без привязки к главе или сцене</span><button onClick={()=>setNotice('Привязка к произведению, главе или сцене — демонстрационный элемент.')}>＋ Привязать</button></div>}
       <div className="draft-formatbar">
         <button title="Жирный"><b>B</b></button><button title="Курсив"><i>I</i></button><button title="Заголовок">H</button><span/>
         <button title="Отменить">↶</button><button title="Повторить">↷</button><span className="draft-format-spacer"/>
