@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-type ModuleId = 'library' | 'manuscript' | 'draft' | 'dialogue' | 'notes' | 'research' | 'chapters' | 'scenes' | 'characters' | 'plotlines' | 'world' | 'images' | 'history' | 'export' | 'relations' | 'prompts'
+type ModuleId = 'library' | 'manuscript' | 'draft' | 'dialogue' | 'notes' | 'research' | 'chapters' | 'scenes' | 'characters' | 'plotlines' | 'world' | 'images' | 'history' | 'export' | 'relations' | 'prompts' | 'translation'
 type ModuleItem = { id: ModuleId; label: string; icon: string; planned?: boolean; global?: boolean }
 
 const globalModules: ModuleItem[] = [
@@ -19,6 +19,7 @@ const bookModules: ModuleItem[] = [
   { id: 'plotlines', label: 'Сюжетные линии', icon: '⌁', planned: true },
   { id: 'history', label: 'История изменений', icon: '↶' },
   { id: 'export', label: 'Экспорт', icon: '⇧' },
+  { id: 'translation', label: 'Перевод', icon: '文' },
 ]
 const allModules = [...globalModules, ...bookModules]
 const descriptions: Record<ModuleId, string> = {
@@ -38,6 +39,7 @@ const descriptions: Record<ModuleId, string> = {
   export: 'Подготовка и экспорт рукописи в файл.',
   relations: 'Визуальная карта отношений между персонажами.',
   prompts: 'Просмотр контекста и промпта, отправленного модели.',
+  translation: 'Перевод произведения или выбранного фрагмента с учётом жанра, языковой культуры и авторских исключений.',
 }
 
 function App() {
@@ -173,11 +175,37 @@ function Panel({ module, showContext, hasBook, bookTitle, scope, onScopeChange, 
       <>{module.id !== 'draft' && module.id !== 'manuscript' && <><div className="panel-heading"><div><div className="eyebrow">{module.planned ? 'ЗАПЛАНИРОВАННЫЙ МОДУЛЬ' : module.global ? (scope === 'global' ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'РАБОЧАЯ ОБЛАСТЬ КНИГИ') : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h2>{module.label}</h2></div></div><p className="panel-description">{descriptions[module.id]}</p></>}
       {module.planned ? <div className="planned-state"><div className="planned-symbol">✧</div><h3>Модуль в планах</h3><p>Представление уже включено в структуру приложения. Функциональность будет добавлена на следующих этапах.</p><span className="planned-tag">Запланировано</span></div> :
       module.id === 'manuscript' ? <ManuscriptWorkspace bookTitle={bookTitle} /> :
+      module.id === 'translation' ? <TranslationWorkspace bookTitle={bookTitle} /> :
       module.id === 'draft' ? <DraftWorkspace scope={scope} hasBook={hasBook} bookTitle={bookTitle} onScopeChange={onScopeChange} showContext={showContext} activeMode={draftMode} setActiveMode={setDraftMode} mainView={draftView} setMainView={setDraftView} /> :
       module.id === 'dialogue' ? <div className="planned-state dialogue-state"><div className="planned-symbol">◌</div><h3>Диалог персонажей</h3><p>Настройте участников, сцену и цель разговора. Каждый ход модели будет запускаться отдельно по вашему нажатию.</p><button className="outline-button" onClick={() => onSelect('characters')}>Выбрать персонажей</button></div> :
       <div className="module-placeholder"><div className="module-placeholder-icon">{module.icon}</div><h3>{module.label}</h3><p>Рабочее представление раздела будет развиваться отдельно. Сейчас мы формируем общий каркас и постоянную навигацию приложения.</p><button className="outline-button" onClick={() => onSelect('draft')}>Открыть Черновик</button></div>}</>}
     </div>
   </section>
+}
+
+
+function TranslationWorkspace({ bookTitle }: { bookTitle: string }) {
+  return <div className="translation-workspace">
+    <div className="panel-heading"><div><div className="eyebrow">ИНСТРУМЕНТ РАБОТЫ С ТЕКСТОМ</div><h2>Перевод произведения</h2></div><span className="planned-tag">В разработке</span></div>
+    <p className="panel-description">Перевод должен сохранять не только смысл, но и назначение текста, голос автора и языковые особенности оригинала.</p>
+    <div className="translation-hero-card">
+      <div className="translation-language-flow"><div><small>ИСХОДНЫЙ ТЕКСТ</small><strong>Язык оригинала</strong></div><span>→</span><div><small>ЯЗЫК ПЕРЕВОДА</small><strong>Выберите язык</strong></div></div>
+      <div className="translation-scope-row"><div><small>ЧТО ПЕРЕВОДИМ</small><strong>Всю книгу или выбранный фрагмент</strong></div><div><small>ПРОИЗВЕДЕНИЕ</small><strong>{bookTitle}</strong></div></div>
+    </div>
+    <div className="translation-mode-grid">
+      <div className="translation-mode-card"><span className="translation-mode-icon">✧</span><strong>Художественный перевод</strong><p>Сохраняет голос персонажей, идиомы, сленг, ритм и естественность речи в другой языковой культуре.</p><small>Для романов, рассказов и диалогов</small></div>
+      <div className="translation-mode-card"><span className="translation-mode-icon">▤</span><strong>Точный текстовый перевод</strong><p>Передаёт содержание и структуру без художественной адаптации, сохраняя терминологию и точность формулировок.</p><small>Для научных и публицистических текстов</small></div>
+    </div>
+    <div className="translation-protection-card">
+      <div className="translation-protection-heading"><span>⌑</span><div><strong>Исключения и сохранение оригинала</strong><small>Важная часть будущей системы перевода</small></div></div>
+      <div className="translation-protection-list">
+        <div><b>Фрагменты на других языках</b><span>Латынь, цитаты, документы и намеренно оставленные оригинальные вставки</span></div>
+        <div><b>Имена и названия</b><span>Например, Moonflower остаётся Moonflower, а не превращается в «Лунный Цветок»</span></div>
+        <div><b>Транскрипция и транслитерация</b><span>Отдельные правила для имён, терминов и вымышленных слов</span></div>
+      </div>
+    </div>
+    <div className="translation-note"><span>ⓘ</span><p>Это визуальный макет будущего модуля. Перевод, распознавание языков и управление исключениями пока не подключены. Исходный текст Рукописи не будет заменяться автоматически: результат сначала должен быть представлен автору для проверки.</p></div>
+  </div>;
 }
 
 function ManuscriptWorkspace({ bookTitle }: { bookTitle: string }) {
