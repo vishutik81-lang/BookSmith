@@ -729,3 +729,21 @@
  .manuscript-paper{padding:28px 22px}
  .manuscript-head-actions{flex-wrap:wrap}
 }
+
+
+/* Manuscript outline: slightly wider panel and more readable navigation text. */
+.manuscript-outline{width:286px;flex-basis:286px}
+.manuscript-outline.collapsed{width:36px;flex-basis:36px}
+.manuscript-outline-head{padding:0 14px}
+.manuscript-outline-head strong{font-size:13px}
+.manuscript-outline-head small{font-size:10px}
+.manuscript-outline-list{padding:9px}
+.manuscript-chapter-select{gap:9px;padding:8px 6px}
+.manuscript-chapter-number{font-size:10px}
+.manuscript-chapter-name{font-size:11.5px}
+.manuscript-chapter-toggle{width:27px;height:27px}
+.manuscript-chapter-meta{font-size:9px;padding-left:33px}
+@media(max-width:1050px){
+ .manuscript-outline{width:270px;flex-basis:270px}
+ .manuscript-outline.collapsed{width:36px;flex-basis:36px}
+}
