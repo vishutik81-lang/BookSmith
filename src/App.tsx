@@ -16,8 +16,6 @@ const globalModules: ModuleItem[] = [
 ]
 const bookModules: ModuleItem[] = [
   { id: 'manuscript', label: 'Рукопись', icon: '▤' },
-  { id: 'chapters', label: 'Главы', icon: '☷' },
-  { id: 'scenes', label: 'Сцены', icon: '▦' },
   { id: 'plotlines', label: 'Сюжетные линии', icon: '⌁', planned: true },
   { id: 'history', label: 'История изменений', icon: '↶' },
   { id: 'export', label: 'Экспорт', icon: '⇧' },
@@ -25,7 +23,7 @@ const bookModules: ModuleItem[] = [
 const allModules = [...globalModules, ...bookModules]
 const descriptions: Record<ModuleId, string> = {
   library: 'Все ваши произведения и проекты в одном месте.',
-  manuscript: 'Канонический текст книги. Изменения от ИИ поступают сюда только после подтверждения автора.',
+  manuscript: 'Единый авторский текст произведения: чтение, ручное редактирование, навигация и корректура.',
   draft: 'Рабочее пространство для идей, вариантов, задач и подготовки фрагментов.',
   dialogue: 'Ролевой диалог с персонажами. Каждый следующий ход запускается автором.',
   notes: 'Самостоятельные заметки и идеи, которые можно связывать с объектами и проектами.',
@@ -139,7 +137,7 @@ function App() {
           {split && showSecondPanel && <div className="splitter" onMouseDown={onDividerDown}><span/></div>}
           {split && showSecondPanel && <Panel key={rightModule} module={allModules.find(m => m.id === rightModule) ?? { id: 'library', label: 'Библиотека', icon: '▤' }} showContext={showContext} nestedSplit={split} hasBook={hasBook} bookTitle={bookTitle} scope={rightScope} onScopeChange={setRightScope} onSelect={selectRightModule} onOpenBook={openBook} onCreate={() => setShowCreate(true)} secondary />}
         </div>
-        {showContext && !split && active !== 'draft' && <aside className="context-panel">
+        {showContext && !split && active !== 'draft' && active !== 'manuscript' && <aside className="context-panel">
           <div className="context-head"><span>КОНТЕКСТ И ИНСТРУМЕНТЫ</span><button className="icon-button" onClick={() => setShowContext(false)}>×</button></div>
           <div className="context-card"><div className="context-icon">✧</div><strong>{current.label}</strong><p>{'Контекст и инструменты выбранного раздела.'}</p>{!hasBook && <button className="outline-button" onClick={() => selectModule('library')}>Открыть библиотеку</button>}</div>
           
@@ -165,22 +163,131 @@ function Panel({ module, showContext, hasBook, bookTitle, scope, onScopeChange, 
   const needsBook = !module.global && module.id !== 'library'
   return <section className={secondary ? 'panel secondary-panel' : 'panel'}>
     <div className={"panel-tabbar" + (module.id === 'draft' ? " draft-panel-tabbar" : "")}><div className="panel-tab"><span className="nav-icon">{module.icon}</span><select value={module.id} onChange={e => onSelect(e.target.value as ModuleId)} aria-label="Выбрать раздел"><option value="library">Библиотека</option>{globalModules.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}{bookModules.map(m => <option key={m.id} value={m.id}>{m.label}</option>)}</select><span className="tab-chevron">⌄</span></div>{module.id === 'draft' && <div className="draft-header-nav"><div className="draft-header-mode"><button className={draftMode === 'text' ? "active" : ""} onClick={() => { setDraftMode('text'); setDraftView('work') }}>✎ Работа с текстом</button><button className={draftMode === 'planning' ? "active" : ""} onClick={() => { setDraftMode('planning'); setDraftView('work') }}>☷ Планирование</button></div></div>}{module.id === 'library' ? <div className="library-toolbar"><input value={librarySearch} onChange={e => setLibrarySearch(e.target.value)} placeholder="⌕ Поиск проектов…" aria-label="Поиск проектов"/><select value={libraryFilter} onChange={e => setLibraryFilter(e.target.value)} aria-label="Фильтр проектов"><option value="all">Все проекты</option><option value="in-progress">В работе</option><option value="completed">Завершённые</option></select></div> : module.id === 'draft' ? null : module.global && hasBook ? <select className="panel-scope-select" value={scope} onChange={e => onScopeChange(e.target.value as 'global' | 'work')} aria-label="Контекст раздела"><option value="global">Общее пространство</option><option value="work">В книге: {bookTitle}</option></select> : <span className="panel-context-label">{module.global ? 'ОБЩЕЕ ПРОСТРАНСТВО' : bookTitle}</span>}</div>
-    <div className={module.id === 'draft' ? "panel-body draft-panel-body" : "panel-body"}>
+    <div className={module.id === 'draft' ? "panel-body draft-panel-body" : module.id === 'manuscript' ? "panel-body manuscript-panel-body" : "panel-body"}>
       {module.id === 'library' ? <div className="library-workspace">
         <div className="library-intro"><div className="eyebrow">ВАША БИБЛИОТЕКА</div><h2>Истории начинаются здесь.</h2><p>Книги, проекты и материалы собраны в одном рабочем пространстве. Остальные разделы доступны в меню слева — даже если книга ещё не создана.</p><button className="primary-button" onClick={onCreate}>＋ Создать проект</button></div>
         <div className="library-list-heading"><div><h3>Мои проекты</h3><p>Откройте книгу, чтобы перейти к рукописи и её структуре.</p></div></div>
         {showDemoProject ? <button className="library-project-card" onClick={onOpenBook}><div className="project-cover cover-one"><span>Н</span><small>НОВАЯ ИСТОРИЯ</small></div><div className="library-project-info"><strong>{hasBook ? bookTitle : 'Пример проекта'}</strong><span>Фантастика · Роман</span><span>0 слов написано</span><span className="project-status">● В работе</span></div></button> : <div className="library-no-results">Проекты не найдены. Измените поисковый запрос или фильтр.</div>}
       </div> :
       needsBook && !hasBook ? <div className="needs-book-state"><div className="planned-symbol">▤</div><h3>Сначала выберите книгу</h3><p>Раздел «{module.label}» работает внутри конкретного произведения. При этом общие инструменты — Черновик, Заметки, Исследования, Персонажи и другие — уже доступны без открытой книги.</p><button className="primary-button" onClick={onSelect.bind(null, 'library')}>Перейти в библиотеку</button></div> :
-      <>{module.id !== 'draft' && <><div className="panel-heading"><div><div className="eyebrow">{module.planned ? 'ЗАПЛАНИРОВАННЫЙ МОДУЛЬ' : module.global ? (scope === 'global' ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'РАБОЧАЯ ОБЛАСТЬ КНИГИ') : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h2>{module.label}</h2></div>{module.id === 'manuscript' && <span className="readiness-pill">Текущий текст</span>}</div><p className="panel-description">{descriptions[module.id]}</p></>}
+      <>{module.id !== 'draft' && module.id !== 'manuscript' && <><div className="panel-heading"><div><div className="eyebrow">{module.planned ? 'ЗАПЛАНИРОВАННЫЙ МОДУЛЬ' : module.global ? (scope === 'global' ? 'ОБЩЕЕ ПРОСТРАНСТВО' : 'РАБОЧАЯ ОБЛАСТЬ КНИГИ') : 'ТЕКУЩИЙ ПРОЕКТ'}</div><h2>{module.label}</h2></div>{module.id === 'manuscript' && <span className="readiness-pill">Текущий текст</span>}</div><p className="panel-description">{descriptions[module.id]}</p></>}
       {module.planned ? <div className="planned-state"><div className="planned-symbol">✧</div><h3>Модуль в планах</h3><p>Представление уже включено в структуру приложения. Функциональность будет добавлена на следующих этапах.</p><span className="planned-tag">Запланировано</span></div> :
-      module.id === 'manuscript' ? <div className="editor-shell"><div className="editor-toolbar"><button title="Жирный">B</button><button title="Курсив">I</button><button title="Заголовок">H</button><span className="toolbar-divider"/><button title="Отменить">↶</button><button title="Повторить">↷</button><span className="toolbar-spacer"/><span className="editor-status">Автосохранение</span></div><div className="manuscript-editor" contentEditable suppressContentEditableWarning><h2>Глава первая</h2><p className="editor-placeholder">Начните писать свою историю…</p><p>Рукопись — канонический текст книги. Вы можете редактировать его вручную. Изменения, подготовленные ИИ, попадут сюда только после вашего подтверждения.</p></div><div className="editor-footer"><span>Глава 1 · 0 слов</span><span>Русский · Без названия сцены</span></div></div> :
+      module.id === 'manuscript' ? <ManuscriptWorkspace bookTitle={bookTitle} /> :
       module.id === 'draft' ? <DraftWorkspace scope={scope} hasBook={hasBook} bookTitle={bookTitle} onScopeChange={onScopeChange} showContext={showContext} activeMode={draftMode} setActiveMode={setDraftMode} mainView={draftView} setMainView={setDraftView} /> :
       module.id === 'dialogue' ? <div className="planned-state dialogue-state"><div className="planned-symbol">◌</div><h3>Диалог персонажей</h3><p>Настройте участников, сцену и цель разговора. Каждый ход модели будет запускаться отдельно по вашему нажатию.</p><button className="outline-button" onClick={() => onSelect('characters')}>Выбрать персонажей</button></div> :
       <div className="module-placeholder"><div className="module-placeholder-icon">{module.icon}</div><h3>{module.label}</h3><p>Рабочее представление раздела будет развиваться отдельно. Сейчас мы формируем общий каркас и постоянную навигацию приложения.</p><button className="outline-button" onClick={() => onSelect('draft')}>Открыть Черновик</button></div>}</>}
     </div>
   </section>
 }
+
+function ManuscriptWorkspace({ bookTitle }: { bookTitle: string }) {
+  const chapters = [
+    {
+      title: 'Глава 1. Начало пути', words: '3 420 слов', status: 'Завершена',
+      scenes: [
+        { title: 'Утро в городе', words: '1 480', text: ['Город просыпался медленно. Сначала открылись ставни на узких улицах, затем над крышами поднялся тонкий дым из первых печных труб.', 'Он вышел из дома ещё до рассвета. В кармане лежало письмо, которое он перечитал уже десятки раз, но так и не решился показать никому.', 'У старых ворот путник остановился. Дорога впереди была знакомой, однако сегодня казалась совершенно чужой.'] },
+        { title: 'Старая дорога', words: '1 940', text: ['За городом дорога уходила между холмами. Ветер приносил запах сырой земли и приближающейся грозы.', 'Он не знал, кто оставил письмо, но теперь понимал: возвращаться к прежней жизни уже поздно.'] },
+      ],
+    },
+    {
+      title: 'Глава 2. Следы прошлого', words: '2 860 слов', status: 'Завершена',
+      scenes: [
+        { title: 'Письмо без подписи', words: '920', text: ['Письмо было коротким. Ни приветствия, ни подписи — только адрес старого архива и дата, написанная чужой рукой.', 'Он остановился у двери архива. За ней кто-то двигал мебель — медленно, словно не хотел, чтобы его услышали.'] },
+        { title: 'Разговор в архиве', words: '1 120', text: ['Внутри пахло пылью и мокрым деревом. За столом сидела женщина, которую он не видел много лет.', '— Ты всё-таки получил письмо, — сказала она, не поднимая глаз.'] },
+        { title: 'Ночная встреча', words: '820', text: ['На улице уже зажигали фонари. Незнакомец ждал у дальнего выхода, скрытый в полосе тени.', '— Нам нужно поговорить до рассвета. Потом будет поздно.'] },
+      ],
+    },
+    {
+      title: 'Глава 3. Перелом', words: '1 120 слов', status: 'В работе',
+      scenes: [
+        { title: 'Возвращение', words: '540', text: ['Он вернулся к архиву на следующее утро. Теперь ему предстояло решить, кому можно доверять.', 'На столе лежала карта, которой вчера ещё не было. Красным карандашом на ней был отмечен старый тракт.'] },
+        { title: 'Неожиданная встреча', words: '580', text: ['У ворот стоял человек в дорожном плаще. Герой узнал походку раньше, чем сумел разглядеть лицо.', '— Я думал, ты больше не вернёшься, — произнёс он.'] },
+      ],
+    },
+    {
+      title: 'Глава 4. Решение', words: 'План', status: 'Запланирована',
+      scenes: [
+        { title: 'Новый след', words: 'Без текста', text: ['Содержание этой сцены пока не перенесено в Рукопись. Её разработка может продолжиться в Черновике.'] },
+      ],
+    },
+  ];
+  const [activeChapter, setActiveChapter] = useState(0);
+  const [activeScene, setActiveScene] = useState<number | null>(0);
+  const [expanded, setExpanded] = useState<number[]>([0, 1, 2, 3]);
+  const [outlineVisible, setOutlineVisible] = useState(true);
+  const [notice, setNotice] = useState('');
+  const chapter = chapters[activeChapter];
+  const scene = activeScene === null ? null : chapter.scenes[activeScene];
+  const toggleChapter = (index: number) => setExpanded(old => old.includes(index) ? old.filter(item => item !== index) : [...old, index]);
+  const showToolNotice = (tool: string) => setNotice(`${tool}: визуальный элемент готов; подключение проверки будет следующим этапом.`);
+  return <div className="manuscript-workspace">
+    <div className="manuscript-workspace-head">
+      <div className="manuscript-heading-copy">
+        <div className="eyebrow">ТЕКСТ ПРОИЗВЕДЕНИЯ</div>
+        <h2>{bookTitle}</h2>
+        <p>Единая рукопись · главы и сцены — части одного текста</p>
+      </div>
+      <div className="manuscript-head-actions">
+        <button onClick={() => showToolNotice('Корректура')}>Aa <span>Корректура</span></button>
+        <button onClick={() => showToolNotice('Проверка логики')}>◇ <span>Проверка логики</span></button>
+      </div>
+    </div>
+    <div className="manuscript-layout">
+      <section className="manuscript-document-column">
+        <div className="manuscript-editor-toolbar">
+          <div className="manuscript-format-tools">
+            {['B', 'I', 'H', '☷'].map(tool => <button key={tool} title="Инструмент форматирования" onClick={() => showToolNotice('Форматирование')}>{tool}</button>)}
+            <span/>
+            <button title="Отменить" onClick={() => showToolNotice('Отмена')}>↶</button>
+            <button title="Повторить" onClick={() => showToolNotice('Повтор')}>↷</button>
+          </div>
+          <div className="manuscript-editor-state"><i/> Редактор рукописи</div>
+        </div>
+        <div className="manuscript-paper-scroll">
+          <article className="manuscript-paper" contentEditable suppressContentEditableWarning>
+            <div className="manuscript-page-kicker">{chapter.title}</div>
+            <h1>{scene ? scene.title : chapter.title}</h1>
+            {scene ? scene.text.map((paragraph, index) => <p key={index}>{paragraph}</p>) : chapter.scenes.map((item, index) => <section className="manuscript-scene-block" key={item.title}>
+              <h3>{item.title}</h3>
+              {item.text.map((paragraph, paragraphIndex) => <p key={paragraphIndex}>{paragraph}</p>)}
+              {index < chapter.scenes.length - 1 && <div className="manuscript-scene-divider">* * *</div>}
+            </section>)}
+          </article>
+        </div>
+        <div className="manuscript-editor-footer">
+          <span>{chapter.title}{scene ? ` · ${scene.title}` : ''}</span>
+          <span>{scene?.words ?? chapter.words} · Русский</span>
+        </div>
+      </section>
+      <aside className={outlineVisible ? "manuscript-outline" : "manuscript-outline collapsed"}>
+        <div className="manuscript-outline-head">
+          {outlineVisible && <><div><strong>Оглавление</strong><small>Главы и сцены</small></div><button title="Свернуть оглавление" onClick={() => setOutlineVisible(false)}>›</button></>}
+          {!outlineVisible && <button className="manuscript-outline-expand" title="Развернуть оглавление" onClick={() => setOutlineVisible(true)}>‹</button>}
+        </div>
+        {outlineVisible && <div className="manuscript-outline-list">
+          {chapters.map((item, index) => <div className="manuscript-outline-chapter" key={item.title}>
+            <div className={activeChapter === index && activeScene === null ? "manuscript-chapter-row selected" : "manuscript-chapter-row"}>
+              <button className="manuscript-chapter-select" onClick={() => { setActiveChapter(index); setActiveScene(null); }}>
+                <span className="manuscript-chapter-number">{String(index + 1).padStart(2, '0')}</span>
+                <span className="manuscript-chapter-name">{item.title.replace(/^Глава \\d+\\. /, '')}</span>
+              </button>
+              <button className="manuscript-chapter-toggle" title="Показать или скрыть сцены" onClick={() => toggleChapter(index)}>{expanded.includes(index) ? '⌄' : '›'}</button>
+            </div>
+            <div className="manuscript-chapter-meta"><span>{item.words}</span><i className={item.status === 'Завершена' ? 'complete' : item.status === 'В работе' ? 'working' : ''}/><small>{item.status}</small></div>
+            {expanded.includes(index) && <div className="manuscript-scene-list">
+              {item.scenes.map((sceneItem, sceneIndex) => <button key={sceneItem.title} className={activeChapter === index && activeScene === sceneIndex ? "manuscript-scene-select active" : "manuscript-scene-select"} onClick={() => { setActiveChapter(index); setActiveScene(sceneIndex); }}>
+                <span className="manuscript-scene-marker"/> <span>{sceneItem.title}</span><small>{sceneItem.words}</small>
+              </button>)}
+            </div>}
+          </div>)}
+        </div>}
+        {outlineVisible && <div className="manuscript-outline-footer"><button onClick={() => setNotice('Добавление главы будет подключено вместе с управлением структурой.')}>＋ Добавить главу</button><button onClick={() => setNotice('Добавление сцены будет подключено вместе с управлением структурой.')}>＋ Добавить сцену</button></div>}
+      </aside>
+    </div>
+    {notice && <div className="manuscript-notice"><span>{notice}</span><button onClick={() => setNotice('')}>×</button></div>}
+  </div>;
+}
+
 
 
 type DraftTool = { id: string; label: string; icon: string; group: string; prompt: string }
