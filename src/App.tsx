@@ -349,8 +349,8 @@ function ManuscriptFormattingToolbar() {
       <select aria-label="Стиль абзаца" defaultValue="p" onMouseDown={rememberSelection} onChange={event => applyParagraphStyle(event.target.value)}>
         <option value="p">Обычный текст</option><option value="h1">Заголовок</option><option value="h2">Подзаголовок</option><option value="blockquote">Цитата</option>
       </select>
-      <select aria-label="Шрифт" defaultValue="Georgia" onMouseDown={rememberSelection} onChange={event => applyFont(event.target.value)}>
-        <option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Verdana">Verdana</option>
+      <select aria-label="Шрифт" defaultValue="Playfair Display" onMouseDown={rememberSelection} onChange={event => applyFont(event.target.value)}>
+        <option value="Playfair Display">Шрифт рукописи</option><option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Verdana">Verdana</option>
       </select>
       <select aria-label="Размер шрифта" defaultValue="3" onMouseDown={rememberSelection} onChange={event => applyFontSize(event.target.value)}>
         <option value="2">Маленький</option><option value="3">Стандартный</option><option value="4">Крупный</option><option value="5">Очень крупный</option>
