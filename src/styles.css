@@ -747,3 +747,37 @@
  .manuscript-outline{width:270px;flex-basis:270px}
  .manuscript-outline.collapsed{width:36px;flex-basis:36px}
 }
+
+
+/* Manuscript outline: stronger hierarchy and legibility for chapter and scene labels. */
+.manuscript-outline{width:300px;flex-basis:300px}
+.manuscript-outline.collapsed{width:36px;flex-basis:36px}
+.manuscript-outline-head strong{font-size:14px}
+.manuscript-outline-head small{font-size:11px}
+.manuscript-outline-list{padding:10px}
+.manuscript-outline-chapter{padding:5px 0 11px}
+.manuscript-chapter-select{gap:10px;padding:9px 6px}
+.manuscript-chapter-number{font-size:12px;color:#697662;font-weight:700;min-width:18px}
+.manuscript-chapter-name{font-size:13.5px;font-weight:650;color:#414b3e}
+.manuscript-chapter-toggle{width:29px;height:29px;font-size:15px}
+.manuscript-chapter-meta{gap:7px;padding:1px 7px 6px 34px;color:#727d6d;font-size:10px}
+.manuscript-chapter-meta small{font-size:10px}
+.manuscript-scene-list{gap:4px;padding:4px 0 5px 18px}
+.manuscript-scene-select{gap:8px;padding:8px 6px}
+.manuscript-scene-marker{width:7px;height:7px}
+.manuscript-scene-select>span:nth-child(2){font-size:12px;line-height:1.35;color:#56624f}
+.manuscript-scene-select small{font-size:10px;color:#788371}
+.manuscript-outline-footer{gap:5px;padding:10px}
+.manuscript-outline-footer button{padding:8px;font-size:10px}
+@media(max-width:1050px){
+ .manuscript-outline{width:270px;flex-basis:270px}
+ .manuscript-outline.collapsed{width:36px;flex-basis:36px}
+}
+@media(max-width:900px){
+ .manuscript-outline{width:250px;flex-basis:250px}
+ .manuscript-outline.collapsed{width:36px;flex-basis:36px}
+}
+@media(max-width:680px){
+ .manuscript-outline{width:100%;flex:0 0 235px}
+ .manuscript-outline.collapsed{width:100%;flex-basis:36px}
+}
