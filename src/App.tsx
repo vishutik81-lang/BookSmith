@@ -312,6 +312,8 @@ function ManuscriptWorkspace({ bookTitle }: { bookTitle: string }) {
 
 
 function ManuscriptFormattingToolbar() {
+  const [translationLanguage, setTranslationLanguage] = useState('en');
+  const [translationNotice, setTranslationNotice] = useState(false);
   const run = (command: string, value?: string) => {
     document.execCommand(command, false, value);
   };
@@ -352,10 +354,15 @@ function ManuscriptFormattingToolbar() {
         <option value="1.2">Интервал 1,2</option><option value="1.5">Интервал 1,5</option><option value="1.8">Интервал 1,8</option><option value="2">Интервал 2</option>
       </select>
       <span className="format-toolbar-divider"/>
+      <select className="manuscript-translation-language" aria-label="Язык перевода" defaultValue="en" onMouseDown={preserveSelection} onChange={event => { setTranslationLanguage(event.target.value); setTranslationNotice(false); }}>
+        <option value="en">Английский</option><option value="de">Немецкий</option><option value="fr">Французский</option><option value="es">Испанский</option><option value="it">Итальянский</option><option value="ru">Русский</option><option value="la">Латынь</option><option value="zh">Китайский</option><option value="ja">Японский</option>
+      </select>
+      <button className="manuscript-translate-button" title="Перевести выделенный фрагмент или текущий текст" aria-label="Перевести" onMouseDown={preserveSelection} onClick={() => setTranslationNotice(true)}>文 Перевести</button>
       <button title="Отменить" aria-label="Отменить" onMouseDown={preserveSelection} onClick={() => run('undo')}>↶</button>
       <button title="Повторить" aria-label="Повторить" onMouseDown={preserveSelection} onClick={() => run('redo')}>↷</button>
     </div>
     <div className="manuscript-editor-state"><i/> Редактор рукописи</div>
+    {translationNotice && <div className="manuscript-translation-notice">Перевод на выбранный язык будет подключён позже. Он будет применяться к выделенному фрагменту, а при отсутствии выделения — к текущему тексту. <button onClick={() => setTranslationNotice(false)}>×</button></div>}
   </div>;
 }
 
