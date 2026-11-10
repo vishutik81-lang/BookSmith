@@ -269,7 +269,7 @@ function ManuscriptWorkspace({ bookTitle }: { bookTitle: string }) {
             <div className={activeChapter === index && activeScene === null ? "manuscript-chapter-row selected" : "manuscript-chapter-row"}>
               <button className="manuscript-chapter-select" onClick={() => { setActiveChapter(index); setActiveScene(null); }}>
                 <span className="manuscript-chapter-number">{String(index + 1).padStart(2, '0')}</span>
-                <span className="manuscript-chapter-name">{item.title.replace(/^Глава \\d+\\. /, '')}</span>
+                <span className="manuscript-chapter-name">{item.title}</span>
               </button>
               <button className="manuscript-chapter-toggle" title="Показать или скрыть сцены" onClick={() => toggleChapter(index)}>{expanded.includes(index) ? '⌄' : '›'}</button>
             </div>
