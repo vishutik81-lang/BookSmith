@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 
 type ModuleId = 'library' | 'manuscript' | 'draft' | 'dialogue' | 'notes' | 'research' | 'chapters' | 'scenes' | 'characters' | 'plotlines' | 'world' | 'images' | 'history' | 'export' | 'relations' | 'prompts' | 'translation'
 type ModuleItem = { id: ModuleId; label: string; icon: string; planned?: boolean; global?: boolean }
@@ -314,12 +314,27 @@ function ManuscriptWorkspace({ bookTitle }: { bookTitle: string }) {
 function ManuscriptFormattingToolbar() {
   const [translationLanguage, setTranslationLanguage] = useState('en');
   const [translationNotice, setTranslationNotice] = useState(false);
+  const savedSelection = useRef<Range | null>(null);
   const run = (command: string, value?: string) => {
     document.execCommand(command, false, value);
   };
   const preserveSelection = (event: React.MouseEvent) => event.preventDefault();
-  const applyParagraphStyle = (tag: string) => run('formatBlock', tag);
+  const rememberSelection = () => {
+    const selection = window.getSelection();
+    savedSelection.current = selection && selection.rangeCount > 0 ? selection.getRangeAt(0).cloneRange() : null;
+  };
+  const restoreSelection = () => {
+    const selection = window.getSelection();
+    if (selection && savedSelection.current) {
+      selection.removeAllRanges();
+      selection.addRange(savedSelection.current);
+    }
+  };
+  const applyParagraphStyle = (tag: string) => { restoreSelection(); run('formatBlock', tag); };
+  const applyFont = (font: string) => { restoreSelection(); run('fontName', font); };
+  const applyFontSize = (size: string) => { restoreSelection(); run('fontSize', size); };
   const setLineHeight = (value: string) => {
+    restoreSelection();
     const selection = window.getSelection();
     const node = selection?.anchorNode?.nodeType === Node.TEXT_NODE ? selection.anchorNode.parentElement : selection?.anchorNode as HTMLElement | null;
     const paragraph = node?.closest('p, h1, h2, h3, blockquote, li') as HTMLElement | null;
@@ -331,14 +346,14 @@ function ManuscriptFormattingToolbar() {
       <button title="Курсив" aria-label="Курсив" onMouseDown={preserveSelection} onClick={() => run('italic')}><i>I</i></button>
       <button title="Подчёркивание" aria-label="Подчёркивание" onMouseDown={preserveSelection} onClick={() => run('underline')}><u>U</u></button>
       <span className="format-toolbar-divider"/>
-      <select aria-label="Стиль абзаца" defaultValue="p" onMouseDown={preserveSelection} onChange={event => applyParagraphStyle(event.target.value)}>
+      <select aria-label="Стиль абзаца" defaultValue="p" onMouseDown={rememberSelection} onChange={event => applyParagraphStyle(event.target.value)}>
         <option value="p">Обычный текст</option><option value="h1">Заголовок</option><option value="h2">Подзаголовок</option><option value="blockquote">Цитата</option>
       </select>
-      <select aria-label="Шрифт" defaultValue="Georgia" onMouseDown={preserveSelection} onChange={event => run('fontName', event.target.value)}>
+      <select aria-label="Шрифт" defaultValue="Georgia" onMouseDown={rememberSelection} onChange={event => applyFont(event.target.value)}>
         <option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Verdana">Verdana</option>
       </select>
-      <select aria-label="Размер шрифта" defaultValue="3" onMouseDown={preserveSelection} onChange={event => run('fontSize', event.target.value)}>
-        <option value="2">Маленький</option><option value="3">Обычный</option><option value="4">Крупный</option><option value="5">Очень крупный</option>
+      <select aria-label="Размер шрифта" defaultValue="3" onMouseDown={rememberSelection} onChange={event => applyFontSize(event.target.value)}>
+        <option value="2">Маленький</option><option value="3">Стандартный</option><option value="4">Крупный</option><option value="5">Очень крупный</option>
       </select>
       <span className="format-toolbar-divider"/>
       <button title="По левому краю" aria-label="По левому краю" onMouseDown={preserveSelection} onClick={() => run('justifyLeft')}>☰</button>
@@ -350,7 +365,7 @@ function ManuscriptFormattingToolbar() {
       <button title="Увеличить отступ" aria-label="Увеличить отступ" onMouseDown={preserveSelection} onClick={() => run('indent')}>⇥</button>
       <button title="Маркированный список" aria-label="Маркированный список" onMouseDown={preserveSelection} onClick={() => run('insertUnorderedList')}>•≡</button>
       <button title="Нумерованный список" aria-label="Нумерованный список" onMouseDown={preserveSelection} onClick={() => run('insertOrderedList')}>1≡</button>
-      <select className="format-line-height" aria-label="Межстрочный интервал" defaultValue="1.5" onMouseDown={preserveSelection} onChange={event => setLineHeight(event.target.value)}>
+      <select className="format-line-height" aria-label="Межстрочный интервал" defaultValue="1.5" onMouseDown={rememberSelection} onChange={event => setLineHeight(event.target.value)}>
         <option value="1.2">Интервал 1,2</option><option value="1.5">Интервал 1,5</option><option value="1.8">Интервал 1,8</option><option value="2">Интервал 2</option>
       </select>
       <span className="format-toolbar-divider"/>
