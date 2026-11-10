@@ -825,3 +825,12 @@
 .translation-note>span{font-size:15px}
 .translation-note p{font-size:11px;line-height:1.55;margin:0}
 @media(max-width:760px){.translation-workspace{padding:20px 14px}.translation-mode-grid,.translation-protection-list{grid-template-columns:1fr}.translation-scope-row{grid-template-columns:1fr}.translation-language-flow{grid-template-columns:1fr 28px 1fr}.translation-language-flow strong{font-size:13px}}
+
+
+/* Inline manuscript translation control */
+.manuscript-format-toolbar-v2 .manuscript-translation-language{max-width:132px;border-color:#d8dfd3;background:#f8faf6}
+.manuscript-format-toolbar-v2 .manuscript-translate-button{border-color:#cbd7c5;background:#edf2e9;color:#43583f;font-weight:600;white-space:nowrap}
+.manuscript-format-toolbar-v2 .manuscript-translate-button:hover{background:#e2eadc}
+.manuscript-translation-notice{flex-basis:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:8px 10px;border-radius:7px;background:#f4f6f1;color:#697363;font-size:10px;line-height:1.45}
+.manuscript-translation-notice button{border:0;background:transparent;color:#687361;font-size:16px}
+@media(max-width:1100px){.manuscript-format-toolbar-v2 .manuscript-translation-language{max-width:120px}}
