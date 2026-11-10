@@ -234,15 +234,7 @@ function ManuscriptWorkspace({ bookTitle }: { bookTitle: string }) {
     </div>
     <div className="manuscript-layout">
       <section className="manuscript-document-column">
-        <div className="manuscript-editor-toolbar">
-          <div className="manuscript-format-tools">
-            {['B', 'I', 'H', '☷'].map(tool => <button key={tool} title="Инструмент форматирования" onClick={() => showToolNotice('Форматирование')}>{tool}</button>)}
-            <span/>
-            <button title="Отменить" onClick={() => showToolNotice('Отмена')}>↶</button>
-            <button title="Повторить" onClick={() => showToolNotice('Повтор')}>↷</button>
-          </div>
-          <div className="manuscript-editor-state"><i/> Редактор рукописи</div>
-        </div>
+        <ManuscriptFormattingToolbar />
         <div className="manuscript-paper-scroll">
           <article className="manuscript-paper" contentEditable suppressContentEditableWarning>
             <div className="manuscript-page-kicker">{chapter.title}</div>
@@ -289,6 +281,55 @@ function ManuscriptWorkspace({ bookTitle }: { bookTitle: string }) {
 }
 
 
+
+
+function ManuscriptFormattingToolbar() {
+  const run = (command: string, value?: string) => {
+    document.execCommand(command, false, value);
+  };
+  const preserveSelection = (event: React.MouseEvent) => event.preventDefault();
+  const applyParagraphStyle = (tag: string) => run('formatBlock', tag);
+  const setLineHeight = (value: string) => {
+    const selection = window.getSelection();
+    const node = selection?.anchorNode?.nodeType === Node.TEXT_NODE ? selection.anchorNode.parentElement : selection?.anchorNode as HTMLElement | null;
+    const paragraph = node?.closest('p, h1, h2, h3, blockquote, li') as HTMLElement | null;
+    if (paragraph) paragraph.style.lineHeight = value;
+  };
+  return <div className="manuscript-editor-toolbar manuscript-format-toolbar-v2">
+    <div className="manuscript-format-tools">
+      <button title="Жирный" aria-label="Жирный" onMouseDown={preserveSelection} onClick={() => run('bold')}><b>B</b></button>
+      <button title="Курсив" aria-label="Курсив" onMouseDown={preserveSelection} onClick={() => run('italic')}><i>I</i></button>
+      <button title="Подчёркивание" aria-label="Подчёркивание" onMouseDown={preserveSelection} onClick={() => run('underline')}><u>U</u></button>
+      <span className="format-toolbar-divider"/>
+      <select aria-label="Стиль абзаца" defaultValue="p" onMouseDown={preserveSelection} onChange={event => applyParagraphStyle(event.target.value)}>
+        <option value="p">Обычный текст</option><option value="h1">Заголовок</option><option value="h2">Подзаголовок</option><option value="blockquote">Цитата</option>
+      </select>
+      <select aria-label="Шрифт" defaultValue="Georgia" onMouseDown={preserveSelection} onChange={event => run('fontName', event.target.value)}>
+        <option value="Georgia">Georgia</option><option value="Arial">Arial</option><option value="Times New Roman">Times New Roman</option><option value="Verdana">Verdana</option>
+      </select>
+      <select aria-label="Размер шрифта" defaultValue="3" onMouseDown={preserveSelection} onChange={event => run('fontSize', event.target.value)}>
+        <option value="2">Маленький</option><option value="3">Обычный</option><option value="4">Крупный</option><option value="5">Очень крупный</option>
+      </select>
+      <span className="format-toolbar-divider"/>
+      <button title="По левому краю" aria-label="По левому краю" onMouseDown={preserveSelection} onClick={() => run('justifyLeft')}>☰</button>
+      <button title="По центру" aria-label="По центру" onMouseDown={preserveSelection} onClick={() => run('justifyCenter')}>≡</button>
+      <button title="По правому краю" aria-label="По правому краю" onMouseDown={preserveSelection} onClick={() => run('justifyRight')}>☷</button>
+      <button title="По ширине" aria-label="По ширине" onMouseDown={preserveSelection} onClick={() => run('justifyFull')}>▤</button>
+      <span className="format-toolbar-divider"/>
+      <button title="Уменьшить отступ" aria-label="Уменьшить отступ" onMouseDown={preserveSelection} onClick={() => run('outdent')}>⇤</button>
+      <button title="Увеличить отступ" aria-label="Увеличить отступ" onMouseDown={preserveSelection} onClick={() => run('indent')}>⇥</button>
+      <button title="Маркированный список" aria-label="Маркированный список" onMouseDown={preserveSelection} onClick={() => run('insertUnorderedList')}>•≡</button>
+      <button title="Нумерованный список" aria-label="Нумерованный список" onMouseDown={preserveSelection} onClick={() => run('insertOrderedList')}>1≡</button>
+      <select className="format-line-height" aria-label="Межстрочный интервал" defaultValue="1.5" onMouseDown={preserveSelection} onChange={event => setLineHeight(event.target.value)}>
+        <option value="1.2">Интервал 1,2</option><option value="1.5">Интервал 1,5</option><option value="1.8">Интервал 1,8</option><option value="2">Интервал 2</option>
+      </select>
+      <span className="format-toolbar-divider"/>
+      <button title="Отменить" aria-label="Отменить" onMouseDown={preserveSelection} onClick={() => run('undo')}>↶</button>
+      <button title="Повторить" aria-label="Повторить" onMouseDown={preserveSelection} onClick={() => run('redo')}>↷</button>
+    </div>
+    <div className="manuscript-editor-state"><i/> Редактор рукописи</div>
+  </div>;
+}
 
 type DraftTool = { id: string; label: string; icon: string; group: string; prompt: string }
 const draftTools: DraftTool[] = [
